@@ -28,7 +28,15 @@ A two-sided marketplace for bulk minerals and construction aggregates, connectin
 - API for enterprise buyers
 - Automated dispute resolution
 - Credit scoring
-- Notification system (price alerts, milestone updates)
+- Advanced notification system (price alerts, complex rules)
+
+### Minimal notifications (v1)
+Basic email notifications for critical deal events only (no in-app notification center):
+- Escrow deposit confirmed
+- Deal status transitions (loading, departed, arrived, delivered)
+- Escrow released
+- Dispute filed
+Sent via Supabase Edge Functions + a transactional email provider (Resend or Postmark).
 
 ## Tech Stack
 
@@ -120,7 +128,7 @@ Building on top of the existing Next.js 16 + Supabase + Tailwind dashboard in `/
 | volume_needed | NUMERIC | Tonnes |
 | target_price | NUMERIC | Buyer's target $/t |
 | currency | ENUM: USD, ZAR, EUR | |
-| delivery_port | TEXT | Destination port name or harbour_id |
+| delivery_port | TEXT | Free-text destination port name (global ports not in harbours table) |
 | incoterm | TEXT | Preferred incoterm |
 | status | ENUM: active, matched, fulfilled, expired | |
 | created_at | TIMESTAMPTZ | |
@@ -143,11 +151,14 @@ Building on top of the existing Next.js 16 + Supabase + Tailwind dashboard in `/
 | spec_tolerances | JSONB | { cr2o3_pct: { accept: [40, 42], penalty: [39, 40], reject_below: 39 } } |
 | price_adjustment_rules | JSONB | { cr2o3_pct: { penalty_per_unit: 0.50, bonus_per_unit: 0.25 } } |
 | escrow_amount | NUMERIC | |
+| escrow_status | ENUM: pending_deposit, held, releasing, released, frozen | Tracks escrow independently from deal status |
 | status | ENUM | See deal state machine below |
 | created_at | TIMESTAMPTZ | |
 | second_accept_at | TIMESTAMPTZ | When escrow triggers |
 
-**Deal status ENUM:** `interest → first_accept → negotiation → second_accept → escrow_held → loading → in_transit → delivered → escrow_released → completed → disputed`
+**Deal status ENUM:** `interest → first_accept → negotiation → second_accept → escrow_held → loading → in_transit → delivered → escrow_released → completed | disputed | cancelled`
+
+A deal row is created when a buyer expresses interest in a listing (or a seller invites a buyer). The `LISTED` state in the state machine diagram refers to the listing's status, not the deal's — deals begin at `interest`.
 
 #### `deal_milestones`
 | Column | Type | Notes |
@@ -196,7 +207,11 @@ Building on top of the existing Next.js 16 + Supabase + Tailwind dashboard in `/
 | comment | TEXT | Optional |
 | created_at | TIMESTAMPTZ | |
 
-### TimescaleDB
+### TimescaleDB (separate managed instance)
+
+TimescaleDB runs as a separate managed PostgreSQL instance (e.g., Timescale Cloud) — not as an extension on the Supabase instance. This keeps time-series query load isolated from the core marketplace database. The Next.js app connects to both databases: Supabase client for marketplace data, a direct PostgreSQL client (e.g., `pg` or Prisma) for TimescaleDB.
+
+**Data population mechanism:** Supabase Database Webhooks (pg_net) fire on INSERT/UPDATE to `listings`, `requirements`, and `deals` tables. These webhooks call Next.js API routes (e.g., `/api/timescale/ingest`) that transform the event and write to TimescaleDB. This is an async, eventually-consistent pipeline — trading view data may lag marketplace state by a few seconds.
 
 #### `price_ticks` (hypertable, partitioned by time)
 | Column | Type | Notes |
@@ -361,8 +376,8 @@ Each card links to detail page with full spec sheet, seller/buyer profile, and "
 
 Internal-only view behind admin RLS policy.
 
-| Panel | Data Source |
-|-------|-----------|
+| Panel | Description | Data Source |
+|-------|-------------|-------------|
 | Volume Flow Map | Animated flow lines (mine → harbour → destination). Thickness = volume. Filter by commodity, time. | deals + deal_milestones |
 | Supply Intelligence | Per-mine output over time, estimated capacity utilization | listings + deals |
 | Demand Heatmap | Where buyer requirements cluster by commodity, spec, region | requirements |
@@ -374,8 +389,8 @@ Internal-only view behind admin RLS policy.
 ## Deal Flow State Machine
 
 ```
-LISTED
-  ↓ buyer expresses interest (or seller invites buyer)
+Listing is ACTIVE on marketplace
+  ↓ buyer expresses interest (or seller invites buyer) → deal row created
 INTEREST
   ↓ both parties acknowledge
 FIRST_ACCEPT
@@ -397,6 +412,14 @@ ESCROW_RELEASED → funds released to seller (adjusted for spec deviations)
 COMPLETED
 
 At any post-escrow stage: either party can file DISPUTED → escrow frozen, manual mediation (v1).
+
+Dispute resolution paths:
+  DISPUTED → ESCROW_RELEASED (resolved in seller's favor, funds released)
+  DISPUTED → ESCROW_RELEASED (resolved with adjustment, partial release to each party)
+  DISPUTED → CANCELLED (deal cancelled, funds returned to buyer)
+All dispute resolutions are manual admin actions in v1.
+
+Negotiation in v1 happens off-platform (email, WhatsApp, phone). The platform does not provide a chat system. Deal terms are captured when both parties enter SECOND_ACCEPT.
 ```
 
 ## Spec Tolerance & Price Adjustments
@@ -433,6 +456,27 @@ Each deal includes:
 ```
 
 At delivery, actual spec (from weighbridge/lab) is compared against agreed spec. Price is automatically recalculated before escrow release.
+
+## Escrow Mechanism (v1)
+
+For v1, escrow is a **platform-tracked ledger** backed by manual bank transfers:
+
+1. At `SECOND_ACCEPT`, the platform generates a payment instruction (bank details, reference number, amount in deal currency)
+2. Buyer transfers funds to a platform-controlled holding account
+3. Platform admin confirms receipt → deal status moves to `ESCROW_HELD`
+4. At `DELIVERED` + buyer confirmation (or after spec adjustment calculation), platform admin releases funds to seller's registered bank account
+5. Escrow state tracked in Supabase: `escrow_status` ENUM on deals (`pending_deposit → held → releasing → released → frozen`)
+
+Future: integrate a payment provider (Stripe Connect, or SA-specific like Peach Payments) for automated escrow flow.
+
+## FX Rate Source
+
+Exchange rates are fetched from the **Open Exchange Rates API** (free tier supports USD base, sufficient for v1):
+
+- Rate fetched at moment of `SECOND_ACCEPT` and stored as `fx_rate_locked`
+- `fx_source_timestamp` records the exact API response time
+- If API is unavailable at lock time, deal cannot proceed to `SECOND_ACCEPT` — user is prompted to retry
+- Rates are USD-based; ZAR and EUR cross-rates derived from USD base
 
 ## Row Level Security
 
