@@ -148,7 +148,7 @@ Building on top of the existing Next.js 16 + Supabase + Tailwind dashboard in `/
 | fx_rate_locked | NUMERIC | Exchange rate at second acceptance |
 | fx_source_timestamp | TIMESTAMPTZ | When rate was captured |
 | incoterm | TEXT | |
-| spec_tolerances | JSONB | { cr2o3_pct: { accept: [40, 42], penalty: [39, 40], reject_below: 39 } } |
+| spec_tolerances | JSONB | See Spec Tolerance section for schema |
 | price_adjustment_rules | JSONB | { cr2o3_pct: { penalty_per_unit: 0.50, bonus_per_unit: 0.25 } } |
 | escrow_amount | NUMERIC | |
 | escrow_status | ENUM: pending_deposit, held, releasing, released, frozen | Tracks escrow independently from deal status |
