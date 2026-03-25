@@ -1,0 +1,298 @@
+{
+  "_description": "BRRRR Investment Scoring Configuration. Edit this file to adapt the model to any South African market.",
+
+  "market": {
+    "name": "Boland & Cape Winelands (Full Region)",
+    "areas": ["Paarl", "Wellington", "Malmesbury", "Stellenbosch", "Franschhoek", "Tulbagh", "Wolseley", "Ceres", "Worcester", "Robertson", "Montagu", "Riebeek Valley", "Darling"]
+  },
+
+  "financing": {
+    "prime_rate": 0.105,
+    "investment_rate_spread": 0.005,
+    "bond_term_months": 240,
+    "ltv": 0.80,
+    "bond_initiation_fee": 6500,
+    "bond_registration_estimate": 15000
+  },
+
+  "transfer_duty_brackets": [
+    {"threshold": 1210000, "rate": 0.00, "base": 0},
+    {"threshold": 1663800, "rate": 0.03, "base": 0},
+    {"threshold": 2329300, "rate": 0.06, "base": 13614},
+    {"threshold": 2994800, "rate": 0.08, "base": 53544},
+    {"threshold": 13310000, "rate": 0.11, "base": 106784},
+    {"threshold": null, "rate": 0.13, "base": 1241456}
+  ],
+
+  "operating_assumptions": {
+    "vacancy_rate": 0.08,
+    "insurance_pct_of_value": 0.0075,
+    "maintenance_pct_of_value": 0.015,
+    "management_fee_pct_of_rent": 0.0,
+    "default_levy": 1200,
+    "rental_escalation_pa": 0.055,
+    "capital_appreciation_pa": 0.06
+  },
+
+  "area_assumptions": {
+    "Paarl": {
+      "cap_rate": 0.09,
+      "rates_formula": "drakenstein",
+      "rates_exemption": 350000,
+      "rates_cent_in_rand": 0.0060055
+    },
+    "Wellington": {
+      "cap_rate": 0.10,
+      "rates_formula": "drakenstein",
+      "rates_exemption": 350000,
+      "rates_cent_in_rand": 0.0060055
+    },
+    "Malmesbury": {
+      "cap_rate": 0.105,
+      "rates_formula": "flat",
+      "rates_monthly": 400
+    },
+    "Stellenbosch": {
+      "cap_rate": 0.08,
+      "rates_formula": "flat",
+      "rates_monthly": 600
+    },
+    "Franschhoek": {
+      "cap_rate": 0.07,
+      "rates_formula": "flat",
+      "rates_monthly": 500
+    },
+    "Tulbagh": {
+      "cap_rate": 0.11,
+      "rates_formula": "flat",
+      "rates_monthly": 300
+    },
+    "Wolseley": {
+      "cap_rate": 0.11,
+      "rates_formula": "flat",
+      "rates_monthly": 250
+    },
+    "Ceres": {
+      "cap_rate": 0.11,
+      "rates_formula": "flat",
+      "rates_monthly": 300
+    },
+    "Worcester": {
+      "cap_rate": 0.10,
+      "rates_formula": "flat",
+      "rates_monthly": 400
+    },
+    "Robertson": {
+      "cap_rate": 0.10,
+      "rates_formula": "flat",
+      "rates_monthly": 300
+    },
+    "Montagu": {
+      "cap_rate": 0.10,
+      "rates_formula": "flat",
+      "rates_monthly": 250
+    },
+    "Riebeek Valley": {
+      "cap_rate": 0.09,
+      "rates_formula": "flat",
+      "rates_monthly": 350
+    },
+    "Darling": {
+      "cap_rate": 0.10,
+      "rates_formula": "flat",
+      "rates_monthly": 300
+    }
+  },
+
+  "refurb_bands": [
+    {"max_price": 500000, "refurb": 60000},
+    {"max_price": 800000, "refurb": 80000},
+    {"max_price": 1200000, "refurb": 100000},
+    {"max_price": null, "refurb": 50000}
+  ],
+
+  "price_ceiling": 10000000,
+
+  "scoring_weights": {
+    "cap_rate": 0.05,
+    "cash_on_cash": 0.03,
+    "dscr": 0.05,
+    "value_gap": 0.05,
+    "suburb_quality": 0.15,
+    "capital_appreciation": 0.20,
+    "catalyst_proximity": 0.20,
+    "safety": 0.07,
+    "rental_supply_tightness": 0.05,
+    "affordability": 0.05,
+    "distressed_bonus": 0.05,
+    "brrrr_efficiency": 0.05
+  },
+
+  "developments": [
+    {
+      "name": "Life Paarl Valley Hospital",
+      "lat": -33.7195,
+      "lng": 18.9725,
+      "type": "employment",
+      "base_uplift_pct": 12,
+      "impact_radius_km": 8,
+      "completion_date": "2027-09-01",
+      "status": "under_construction"
+    },
+    {
+      "name": "Paarl Mall Redevelopment",
+      "lat": -33.7340,
+      "lng": 18.9635,
+      "type": "amenity",
+      "base_uplift_pct": 6,
+      "impact_radius_km": 5,
+      "completion_date": "2026-11-01",
+      "status": "under_construction"
+    },
+    {
+      "name": "Winelands Square Phase 2",
+      "lat": -33.7280,
+      "lng": 18.9580,
+      "type": "amenity",
+      "base_uplift_pct": 4,
+      "impact_radius_km": 4,
+      "completion_date": "2026-04-01",
+      "status": "under_construction"
+    },
+    {
+      "name": "Val de Vie Kliprug Expansion",
+      "lat": -33.7855,
+      "lng": 18.9450,
+      "type": "demand",
+      "base_uplift_pct": 5,
+      "impact_radius_km": 6,
+      "completion_date": "2036-01-01",
+      "status": "phased"
+    },
+    {
+      "name": "CPUT Wellington Campus",
+      "lat": -33.6395,
+      "lng": 19.0115,
+      "type": "demand",
+      "base_uplift_pct": 5,
+      "impact_radius_km": 3,
+      "completion_date": null,
+      "status": "existing"
+    },
+    {
+      "name": "Boland College Paarl",
+      "lat": -33.7310,
+      "lng": 18.9710,
+      "type": "demand",
+      "base_uplift_pct": 3,
+      "impact_radius_km": 3,
+      "completion_date": null,
+      "status": "existing"
+    },
+    {
+      "name": "N1 Old Oak-Koelenhof Widening",
+      "lat": -33.8200,
+      "lng": 18.8500,
+      "type": "infrastructure",
+      "base_uplift_pct": 8,
+      "impact_radius_km": 10,
+      "completion_date": "2029-01-01",
+      "status": "tender"
+    },
+    {
+      "name": "Optenhorst Village",
+      "lat": -33.7150,
+      "lng": 18.9550,
+      "type": "amenity",
+      "base_uplift_pct": 3,
+      "impact_radius_km": 3,
+      "completion_date": "2026-12-01",
+      "status": "under_construction"
+    },
+    {
+      "name": "Stellenbosch University",
+      "lat": -33.9328,
+      "lng": 18.8642,
+      "type": "demand",
+      "base_uplift_pct": 7,
+      "impact_radius_km": 5,
+      "completion_date": null,
+      "status": "existing"
+    },
+    {
+      "name": "Groot Parys Lifestyle Estate",
+      "lat": -33.7500,
+      "lng": 18.9400,
+      "type": "demand",
+      "base_uplift_pct": 3,
+      "impact_radius_km": 4,
+      "completion_date": "2025-06-01",
+      "status": "completed"
+    }
+  ],
+
+  "suburb_centroids": {
+    "Lemoenkloof": {"lat": -33.7150, "lng": 18.9550},
+    "Courtrai": {"lat": -33.7280, "lng": 18.9530},
+    "Paarl Central": {"lat": -33.7340, "lng": 18.9700},
+    "Paarl South": {"lat": -33.7500, "lng": 18.9680},
+    "Northern Paarl": {"lat": -33.7050, "lng": 18.9650},
+    "Groenheuwel": {"lat": -33.7180, "lng": 18.9450},
+    "Denneburg": {"lat": -33.7420, "lng": 18.9580},
+    "Paarl East": {"lat": -33.7350, "lng": 18.9800},
+    "Klein Drakenstein": {"lat": -33.7600, "lng": 18.9750},
+    "New Orleans": {"lat": -33.7200, "lng": 18.9700},
+    "Esterville": {"lat": -33.7320, "lng": 18.9650},
+    "Paarl North": {"lat": -33.7100, "lng": 18.9700},
+    "La Vie Estate": {"lat": -33.7450, "lng": 18.9600},
+    "Southern Paarl": {"lat": -33.7550, "lng": 18.9650},
+    "Dalsig": {"lat": -33.4620, "lng": 18.7250},
+    "Wellington Central": {"lat": -33.6395, "lng": 19.0115},
+    "Wellington": {"lat": -33.6400, "lng": 19.0100},
+    "Blouvlei": {"lat": -33.6350, "lng": 19.0050},
+    "Versailles": {"lat": -33.6450, "lng": 19.0150},
+    "Porterville": {"lat": -33.0100, "lng": 19.0200},
+    "Malmesbury Central": {"lat": -33.4600, "lng": 18.7300},
+    "Malmesbury": {"lat": -33.4600, "lng": 18.7300},
+    "Saamstaan": {"lat": -33.4550, "lng": 18.7350},
+    "Tafelzicht": {"lat": -33.4650, "lng": 18.7200},
+    "Mount Royal Golf Estate": {"lat": -33.4700, "lng": 18.7150},
+
+    "Cloetesville": {"lat": -33.9250, "lng": 18.8550},
+    "Idasvallei": {"lat": -33.9300, "lng": 18.8700},
+    "Klapmuts": {"lat": -33.8200, "lng": 18.8800},
+    "Aan de Wijnlanden": {"lat": -33.9350, "lng": 18.8400},
+    "Stellenbosch Central": {"lat": -33.9340, "lng": 18.8600},
+    "Stellenbosch": {"lat": -33.9340, "lng": 18.8600},
+    "Die Boord": {"lat": -33.9450, "lng": 18.8550},
+    "Dalsig (Stellenbosch)": {"lat": -33.9250, "lng": 18.8500},
+    "Brandwacht": {"lat": -33.9100, "lng": 18.8650},
+    "La Colline": {"lat": -33.9200, "lng": 18.8450},
+    "Jamestown": {"lat": -33.9500, "lng": 18.8700},
+    "Onder Papegaaiberg": {"lat": -33.9150, "lng": 18.8700},
+    "Paradyskloof": {"lat": -33.9500, "lng": 18.8550},
+    "Universiteitsoord": {"lat": -33.9330, "lng": 18.8650},
+
+    "Franschhoek": {"lat": -33.9100, "lng": 19.1200},
+
+    "Tulbagh": {"lat": -33.2850, "lng": 19.1400},
+    "Wolseley": {"lat": -33.4150, "lng": 19.2000},
+    "Ceres": {"lat": -33.3700, "lng": 19.3100},
+
+    "Worcester": {"lat": -33.6450, "lng": 19.4450},
+    "Worcester Central": {"lat": -33.6450, "lng": 19.4450},
+    "Avian Park": {"lat": -33.6600, "lng": 19.4300},
+    "Hex River": {"lat": -33.6700, "lng": 19.5000},
+
+    "Robertson": {"lat": -33.8000, "lng": 19.8850},
+    "Robertson Central": {"lat": -33.8000, "lng": 19.8850},
+
+    "Montagu": {"lat": -33.7850, "lng": 20.1200},
+
+    "Riebeek Kasteel": {"lat": -33.3850, "lng": 18.9300},
+    "Riebeek West": {"lat": -33.3550, "lng": 18.8650},
+    "Riebeek Valley": {"lat": -33.3700, "lng": 18.9000},
+
+    "Darling": {"lat": -33.3750, "lng": 18.3850}
+  }
+}

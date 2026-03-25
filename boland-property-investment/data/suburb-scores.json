@@ -1,0 +1,282 @@
+{
+  "_metadata": {
+    "version": "1.0",
+    "created": "2025-03-25",
+    "source": "Qualitative market research quantified into 0-10 scores",
+    "scoring_methodology": {
+      "demand_level": "Tenant demand strength: vacancy rates, population growth, employment anchors. 10 = extreme demand, 0 = no demand.",
+      "supply_tightness": "How constrained is rental supply. LOW available supply = HIGH score. 10 = virtually no supply, 0 = oversupplied.",
+      "tenant_quality": "Reliability of tenant pool. Professionals, healthcare workers, retirees score high; students and informal tenants score lower. 10 = premium tenants only, 0 = high-risk pool.",
+      "catalyst_proximity": "Proximity to major demand catalysts: Life Paarl Valley Hospital (H2 2027, 140-250 beds), Paarl Mall R270M redevelopment (Nov 2026), CPUT Wellington campus, Winelands Square, Val de Vie expansion, Boland College. 10 = adjacent to multiple catalysts, 0 = no catalysts nearby.",
+      "infrastructure_quality": "Fibre coverage, road access, rail connectivity, water and energy reliability. 10 = full fibre + excellent roads + rail + reliable utilities, 0 = no infrastructure."
+    },
+    "rental_data_source": "Scraped from property portals, 44 listings, 2025-03-25",
+    "notes": "Scores reflect relative positioning within the Boland region (Paarl, Wellington, Malmesbury). A score of 10 is exceptional by local standards, not national benchmarks."
+  },
+  "areas": {
+    "Paarl": {
+      "rental_medians": {
+        "1_bed": {
+          "median_rent": 9500,
+          "avg_rent": 10163,
+          "min_rent": 6000,
+          "max_rent": 15000,
+          "listing_count": 15
+        },
+        "2_bed": {
+          "median_rent": 9700,
+          "avg_rent": 10333,
+          "min_rent": 7500,
+          "max_rent": 14000,
+          "listing_count": 11
+        }
+      }
+    },
+    "Wellington": {
+      "rental_medians": {
+        "1_bed": {
+          "median_rent": 7750,
+          "avg_rent": 7750,
+          "min_rent": null,
+          "max_rent": null,
+          "listing_count": 2,
+          "note": "Very small sample — treat with caution"
+        },
+        "2_bed": {
+          "median_rent": null,
+          "avg_rent": null,
+          "min_rent": null,
+          "max_rent": null,
+          "listing_count": 0
+        }
+      }
+    },
+    "Malmesbury": {
+      "rental_medians": {
+        "1_bed": {
+          "median_rent": 6500,
+          "avg_rent": 6475,
+          "min_rent": 4750,
+          "max_rent": 8250,
+          "listing_count": 10
+        },
+        "2_bed": {
+          "median_rent": 12000,
+          "avg_rent": 11217,
+          "min_rent": 9000,
+          "max_rent": 12000,
+          "listing_count": 6
+        }
+      }
+    }
+  },
+  "suburbs": {
+    "Lemoenkloof": {
+      "area": "Paarl",
+      "demand_level": 9,
+      "supply_tightness": 9,
+      "tenant_quality": 9,
+      "catalyst_proximity": 7,
+      "infrastructure_quality": 9,
+      "notes": "Most sought-after family suburb. Premium tenants. Near Optenhorst Village retail. Full fibre coverage."
+    },
+    "Courtrai": {
+      "area": "Paarl",
+      "demand_level": 8,
+      "supply_tightness": 7,
+      "tenant_quality": 9,
+      "catalyst_proximity": 6,
+      "infrastructure_quality": 8,
+      "notes": "Popular family suburb near top schools. Premium tenant pool."
+    },
+    "Paarl Central": {
+      "area": "Paarl",
+      "demand_level": 7,
+      "supply_tightness": 6,
+      "tenant_quality": 7,
+      "catalyst_proximity": 7,
+      "infrastructure_quality": 8,
+      "notes": "Older sectional title stock. Walking distance to amenities. SDF supports densification."
+    },
+    "Paarl South": {
+      "area": "Paarl",
+      "demand_level": 7,
+      "supply_tightness": 5,
+      "tenant_quality": 6,
+      "catalyst_proximity": 6,
+      "infrastructure_quality": 7,
+      "notes": "Near Boland College. Student and young professional demand. New developments underway."
+    },
+    "Northern Paarl": {
+      "area": "Paarl",
+      "demand_level": 6,
+      "supply_tightness": 7,
+      "tenant_quality": 5,
+      "catalyst_proximity": 5,
+      "infrastructure_quality": 6,
+      "notes": "New development corridor in SDF (Dal Josafat). Limited existing stock."
+    },
+    "Groenheuwel": {
+      "area": "Paarl",
+      "demand_level": 7,
+      "supply_tightness": 5,
+      "tenant_quality": 7,
+      "catalyst_proximity": 5,
+      "infrastructure_quality": 7,
+      "notes": "Good schools, young families. Mountain Ridge Estate development."
+    },
+    "Denneburg": {
+      "area": "Paarl",
+      "demand_level": 6,
+      "supply_tightness": 6,
+      "tenant_quality": 8,
+      "catalyst_proximity": 5,
+      "infrastructure_quality": 7,
+      "notes": "Quiet residential. Retirees and professionals dominate tenant pool."
+    },
+    "Paarl East": {
+      "area": "Paarl",
+      "demand_level": 6,
+      "supply_tightness": 5,
+      "tenant_quality": 5,
+      "catalyst_proximity": 5,
+      "infrastructure_quality": 6,
+      "notes": "Near Boland College Drakenstein campus. Student and young professional demand."
+    },
+    "Klein Drakenstein": {
+      "area": "Paarl",
+      "demand_level": 5,
+      "supply_tightness": 5,
+      "tenant_quality": 6,
+      "catalyst_proximity": 4,
+      "infrastructure_quality": 6,
+      "notes": "Residential, moderate demand."
+    },
+    "New Orleans": {
+      "area": "Paarl",
+      "demand_level": 5,
+      "supply_tightness": 4,
+      "tenant_quality": 5,
+      "catalyst_proximity": 4,
+      "infrastructure_quality": 6,
+      "notes": "Mixed quality — newer/renovated units only viable. Affordable entry point."
+    },
+    "Esterville": {
+      "area": "Paarl",
+      "demand_level": 6,
+      "supply_tightness": 5,
+      "tenant_quality": 6,
+      "catalyst_proximity": 6,
+      "infrastructure_quality": 7,
+      "notes": "Residential, reasonable tenant pool. Near Paarl Central amenities."
+    },
+    "Paarl North": {
+      "area": "Paarl",
+      "demand_level": 7,
+      "supply_tightness": 6,
+      "tenant_quality": 7,
+      "catalyst_proximity": 8,
+      "infrastructure_quality": 7,
+      "notes": "Growing area. Near Life Paarl Valley Hospital site — major catalyst for healthcare worker demand."
+    },
+    "La Vie Estate": {
+      "area": "Paarl",
+      "demand_level": 6,
+      "supply_tightness": 5,
+      "tenant_quality": 7,
+      "catalyst_proximity": 5,
+      "infrastructure_quality": 7,
+      "notes": "Secure estate with good tenant pool."
+    },
+    "Southern Paarl": {
+      "area": "Paarl",
+      "demand_level": 6,
+      "supply_tightness": 5,
+      "tenant_quality": 7,
+      "catalyst_proximity": 5,
+      "infrastructure_quality": 7,
+      "notes": "Near N1 access and retirement facilities."
+    },
+    "Wellington Central": {
+      "area": "Wellington",
+      "demand_level": 7,
+      "supply_tightness": 8,
+      "tenant_quality": 5,
+      "catalyst_proximity": 7,
+      "infrastructure_quality": 6,
+      "notes": "Near CPUT campus (2,200 students). Strong student demand but limited quality stock."
+    },
+    "Wellington": {
+      "area": "Wellington",
+      "demand_level": 6,
+      "supply_tightness": 6,
+      "tenant_quality": 5,
+      "catalyst_proximity": 5,
+      "infrastructure_quality": 6,
+      "notes": "General Wellington area."
+    },
+    "Blouvlei": {
+      "area": "Wellington",
+      "demand_level": 5,
+      "supply_tightness": 5,
+      "tenant_quality": 5,
+      "catalyst_proximity": 4,
+      "infrastructure_quality": 5,
+      "notes": "Residential suburb."
+    },
+    "Versailles": {
+      "area": "Wellington",
+      "demand_level": 5,
+      "supply_tightness": 5,
+      "tenant_quality": 5,
+      "catalyst_proximity": 4,
+      "infrastructure_quality": 5,
+      "notes": "Residential suburb."
+    },
+    "Malmesbury Central": {
+      "area": "Malmesbury",
+      "demand_level": 6,
+      "supply_tightness": 6,
+      "tenant_quality": 6,
+      "catalyst_proximity": 4,
+      "infrastructure_quality": 6,
+      "notes": "Young first-time buyers and renters. Growing demand."
+    },
+    "Dalsig": {
+      "area": "Malmesbury",
+      "demand_level": 6,
+      "supply_tightness": 5,
+      "tenant_quality": 7,
+      "catalyst_proximity": 4,
+      "infrastructure_quality": 6,
+      "notes": "Established area with Zwartland Hof complex."
+    },
+    "Saamstaan": {
+      "area": "Malmesbury",
+      "demand_level": 5,
+      "supply_tightness": 5,
+      "tenant_quality": 5,
+      "catalyst_proximity": 3,
+      "infrastructure_quality": 5,
+      "notes": "Newer residential, growing area."
+    },
+    "Tafelzicht": {
+      "area": "Malmesbury",
+      "demand_level": 5,
+      "supply_tightness": 5,
+      "tenant_quality": 5,
+      "catalyst_proximity": 3,
+      "infrastructure_quality": 5,
+      "notes": "Growing area."
+    },
+    "Malmesbury": {
+      "area": "Malmesbury",
+      "demand_level": 5,
+      "supply_tightness": 5,
+      "tenant_quality": 5,
+      "catalyst_proximity": 3,
+      "infrastructure_quality": 5,
+      "notes": "General Malmesbury area."
+    }
+  }
+}

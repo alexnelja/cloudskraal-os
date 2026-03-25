@@ -1,0 +1,126 @@
+{
+  "_metadata": {
+    "source": "SAPS quarterly crime statistics",
+    "file": "2023-2024-1st_Quarter_WEB.xlsx",
+    "period": "Q1 2023/2024 (April-June 2023)",
+    "downloaded": "2026-03-25",
+    "url": "https://www.saps.gov.za/services/downloads/2023-2024-1st_Quarter_WEB.xlsx",
+    "notes": "Parsed from official SAPS Excel download. Q1 = April-June 2023."
+  },
+  "precincts": {
+    "Wellington": {
+      "province": "Western Cape",
+      "contact_crimes": {
+        "murder": 3,
+        "attempted_murder": 3,
+        "sexual_offences": 12,
+        "assault_gbh": 50,
+        "common_assault": 84,
+        "robbery_aggravated": 24,
+        "robbery_common": 14,
+        "robbery_residential": 0,
+        "robbery_non_residential": 3,
+        "carjacking": 2,
+        "truck_hijacking": 0
+      },
+      "property_crimes": {
+        "burglary_residential": 68,
+        "burglary_non_residential": 54,
+        "theft_motor_vehicle": 4,
+        "theft_from_motor_vehicle": 81,
+        "stock_theft": 0,
+        "commercial_crime": 53,
+        "shoplifting": 23,
+        "arson": 4,
+        "malicious_damage_to_property": 77
+      },
+      "other_crimes": {
+        "drug_related": 91,
+        "driving_under_influence": 1,
+        "illegal_firearms": 3,
+        "culpable_homicide": 1
+      },
+      "total_contact_crimes": 195,
+      "total_property_crimes": 364,
+      "total_other_crimes": 96,
+      "total_crimes": 655,
+      "safety_score": 6.3
+    },
+    "Malmesbury": {
+      "province": "Western Cape",
+      "contact_crimes": {
+        "murder": 3,
+        "attempted_murder": 7,
+        "sexual_offences": 11,
+        "assault_gbh": 40,
+        "common_assault": 79,
+        "robbery_aggravated": 20,
+        "robbery_common": 2,
+        "robbery_residential": 3,
+        "robbery_non_residential": 3,
+        "carjacking": 1,
+        "truck_hijacking": 0
+      },
+      "property_crimes": {
+        "burglary_residential": 51,
+        "burglary_non_residential": 27,
+        "theft_motor_vehicle": 6,
+        "theft_from_motor_vehicle": 30,
+        "stock_theft": 8,
+        "commercial_crime": 43,
+        "shoplifting": 24,
+        "arson": 2,
+        "malicious_damage_to_property": 50
+      },
+      "other_crimes": {
+        "drug_related": 109,
+        "driving_under_influence": 15,
+        "illegal_firearms": 5,
+        "culpable_homicide": 3
+      },
+      "total_contact_crimes": 169,
+      "total_property_crimes": 241,
+      "total_other_crimes": 132,
+      "total_crimes": 542,
+      "safety_score": 7.3
+    },
+    "Paarl": {
+      "province": "Western Cape",
+      "contact_crimes": {
+        "murder": 0,
+        "attempted_murder": 5,
+        "sexual_offences": 8,
+        "assault_gbh": 31,
+        "common_assault": 71,
+        "robbery_aggravated": 30,
+        "robbery_common": 29,
+        "robbery_residential": 3,
+        "robbery_non_residential": 3,
+        "carjacking": 2,
+        "truck_hijacking": 2
+      },
+      "property_crimes": {
+        "burglary_residential": 65,
+        "burglary_non_residential": 81,
+        "theft_motor_vehicle": 21,
+        "theft_from_motor_vehicle": 176,
+        "stock_theft": 4,
+        "commercial_crime": 50,
+        "shoplifting": 90,
+        "arson": 1,
+        "malicious_damage_to_property": 57
+      },
+      "other_crimes": {
+        "drug_related": 156,
+        "driving_under_influence": 10,
+        "illegal_firearms": 1,
+        "culpable_homicide": 1
+      },
+      "total_contact_crimes": 184,
+      "total_property_crimes": 545,
+      "total_other_crimes": 168,
+      "total_crimes": 897,
+      "safety_score": 5.1
+    }
+  }
+}
