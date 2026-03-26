@@ -1,6 +1,7 @@
 const path = require('path');
 const Database = require('better-sqlite3');
 const { initFarmSchema } = require('./schema-farms');
+const { initCalendarSchema } = require('./schema-calendar');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -13,6 +14,7 @@ function getDb() {
     db.pragma('foreign_keys = ON');
     initSchema(db);
     initFarmSchema(db);
+    initCalendarSchema(db);
   }
   return db;
 }
