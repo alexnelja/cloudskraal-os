@@ -8,6 +8,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const projectRoutes = require('./routes/projects');
 const farmRoutes = require('./routes/farms');
 const calendarRoutes = require('./routes/calendar');
+const wikiRoutes = require('./routes/wiki');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -25,6 +26,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api', farmRoutes);
 app.use('/api', calendarRoutes);
+app.use('/api', wikiRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
