@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import FarmMap from '../components/map/FarmMap';
+import FieldPanel from '../components/map/FieldPanel';
 import { getMapGeoJSON } from '../api/farms';
 
 export default function FarmMapPage() {
@@ -18,7 +19,8 @@ export default function FarmMapPage() {
   }, []);
 
   return (
-    <div className="h-[calc(100vh-5rem)] md:h-screen relative">
+    <div className="h-[calc(100vh-5rem)] md:h-screen relative overflow-hidden">
+      {/* Map fills the full container */}
       {loading ? (
         <div className="w-full h-full bg-stone-200 flex items-center justify-center">
           <p className="text-stone-500 text-sm">Loading map...</p>
@@ -31,6 +33,12 @@ export default function FarmMapPage() {
           onMapReady={(map) => { mapRef.current = map; }}
         />
       )}
+
+      {/* Field detail panel — overlays on top of map (fixed positioning) */}
+      <FieldPanel
+        fieldId={selectedFieldId}
+        onClose={() => setSelectedFieldId(null)}
+      />
     </div>
   );
 }
