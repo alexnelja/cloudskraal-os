@@ -9,6 +9,7 @@ function initFarmSchema(db) {
       lat REAL,
       lng REAL,
       region TEXT,
+      geometry TEXT,
       notes TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL

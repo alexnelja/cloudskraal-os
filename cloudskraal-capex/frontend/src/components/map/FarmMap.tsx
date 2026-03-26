@@ -11,9 +11,11 @@ interface GisLayer {
 
 interface FarmMapProps {
   geojson: GeoJSON.FeatureCollection | null;
+  farmBoundaries: GeoJSON.FeatureCollection | null;
   selectedFieldId: string | null;
   onFieldSelect: (fieldId: string | null) => void;
   visibleEnterprises?: string[];
+  showFarmBoundaries?: boolean;
   onMapReady?: (map: maplibregl.Map) => void;
   gisLayers?: GisLayer[];
 }
@@ -46,24 +48,18 @@ function addFieldLayers(map: maplibregl.Map, geojson: GeoJSON.FeatureCollection)
         'sceletium', '#059669',
         'grazing', '#a16207',
         'fallow', '#9ca3af',
-        'farm_boundary', 'transparent',
         'other', '#6b7280',
         '#d1d5db',
       ],
-      'fill-opacity': [
-        'case',
-        ['==', ['get', 'enterprise'], 'farm_boundary'], 0,
-        0.35,
-      ],
+      'fill-opacity': 0.35,
     },
   });
 
-  // Outline layer — solid lines for everything except farm_boundary
+  // Outline layer — solid lines for fields
   map.addLayer({
     id: 'fields-outline',
     type: 'line',
     source: 'fields',
-    filter: ['!=', ['get', 'enterprise'], 'farm_boundary'],
     paint: {
       'line-color': [
         'match', ['get', 'enterprise'],
@@ -74,19 +70,6 @@ function addFieldLayers(map: maplibregl.Map, geojson: GeoJSON.FeatureCollection)
         '#4b5563',
       ],
       'line-width': 1.5,
-    },
-  });
-
-  // Outline layer — dashed lines for farm_boundary
-  map.addLayer({
-    id: 'fields-outline-boundary',
-    type: 'line',
-    source: 'fields',
-    filter: ['==', ['get', 'enterprise'], 'farm_boundary'],
-    paint: {
-      'line-color': '#374151',
-      'line-width': 2,
-      'line-dasharray': [4, 2],
     },
   });
 
@@ -107,7 +90,6 @@ function addFieldLayers(map: maplibregl.Map, geojson: GeoJSON.FeatureCollection)
     id: 'fields-labels',
     type: 'symbol',
     source: 'fields',
-    filter: ['!=', ['get', 'enterprise'], 'farm_boundary'],
     layout: {
       'text-field': [
         'step', ['zoom'],
@@ -130,11 +112,55 @@ function addFieldLayers(map: maplibregl.Map, geojson: GeoJSON.FeatureCollection)
   });
 }
 
+function addFarmBoundaryLayers(map: maplibregl.Map, boundaries: GeoJSON.FeatureCollection) {
+  map.addSource('farm-boundaries', {
+    type: 'geojson',
+    data: boundaries,
+  });
+
+  // Dashed outline for farm boundaries
+  map.addLayer({
+    id: 'farm-boundaries-outline',
+    type: 'line',
+    source: 'farm-boundaries',
+    paint: {
+      'line-color': '#374151',
+      'line-width': 2,
+      'line-dasharray': [4, 2],
+      'line-opacity': 0.6,
+    },
+  }, 'fields-fill'); // Insert BELOW field polygons
+
+  // Farm name labels at low zoom
+  map.addLayer({
+    id: 'farm-boundaries-labels',
+    type: 'symbol',
+    source: 'farm-boundaries',
+    layout: {
+      'text-field': ['concat', ['get', 'name'], '\n', ['to-string', ['round', ['get', 'total_ha']]], ' ha'],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 9, 11, 13, 14],
+      'text-anchor': 'center',
+      'text-allow-overlap': false,
+      'text-max-width': 10,
+      'text-line-height': 1.3,
+      'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+    },
+    paint: {
+      'text-color': '#e5e7eb',
+      'text-halo-color': 'rgba(0,0,0,0.8)',
+      'text-halo-width': 2,
+    },
+    maxzoom: 13, // Hide farm labels when zoomed in (field labels take over)
+  });
+}
+
 export default function FarmMap({
   geojson,
+  farmBoundaries,
   selectedFieldId,
   onFieldSelect,
   visibleEnterprises,
+  showFarmBoundaries = true,
   onMapReady,
   gisLayers,
 }: FarmMapProps) {
@@ -186,6 +212,9 @@ export default function FarmMap({
       if (geojson) {
         addFieldLayers(map, geojson);
         layersAddedRef.current = true;
+      }
+      if (farmBoundaries) {
+        addFarmBoundaryLayers(map, farmBoundaries);
       }
     });
 
@@ -249,32 +278,25 @@ export default function FarmMap({
     if (!map || !layersAddedRef.current) return;
 
     if (!visibleEnterprises) {
-      // Show all
+      // Show all fields
       map.setFilter('fields-fill', null);
-      map.setFilter('fields-outline', ['!=', ['get', 'enterprise'], 'farm_boundary']);
-      map.setFilter('fields-outline-boundary', ['==', ['get', 'enterprise'], 'farm_boundary']);
-      map.setFilter('fields-labels', ['!=', ['get', 'enterprise'], 'farm_boundary']);
+      map.setFilter('fields-outline', null);
+      map.setFilter('fields-labels', null);
     } else {
       const entFilter: maplibregl.FilterSpecification = ['in', ['get', 'enterprise'], ['literal', visibleEnterprises]];
       map.setFilter('fields-fill', entFilter);
-      // For outline layers, combine with the boundary / non-boundary distinction
-      map.setFilter('fields-outline', [
-        'all',
-        entFilter,
-        ['!=', ['get', 'enterprise'], 'farm_boundary'],
-      ]);
-      map.setFilter('fields-outline-boundary', [
-        'all',
-        entFilter,
-        ['==', ['get', 'enterprise'], 'farm_boundary'],
-      ]);
-      map.setFilter('fields-labels', [
-        'all',
-        entFilter,
-        ['!=', ['get', 'enterprise'], 'farm_boundary'],
-      ]);
+      map.setFilter('fields-outline', entFilter);
+      map.setFilter('fields-labels', entFilter);
     }
-  }, [visibleEnterprises]);
+
+    // Farm boundaries toggle is independent of enterprise filter
+    if (map.getLayer('farm-boundaries-outline')) {
+      map.setLayoutProperty('farm-boundaries-outline', 'visibility', showFarmBoundaries ? 'visible' : 'none');
+    }
+    if (map.getLayer('farm-boundaries-labels')) {
+      map.setLayoutProperty('farm-boundaries-labels', 'visibility', showFarmBoundaries ? 'visible' : 'none');
+    }
+  }, [visibleEnterprises, showFarmBoundaries]);
 
   // Manage GIS overlay layers
   useEffect(() => {

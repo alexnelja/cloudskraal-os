@@ -34,6 +34,10 @@ export async function updateField(id: string, data: Partial<Field>): Promise<Fie
   return request<Field>(`/fields/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
+export async function getFarmBoundaries(): Promise<GeoJSON.FeatureCollection> {
+  return request<GeoJSON.FeatureCollection>('/map/farm-boundaries');
+}
+
 export async function getMapGeoJSON(params?: { farm?: string; enterprise?: string }): Promise<GeoJSON.FeatureCollection> {
   const qs = new URLSearchParams();
   if (params?.farm) qs.set('farm', params.farm);

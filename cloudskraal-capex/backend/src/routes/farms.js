@@ -198,7 +198,36 @@ router.delete('/field-notes/:noteId', (req, res) => {
 // MAP / GEOJSON
 // ---------------------------------------------------------------------------
 
-// GET /api/map/geojson — GeoJSON FeatureCollection, optional ?farm=code&enterprise=X
+// GET /api/map/farm-boundaries — GeoJSON of farm boundary polygons (separate from fields)
+router.get('/map/farm-boundaries', (req, res) => {
+  const db = getDb();
+  const farms = db.prepare('SELECT id, name, code, type, total_ha, geometry FROM farms WHERE geometry IS NOT NULL').all();
+
+  const features = farms.map(farm => {
+    let geometry = null;
+    try {
+      geometry = typeof farm.geometry === 'string' ? JSON.parse(farm.geometry) : farm.geometry;
+    } catch { geometry = null; }
+    if (!geometry) return null;
+
+    return {
+      type: 'Feature',
+      geometry,
+      properties: {
+        id: farm.id,
+        name: farm.name,
+        code: farm.code,
+        type: farm.type,
+        total_ha: farm.total_ha,
+        layer_type: 'farm_boundary',
+      },
+    };
+  }).filter(Boolean);
+
+  res.json({ type: 'FeatureCollection', features });
+});
+
+// GET /api/map/geojson — GeoJSON FeatureCollection of FIELDS only, optional ?farm=code&enterprise=X
 router.get('/map/geojson', (req, res) => {
   const db = getDb();
   const { farm, enterprise } = req.query;
@@ -215,7 +244,10 @@ router.get('/map/geojson', (req, res) => {
     params.push(enterprise);
   }
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  // Always exclude farm_boundary from fields GeoJSON (those are served via /map/farm-boundaries)
+  conditions.push("fi.enterprise != 'farm_boundary'");
+
+  const where = `WHERE ${conditions.join(' AND ')}`;
 
   const rows = db.prepare(`
     SELECT

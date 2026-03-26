@@ -5,7 +5,7 @@ import FarmMap from '../components/map/FarmMap';
 import FieldPanel from '../components/map/FieldPanel';
 import MapControls from '../components/map/MapControls';
 import LayerControl from '../components/map/LayerControl';
-import { getMapGeoJSON, getFarms, getFields, getMapLayers, updateMapLayer } from '../api/farms';
+import { getMapGeoJSON, getFarmBoundaries, getFarms, getFields, getMapLayers, updateMapLayer } from '../api/farms';
 import type { Farm, Field, MapLayer } from '../types/farm';
 import { ENTERPRISE_COLORS, ENTERPRISE_LABELS } from '../types/farm';
 
@@ -56,6 +56,8 @@ export default function FarmMapPage() {
   const [loading, setLoading] = useState(true);
   const [visibleEnterprises, setVisibleEnterprises] = useState<string[] | undefined>(undefined);
   const [enterprises, setEnterprises] = useState<string[]>([]);
+  const [farmBoundaries, setFarmBoundaries] = useState<GeoJSON.FeatureCollection | null>(null);
+  const [showFarmBoundaries, setShowFarmBoundaries] = useState(true);
   const [mapLayers, setMapLayers] = useState<MapLayer[]>([]);
   const [legendExpanded, setLegendExpanded] = useState(false);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -63,11 +65,13 @@ export default function FarmMapPage() {
   useEffect(() => {
     Promise.all([
       getMapGeoJSON(),
+      getFarmBoundaries(),
       getFarms(),
       getFields(),
       getMapLayers(),
-    ]).then(([gj, farmList, fieldList, layerList]) => {
+    ]).then(([gj, boundaries, farmList, fieldList, layerList]) => {
       setGeojson(gj);
+      setFarmBoundaries(boundaries);
       setFarms(farmList);
       setFields(fieldList);
       setMapLayers(layerList);
@@ -156,9 +160,11 @@ export default function FarmMapPage() {
       ) : (
         <FarmMap
           geojson={geojson}
+          farmBoundaries={farmBoundaries}
           selectedFieldId={selectedFieldId}
           onFieldSelect={setSelectedFieldId}
           visibleEnterprises={visibleEnterprises}
+          showFarmBoundaries={showFarmBoundaries}
           onMapReady={(map) => { mapRef.current = map; }}
           gisLayers={mapLayers}
         />
@@ -230,23 +236,37 @@ export default function FarmMapPage() {
               )}
             </div>
             {/* Desktop: always visible */}
-            <div className="hidden md:block bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2 flex flex-col gap-1">
-              <p className="text-xs font-semibold text-stone-500 mb-1">Legend</p>
-              {legendEnterprises.map(ent => (
-                <div key={ent} className="flex items-center gap-2">
-                  <span
-                    className="rounded-full shrink-0"
-                    style={{
-                      width: 10,
-                      height: 10,
-                      backgroundColor: ENTERPRISE_COLORS[ent] ?? '#d1d5db',
-                    }}
+            <div className="hidden md:block bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2">
+              <p className="text-xs font-semibold text-stone-500 mb-1">Fields</p>
+              <div className="flex flex-col gap-1">
+                {legendEnterprises.map(ent => (
+                  <div key={ent} className="flex items-center gap-2">
+                    <span
+                      className="rounded-full shrink-0"
+                      style={{
+                        width: 10,
+                        height: 10,
+                        backgroundColor: ENTERPRISE_COLORS[ent] ?? '#d1d5db',
+                      }}
+                    />
+                    <span className="text-xs text-stone-700">
+                      {ENTERPRISE_LABELS[ent] ?? ent}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-stone-200 mt-2 pt-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showFarmBoundaries}
+                    onChange={() => setShowFarmBoundaries(!showFarmBoundaries)}
+                    className="rounded border-stone-300 text-stone-600"
                   />
-                  <span className="text-xs text-stone-700">
-                    {ENTERPRISE_LABELS[ent] ?? ent}
-                  </span>
-                </div>
-              ))}
+                  <span className="inline-block w-4 border-t-2 border-dashed border-stone-500" />
+                  <span className="text-xs text-stone-700">Farm Boundaries</span>
+                </label>
+              </div>
             </div>
           </div>
         );

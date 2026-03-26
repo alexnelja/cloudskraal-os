@@ -68,7 +68,15 @@ function classifyFeature(name) {
   } else if (/^C\d+:/.test(name)) {
     farm = 'cloudskraal';
   } else if (/^CL /.test(name)) {
-    farm = 'cloudskraal';
+    // CL-prefixed are farm boundaries — assign to the correct farm
+    const clName = name.replace('CL ', '').replace('CL-', '').trim().toLowerCase();
+    if (clName.includes('biekoes')) farm = 'biekoes';
+    else if (clName.includes('glenridge') || clName.includes('kerk glenridge')) farm = 'glenridge';
+    else if (clName.includes('garsland')) farm = 'garsland';
+    else if (clName.includes('kromvlei')) farm = 'kromvlei';
+    else if (clName.includes('straatklip')) farm = 'cloudskraal';
+    else if (clName.includes('winterplaas')) farm = 'cloudskraal';
+    else farm = 'cloudskraal';
     enterprise = 'farm_boundary';
   } else if (/^G\d/.test(name) && !/^GA/.test(name)) {
     farm = 'glenridge';
@@ -78,9 +86,11 @@ function classifyFeature(name) {
     farm = 'meulsteenvlei';
   } else if (/^KV|^Kromvlei|^kromvlei|^KromVlei/.test(name)) {
     farm = 'kromvlei';
-  } else if (/^Claudskraal 645/.test(name) || /^Klippe Rivier/.test(name) || /^Klipriver/.test(name)) {
-    // Farm boundaries under cloudskraal
-    farm = 'cloudskraal';
+  } else if (/^Claudskraal 645/.test(name) || /^Pierre Claudskraal/.test(name)) {
+    farm = 'meulsteenvlei';
+    enterprise = 'farm_boundary';
+  } else if (/^Klippe Rivier/.test(name) || /^Klipriver/.test(name)) {
+    farm = 'kromvlei';
     enterprise = 'farm_boundary';
   } else if (/Wingerd|wingerd|Wingers/.test(name)) {
     // Biekoes Wingers, Biekhoes Wingerd — wine fields on biekoes
@@ -214,8 +224,8 @@ function seedFarms(db) {
 
   // ── Prepared statements ──
   const insertFarm = db.prepare(`
-    INSERT INTO farms (id, name, code, type, total_ha, lat, lng, region, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO farms (id, name, code, type, total_ha, lat, lng, region, geometry, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertField = db.prepare(`
@@ -234,12 +244,40 @@ function seedFarms(db) {
   `);
 
   const seedAll = db.transaction(() => {
-    // ── Insert farms ──
+    // ── Collect farm boundary geometries from GeoJSON before inserting farms ──
+    const farmBoundaryGeometries = {}; // farmCode → array of geometries
+    for (const feature of geojson.features) {
+      const name = feature.properties.name;
+      const classification = classifyFeature(name);
+      if (classification && classification.enterprise === 'farm_boundary') {
+        const farmCode = classification.farm;
+        if (!farmBoundaryGeometries[farmCode]) farmBoundaryGeometries[farmCode] = [];
+        farmBoundaryGeometries[farmCode].push(feature.geometry);
+      }
+    }
+
+    // Merge multiple boundary geometries into a single MultiPolygon per farm
+    function mergeGeometries(geometries) {
+      if (geometries.length === 0) return null;
+      const allPolygons = [];
+      for (const g of geometries) {
+        if (g.type === 'Polygon') allPolygons.push(g.coordinates);
+        else if (g.type === 'MultiPolygon') allPolygons.push(...g.coordinates);
+      }
+      if (allPolygons.length === 0) return null;
+      if (allPolygons.length === 1) return { type: 'Polygon', coordinates: allPolygons[0] };
+      return { type: 'MultiPolygon', coordinates: allPolygons };
+    }
+
+    // ── Insert farms (with boundary geometry) ──
     const farmIds = {};
     for (const farm of FARMS) {
       const id = uuidv4();
       farmIds[farm.code] = id;
-      insertFarm.run(id, farm.name, farm.code, farm.type, farm.total_ha, farm.lat, farm.lng, farm.region, now, now);
+      const boundaryGeom = farmBoundaryGeometries[farm.code]
+        ? JSON.stringify(mergeGeometries(farmBoundaryGeometries[farm.code]))
+        : null;
+      insertFarm.run(id, farm.name, farm.code, farm.type, farm.total_ha, farm.lat, farm.lng, farm.region, boundaryGeom, now, now);
     }
 
     // ── Insert fields from GeoJSON ──
@@ -251,7 +289,7 @@ function seedFarms(db) {
       const name = feature.properties.name;
       const classification = classifyFeature(name);
 
-      if (!classification) {
+      if (!classification || classification.enterprise === 'farm_boundary') {
         skipped++;
         continue;
       }
