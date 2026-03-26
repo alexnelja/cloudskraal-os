@@ -5,6 +5,7 @@ const { seedDatabase } = require('./db/seed');
 const { seedFarms } = require('./db/seed-farms');
 const dashboardRoutes = require('./routes/dashboard');
 const projectRoutes = require('./routes/projects');
+const farmRoutes = require('./routes/farms');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -20,6 +21,7 @@ app.use(express.json());
 // Routes
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/projects', projectRoutes);
+app.use('/api', farmRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
