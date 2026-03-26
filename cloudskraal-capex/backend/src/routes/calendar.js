@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/schema');
+const gcal = require('../services/google-calendar');
 
 const router = Router();
 
@@ -36,57 +37,148 @@ router.get('/calendar/events', (req, res) => {
   res.json(events);
 });
 
-// POST /api/calendar/events — create event
-router.post('/calendar/events', (req, res) => {
-  const db = getDb();
-  const { title, enterprise, start_date, end_date, all_day, recurrence_rule, color, notes } = req.body;
+// POST /api/calendar/events — create event (+ push to Google)
+router.post('/calendar/events', async (req, res) => {
+  try {
+    const db = getDb();
+    const { title, enterprise, start_date, end_date, all_day, recurrence_rule, color, notes } = req.body;
 
-  if (!title || !start_date) {
-    return res.status(400).json({ error: 'title and start_date are required' });
+    if (!title || !start_date) {
+      return res.status(400).json({ error: 'title and start_date are required' });
+    }
+
+    const id = uuidv4();
+    const now = new Date().toISOString();
+
+    db.prepare(`
+      INSERT INTO calendar_events (id, title, enterprise, start_date, end_date, all_day, recurrence_rule, color, notes, google_event_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
+    `).run(id, title, enterprise || null, start_date, end_date || null, all_day != null ? all_day : 1, recurrence_rule || null, color || null, notes || null, now, now);
+
+    const event = db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(id);
+
+    // Push to Google Calendar (best-effort)
+    try {
+      const googleEventId = await gcal.pushEvent(event);
+      db.prepare('UPDATE calendar_events SET google_event_id = ? WHERE id = ?').run(googleEventId, id);
+      event.google_event_id = googleEventId;
+    } catch (err) {
+      console.warn('[gcal] Failed to push new event to Google:', err.message);
+    }
+
+    res.status(201).json(event);
+  } catch (err) {
+    console.error('Error creating event:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-
-  const id = uuidv4();
-  const now = new Date().toISOString();
-
-  db.prepare(`
-    INSERT INTO calendar_events (id, title, enterprise, start_date, end_date, all_day, recurrence_rule, color, notes, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, title, enterprise || null, start_date, end_date || null, all_day != null ? all_day : 1, recurrence_rule || null, color || null, notes || null, now, now);
-
-  const event = db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(id);
-  res.status(201).json(event);
 });
 
-// PATCH /api/calendar/events/:id — update event
-router.patch('/calendar/events/:id', (req, res) => {
-  const db = getDb();
-  const existing = db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(req.params.id);
-  if (!existing) return res.status(404).json({ error: 'Event not found' });
+// PATCH /api/calendar/events/:id — update event (+ push to Google)
+router.patch('/calendar/events/:id', async (req, res) => {
+  try {
+    const db = getDb();
+    const existing = db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Event not found' });
 
-  const allowed = ['title', 'enterprise', 'start_date', 'end_date', 'all_day', 'recurrence_rule', 'color', 'notes'];
-  const updates = {};
-  for (const key of allowed) {
-    if (req.body[key] !== undefined) updates[key] = req.body[key];
+    const allowed = ['title', 'enterprise', 'start_date', 'end_date', 'all_day', 'recurrence_rule', 'color', 'notes'];
+    const updates = {};
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+
+    if (Object.keys(updates).length > 0) {
+      const setClauses = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+      const values = [...Object.values(updates), new Date().toISOString(), req.params.id];
+      db.prepare(`UPDATE calendar_events SET ${setClauses}, updated_at = ? WHERE id = ?`).run(...values);
+    }
+
+    const event = db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(req.params.id);
+
+    // Push update to Google Calendar (best-effort)
+    try {
+      const googleEventId = await gcal.pushEvent(event);
+      if (!event.google_event_id && googleEventId) {
+        db.prepare('UPDATE calendar_events SET google_event_id = ? WHERE id = ?').run(googleEventId, req.params.id);
+        event.google_event_id = googleEventId;
+      }
+    } catch (err) {
+      console.warn('[gcal] Failed to push event update to Google:', err.message);
+    }
+
+    res.json(event);
+  } catch (err) {
+    console.error('Error updating event:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-
-  if (Object.keys(updates).length > 0) {
-    const setClauses = Object.keys(updates).map(k => `${k} = ?`).join(', ');
-    const values = [...Object.values(updates), new Date().toISOString(), req.params.id];
-    db.prepare(`UPDATE calendar_events SET ${setClauses}, updated_at = ? WHERE id = ?`).run(...values);
-  }
-
-  const event = db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(req.params.id);
-  res.json(event);
 });
 
-// DELETE /api/calendar/events/:id
-router.delete('/calendar/events/:id', (req, res) => {
-  const db = getDb();
-  const existing = db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(req.params.id);
-  if (!existing) return res.status(404).json({ error: 'Event not found' });
+// DELETE /api/calendar/events/:id (+ delete from Google)
+router.delete('/calendar/events/:id', async (req, res) => {
+  try {
+    const db = getDb();
+    const existing = db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Event not found' });
 
-  db.prepare('DELETE FROM calendar_events WHERE id = ?').run(req.params.id);
-  res.status(204).send();
+    db.prepare('DELETE FROM calendar_events WHERE id = ?').run(req.params.id);
+
+    // Delete from Google Calendar (best-effort)
+    if (existing.google_event_id) {
+      try {
+        await gcal.deleteGoogleEvent(existing.enterprise, existing.google_event_id);
+      } catch (err) {
+        console.warn('[gcal] Failed to delete event from Google:', err.message);
+      }
+    }
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('Error deleting event:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ===========================================================================
+// GOOGLE CALENDAR SYNC
+// ===========================================================================
+
+// POST /api/calendar/sync — pull changes from Google Calendar
+router.post('/calendar/sync', async (req, res) => {
+  try {
+    const db = getDb();
+    const counts = await gcal.syncFromGoogle(db);
+    res.json(counts);
+  } catch (err) {
+    console.error('[gcal] Sync failed:', err);
+    res.status(500).json({ error: 'Sync failed', message: err.message });
+  }
+});
+
+// POST /api/calendar/link-google — link existing local events to Google by title
+router.post('/calendar/link-google', async (req, res) => {
+  try {
+    const db = getDb();
+    const unlinked = db.prepare(
+      'SELECT * FROM calendar_events WHERE google_event_id IS NULL'
+    ).all();
+
+    let linked = 0;
+    for (const event of unlinked) {
+      try {
+        const googleEventId = await gcal.findEventByTitle(event.enterprise, event.title);
+        if (googleEventId) {
+          db.prepare('UPDATE calendar_events SET google_event_id = ? WHERE id = ?').run(googleEventId, event.id);
+          linked++;
+        }
+      } catch (err) {
+        console.warn(`[gcal] Failed to find Google event for "${event.title}":`, err.message);
+      }
+    }
+
+    res.json({ unlinked: unlinked.length, linked });
+  } catch (err) {
+    console.error('[gcal] Link failed:', err);
+    res.status(500).json({ error: 'Link failed', message: err.message });
+  }
 });
 
 // ===========================================================================
@@ -226,33 +318,50 @@ router.get('/tasks/:id', (req, res) => {
   res.json({ ...task, inputs, checklists, depends_on_task });
 });
 
-// POST /api/tasks — create task
-router.post('/tasks', (req, res) => {
-  const db = getDb();
-  const {
-    title, description, enterprise, field_id, type, status, priority,
-    due_date, assigned_to, depends_on_task_id, recurrence_rule,
-    calendar_event_id, notes
-  } = req.body;
+// POST /api/tasks — create task (+ push due date to Google)
+router.post('/tasks', async (req, res) => {
+  try {
+    const db = getDb();
+    const {
+      title, description, enterprise, field_id, type, status, priority,
+      due_date, assigned_to, depends_on_task_id, recurrence_rule,
+      calendar_event_id, notes
+    } = req.body;
 
-  if (!title) return res.status(400).json({ error: 'title is required' });
+    if (!title) return res.status(400).json({ error: 'title is required' });
 
-  const id = uuidv4();
-  const now = new Date().toISOString();
+    const id = uuidv4();
+    const now = new Date().toISOString();
 
-  db.prepare(`
-    INSERT INTO tasks (id, title, description, enterprise, field_id, type, status, priority, due_date, completed_date, completed_by, assigned_to, depends_on_task_id, recurrence_rule, calendar_event_id, notes, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id, title, description || null, enterprise || null, field_id || null,
-    type || 'manual', status || 'pending', priority || 'medium',
-    due_date || null, assigned_to || null, depends_on_task_id || null,
-    recurrence_rule || null, calendar_event_id || null, notes || null,
-    now, now
-  );
+    db.prepare(`
+      INSERT INTO tasks (id, title, description, enterprise, field_id, type, status, priority, due_date, completed_date, completed_by, assigned_to, depends_on_task_id, recurrence_rule, calendar_event_id, google_event_id, notes, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, NULL, ?, ?, ?)
+    `).run(
+      id, title, description || null, enterprise || null, field_id || null,
+      type || 'manual', status || 'pending', priority || 'medium',
+      due_date || null, assigned_to || null, depends_on_task_id || null,
+      recurrence_rule || null, calendar_event_id || null, notes || null,
+      now, now
+    );
 
-  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
-  res.status(201).json(task);
+    const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+
+    // Push task due date to Google Calendar (best-effort)
+    if (task.due_date) {
+      try {
+        const googleEventId = await gcal.pushTaskDueDate(task);
+        db.prepare('UPDATE tasks SET google_event_id = ? WHERE id = ?').run(googleEventId, id);
+        task.google_event_id = googleEventId;
+      } catch (err) {
+        console.warn('[gcal] Failed to push task due date to Google:', err.message);
+      }
+    }
+
+    res.status(201).json(task);
+  } catch (err) {
+    console.error('Error creating task:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // PATCH /api/tasks/:id — update task
@@ -288,27 +397,50 @@ router.delete('/tasks/:id', (req, res) => {
   if (!existing) return res.status(404).json({ error: 'Task not found' });
 
   db.prepare('DELETE FROM tasks WHERE id = ?').run(req.params.id);
+
+  // Delete task's Google Calendar event (best-effort)
+  if (existing.google_event_id) {
+    gcal.deleteGoogleEvent(existing.enterprise, existing.google_event_id).catch(err => {
+      console.warn('[gcal] Failed to delete task event from Google:', err.message);
+    });
+  }
+
   res.status(204).send();
 });
 
-// POST /api/tasks/:id/complete — mark task complete with dependency check
-router.post('/tasks/:id/complete', (req, res) => {
-  const db = getDb();
-  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id);
-  if (!task) return res.status(404).json({ error: 'Task not found' });
+// POST /api/tasks/:id/complete — mark task complete with dependency check (+ update Google)
+router.post('/tasks/:id/complete', async (req, res) => {
+  try {
+    const db = getDb();
+    const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id);
+    if (!task) return res.status(404).json({ error: 'Task not found' });
 
-  if (task.depends_on_task_id) {
-    const dep = db.prepare('SELECT status FROM tasks WHERE id = ?').get(task.depends_on_task_id);
-    if (dep && dep.status !== 'completed') {
-      return res.status(400).json({ error: 'Dependency not completed' });
+    if (task.depends_on_task_id) {
+      const dep = db.prepare('SELECT status FROM tasks WHERE id = ?').get(task.depends_on_task_id);
+      if (dep && dep.status !== 'completed') {
+        return res.status(400).json({ error: 'Dependency not completed' });
+      }
     }
+
+    const now = new Date().toISOString();
+    db.prepare(`UPDATE tasks SET status = 'completed', completed_date = ?, updated_at = ? WHERE id = ?`).run(now, now, req.params.id);
+
+    // Update Google Calendar event to show completed (best-effort)
+    if (task.google_event_id) {
+      try {
+        const desc = `[COMPLETED] ${now}\nPriority: ${task.priority || 'medium'}\nEnterprise: ${task.enterprise || 'general'}\nType: ${task.type || 'manual'}`;
+        await gcal.updateGoogleEventDescription(task.enterprise, task.google_event_id, desc);
+      } catch (err) {
+        console.warn('[gcal] Failed to update completed task in Google:', err.message);
+      }
+    }
+
+    const updated = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id);
+    res.json(updated);
+  } catch (err) {
+    console.error('Error completing task:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-
-  const now = new Date().toISOString();
-  db.prepare(`UPDATE tasks SET status = 'completed', completed_date = ?, updated_at = ? WHERE id = ?`).run(now, now, req.params.id);
-
-  const updated = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id);
-  res.json(updated);
 });
 
 // ===========================================================================

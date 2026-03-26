@@ -10,6 +10,7 @@ function initCalendarSchema(db) {
       recurrence_rule TEXT,
       color TEXT,
       notes TEXT,
+      google_event_id TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -30,6 +31,7 @@ function initCalendarSchema(db) {
       depends_on_task_id TEXT REFERENCES tasks(id),
       recurrence_rule TEXT,
       calendar_event_id TEXT REFERENCES calendar_events(id),
+      google_event_id TEXT,
       notes TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -57,6 +59,21 @@ function initCalendarSchema(db) {
       sort_order INTEGER DEFAULT 0
     );
   `);
+
+  // Migration: add google_event_id columns if they don't exist yet
+  try {
+    db.prepare('SELECT google_event_id FROM calendar_events LIMIT 1').get();
+  } catch (e) {
+    db.exec('ALTER TABLE calendar_events ADD COLUMN google_event_id TEXT');
+    console.log('  Migrated: added google_event_id to calendar_events');
+  }
+
+  try {
+    db.prepare('SELECT google_event_id FROM tasks LIMIT 1').get();
+  } catch (e) {
+    db.exec('ALTER TABLE tasks ADD COLUMN google_event_id TEXT');
+    console.log('  Migrated: added google_event_id to tasks');
+  }
 }
 
 module.exports = { initCalendarSchema };
