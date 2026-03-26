@@ -50,10 +50,11 @@ router.post('/calendar/events', async (req, res) => {
     const id = uuidv4();
     const now = new Date().toISOString();
 
+    const allDayInt = all_day === false || all_day === 0 ? 0 : 1;
     db.prepare(`
       INSERT INTO calendar_events (id, title, enterprise, start_date, end_date, all_day, recurrence_rule, color, notes, google_event_id, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
-    `).run(id, title, enterprise || null, start_date, end_date || null, all_day != null ? all_day : 1, recurrence_rule || null, color || null, notes || null, now, now);
+    `).run(id, title, enterprise || null, start_date, end_date || null, allDayInt, recurrence_rule || null, color || null, notes || null, now, now);
 
     const event = db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(id);
 
