@@ -35,15 +35,15 @@ export async function getBreedingSeasons(params?: { group_id?: string; year?: nu
   if (params?.group_id) qs.set('group_id', params.group_id);
   if (params?.year) qs.set('year', String(params.year));
   const query = qs.toString();
-  return request<BreedingSeason[]>(`/livestock/breeding${query ? `?${query}` : ''}`);
+  return request<BreedingSeason[]>(`/livestock/breeding-seasons${query ? `?${query}` : ''}`);
 }
 
 export async function createBreedingSeason(data: Partial<BreedingSeason>): Promise<BreedingSeason> {
-  return request<BreedingSeason>('/livestock/breeding', { method: 'POST', body: JSON.stringify(data) });
+  return request<BreedingSeason>('/livestock/breeding-seasons', { method: 'POST', body: JSON.stringify(data) });
 }
 
 export async function updateBreedingSeason(id: string, data: Partial<BreedingSeason>): Promise<BreedingSeason> {
-  return request<BreedingSeason>(`/livestock/breeding/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  return request<BreedingSeason>(`/livestock/breeding-seasons/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
 export async function getShearingRecords(params?: { group_id?: string }): Promise<ShearingRecord[]> {

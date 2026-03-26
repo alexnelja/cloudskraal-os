@@ -40,9 +40,9 @@ export async function addMaintenanceLog(equipmentId: string, data: Partial<Maint
 }
 
 export async function getEquipmentAlerts(): Promise<Equipment[]> {
-  return request<Equipment[]>('/equipment/alerts/overdue');
+  return request<Equipment[]>('/equipment/alerts');
 }
 
 export async function getEquipmentSummary(): Promise<EquipmentSummary> {
-  return request<EquipmentSummary>('/equipment/summary/stats');
+  return request<EquipmentSummary>('/equipment/summary');
 }
