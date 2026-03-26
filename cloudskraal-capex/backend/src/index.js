@@ -7,6 +7,7 @@ const { seedCalendar } = require('./db/seed-calendar');
 const dashboardRoutes = require('./routes/dashboard');
 const projectRoutes = require('./routes/projects');
 const farmRoutes = require('./routes/farms');
+const calendarRoutes = require('./routes/calendar');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api', farmRoutes);
+app.use('/api', calendarRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
