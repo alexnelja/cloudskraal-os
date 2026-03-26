@@ -101,6 +101,33 @@ function addFieldLayers(map: maplibregl.Map, geojson: GeoJSON.FeatureCollection)
       'line-width': 3,
     },
   });
+
+  // Field labels — zoom-dependent: code at z13, full name+area at z15
+  map.addLayer({
+    id: 'fields-labels',
+    type: 'symbol',
+    source: 'fields',
+    filter: ['!=', ['get', 'enterprise'], 'farm_boundary'],
+    layout: {
+      'text-field': [
+        'step', ['zoom'],
+        '',
+        13, ['get', 'code'],
+        15, ['concat', ['get', 'name'], '\n', ['to-string', ['round', ['get', 'area_ha']]], ' ha'],
+      ],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 13, 10, 16, 13],
+      'text-anchor': 'center',
+      'text-allow-overlap': false,
+      'text-ignore-placement': false,
+      'text-max-width': 8,
+      'text-line-height': 1.2,
+    },
+    paint: {
+      'text-color': '#ffffff',
+      'text-halo-color': 'rgba(0,0,0,0.7)',
+      'text-halo-width': 1.5,
+    },
+  });
 }
 
 export default function FarmMap({
@@ -226,6 +253,7 @@ export default function FarmMap({
       map.setFilter('fields-fill', null);
       map.setFilter('fields-outline', ['!=', ['get', 'enterprise'], 'farm_boundary']);
       map.setFilter('fields-outline-boundary', ['==', ['get', 'enterprise'], 'farm_boundary']);
+      map.setFilter('fields-labels', ['!=', ['get', 'enterprise'], 'farm_boundary']);
     } else {
       const entFilter: maplibregl.FilterSpecification = ['in', ['get', 'enterprise'], ['literal', visibleEnterprises]];
       map.setFilter('fields-fill', entFilter);
@@ -239,6 +267,11 @@ export default function FarmMap({
         'all',
         entFilter,
         ['==', ['get', 'enterprise'], 'farm_boundary'],
+      ]);
+      map.setFilter('fields-labels', [
+        'all',
+        entFilter,
+        ['!=', ['get', 'enterprise'], 'farm_boundary'],
       ]);
     }
   }, [visibleEnterprises]);

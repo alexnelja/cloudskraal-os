@@ -7,6 +7,7 @@ import MapControls from '../components/map/MapControls';
 import LayerControl from '../components/map/LayerControl';
 import { getMapGeoJSON, getFarms, getFields, getMapLayers, updateMapLayer } from '../api/farms';
 import type { Farm, Field, MapLayer } from '../types/farm';
+import { ENTERPRISE_COLORS, ENTERPRISE_LABELS } from '../types/farm';
 
 function getBoundsForFarm(
   geojson: GeoJSON.FeatureCollection,
@@ -56,6 +57,7 @@ export default function FarmMapPage() {
   const [visibleEnterprises, setVisibleEnterprises] = useState<string[] | undefined>(undefined);
   const [enterprises, setEnterprises] = useState<string[]>([]);
   const [mapLayers, setMapLayers] = useState<MapLayer[]>([]);
+  const [legendExpanded, setLegendExpanded] = useState(false);
   const mapRef = useRef<maplibregl.Map | null>(null);
 
   useEffect(() => {
@@ -183,6 +185,72 @@ export default function FarmMapPage() {
           onOpacityChange={handleLayerOpacity}
         />
       )}
+
+      {/* Enterprise color legend */}
+      {!loading && enterprises.length > 0 && (() => {
+        const legendEnterprises = enterprises.filter(
+          e => e !== 'farm_boundary' && e !== 'unclassified',
+        );
+        if (legendEnterprises.length === 0) return null;
+        return (
+          <div className="absolute bottom-8 left-3 z-10">
+            {/* Mobile: collapsible */}
+            <div className="md:hidden">
+              {legendExpanded ? (
+                <div className="bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2 flex flex-col gap-1">
+                  <button
+                    onClick={() => setLegendExpanded(false)}
+                    className="text-xs font-semibold text-stone-600 text-left mb-1"
+                  >
+                    Legend ▲
+                  </button>
+                  {legendEnterprises.map(ent => (
+                    <div key={ent} className="flex items-center gap-2">
+                      <span
+                        className="rounded-full shrink-0"
+                        style={{
+                          width: 10,
+                          height: 10,
+                          backgroundColor: ENTERPRISE_COLORS[ent] ?? '#d1d5db',
+                        }}
+                      />
+                      <span className="text-xs text-stone-700">
+                        {ENTERPRISE_LABELS[ent] ?? ent}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <button
+                  onClick={() => setLegendExpanded(true)}
+                  className="bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2 text-xs font-semibold text-stone-600"
+                >
+                  Legend ▼
+                </button>
+              )}
+            </div>
+            {/* Desktop: always visible */}
+            <div className="hidden md:block bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2 flex flex-col gap-1">
+              <p className="text-xs font-semibold text-stone-500 mb-1">Legend</p>
+              {legendEnterprises.map(ent => (
+                <div key={ent} className="flex items-center gap-2">
+                  <span
+                    className="rounded-full shrink-0"
+                    style={{
+                      width: 10,
+                      height: 10,
+                      backgroundColor: ENTERPRISE_COLORS[ent] ?? '#d1d5db',
+                    }}
+                  />
+                  <span className="text-xs text-stone-700">
+                    {ENTERPRISE_LABELS[ent] ?? ent}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Field detail panel — overlays on top of map */}
       <FieldPanel
