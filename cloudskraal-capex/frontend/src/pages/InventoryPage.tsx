@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Package, ArrowLeft, X, AlertTriangle, Plus } from 'lucide-react';
-import { getProducts, getProductById, getInventorySummary, getTransactions, recordTransaction } from '../api/inventory';
+import { getProducts, getProductById, getInventorySummary, getStock, getTransactions, recordTransaction } from '../api/inventory';
 import type { InputProduct, InventorySummary, InventoryTransaction } from '../types/phase3';
 import { INVENTORY_CATEGORY_COLORS } from '../types/phase3';
 
@@ -33,9 +33,20 @@ export default function InventoryPage() {
     Promise.all([
       getProducts(categoryFilter ? { category: categoryFilter } : undefined),
       getInventorySummary(),
+      getStock(),
     ])
-      .then(([prods, sum]) => {
-        setProducts(prods);
+      .then(([prods, sum, stockRecords]) => {
+        // Merge stock into products
+        const stockByProduct = new Map<string, typeof stockRecords>();
+        for (const s of stockRecords) {
+          if (!stockByProduct.has(s.product_id)) stockByProduct.set(s.product_id, []);
+          stockByProduct.get(s.product_id)!.push(s);
+        }
+        const prodsWithStock = prods.map(p => ({
+          ...p,
+          stock: stockByProduct.get(p.id) ?? [],
+        }));
+        setProducts(prodsWithStock);
         setSummary(sum);
         setLoading(false);
       })
@@ -153,7 +164,7 @@ export default function InventoryPage() {
                     : undefined
                 }
               >
-                {c.charAt(0).toUpperCase() + c.slice(1)} ({summary!.byCategory[c]})
+                {c.charAt(0).toUpperCase() + c.slice(1)} ({(summary!.byCategory as Record<string, {products: number; value: number}>)[c]?.products ?? 0})
               </button>
             ))}
           </div>

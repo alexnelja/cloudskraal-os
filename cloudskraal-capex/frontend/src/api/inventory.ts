@@ -1,4 +1,4 @@
-import type { InputProduct, InventorySummary, InventoryTransaction } from '../types/phase3';
+import type { InputProduct, InventorySummary, InventoryTransaction, InventoryStock } from '../types/phase3';
 
 const BASE_URL = 'http://localhost:3001/api';
 
@@ -29,11 +29,15 @@ export async function getInventorySummary(): Promise<InventorySummary> {
   return request<InventorySummary>('/inventory/summary');
 }
 
+export async function getStock(): Promise<InventoryStock[]> {
+  return request<InventoryStock[]>('/inventory/stock');
+}
+
 export async function getTransactions(productId?: string): Promise<InventoryTransaction[]> {
-  if (productId) {
-    return request<InventoryTransaction[]>(`/inventory/products/${productId}/transactions`);
-  }
-  return request<InventoryTransaction[]>('/inventory/transactions');
+  const qs = new URLSearchParams();
+  if (productId) qs.set('product_id', productId);
+  const query = qs.toString();
+  return request<InventoryTransaction[]>(`/inventory/transactions${query ? `?${query}` : ''}`);
 }
 
 export async function recordTransaction(data: {
