@@ -15,6 +15,9 @@ const wikiRoutes = require('./routes/wiki');
 const equipmentRoutes = require('./routes/equipment');
 const livestockRoutes = require('./routes/livestock');
 const productionRoutes = require('./routes/production');
+const employeeRoutes = require('./routes/employees');
+const inventoryRoutes = require('./routes/inventory');
+const financialRoutes = require('./routes/financials');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -36,6 +39,9 @@ app.use('/api', wikiRoutes);
 app.use('/api', equipmentRoutes);
 app.use('/api', livestockRoutes);
 app.use('/api', productionRoutes);
+app.use('/api', employeeRoutes);
+app.use('/api', inventoryRoutes);
+app.use('/api', financialRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
