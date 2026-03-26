@@ -5,11 +5,15 @@ const { seedDatabase } = require('./db/seed');
 const { seedFarms } = require('./db/seed-farms');
 const { seedCalendar } = require('./db/seed-calendar');
 const { seedWiki } = require('./db/seed-wiki');
+const { seedPhase2 } = require('./db/seed-phase2');
 const dashboardRoutes = require('./routes/dashboard');
 const projectRoutes = require('./routes/projects');
 const farmRoutes = require('./routes/farms');
 const calendarRoutes = require('./routes/calendar');
 const wikiRoutes = require('./routes/wiki');
+const equipmentRoutes = require('./routes/equipment');
+const livestockRoutes = require('./routes/livestock');
+const productionRoutes = require('./routes/production');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -28,6 +32,9 @@ app.use('/api/projects', projectRoutes);
 app.use('/api', farmRoutes);
 app.use('/api', calendarRoutes);
 app.use('/api', wikiRoutes);
+app.use('/api', equipmentRoutes);
+app.use('/api', livestockRoutes);
+app.use('/api', productionRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -46,6 +53,7 @@ seedDatabase(db);
 seedFarms(db);
 seedCalendar(db);
 seedWiki(db);
+seedPhase2(db);
 
 app.listen(PORT, () => {
   console.log(`Cloudskraal CapEx API running on http://localhost:${PORT}`);
