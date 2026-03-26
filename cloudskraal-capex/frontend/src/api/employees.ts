@@ -32,7 +32,7 @@ export async function getEmployeeSummary(): Promise<EmployeeSummary> {
 }
 
 export async function addTimeEntry(employeeId: string, data: Partial<TimeEntry>): Promise<TimeEntry> {
-  return request<TimeEntry>(`/employees/${employeeId}/time-entries`, {
+  return request<TimeEntry>(`/employees/${employeeId}/time`, {
     method: 'POST',
     body: JSON.stringify(data),
   });

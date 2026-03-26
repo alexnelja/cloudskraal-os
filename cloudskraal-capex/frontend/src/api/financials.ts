@@ -36,5 +36,5 @@ export async function getFinancialTransactions(params?: {
 }
 
 export async function getEnterprises(): Promise<Enterprise[]> {
-  return request<Enterprise[]>('/enterprises');
+  return request<Enterprise[]>('/financials/enterprises');
 }
