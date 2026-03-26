@@ -2,6 +2,7 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const { initFarmSchema } = require('./schema-farms');
 const { initCalendarSchema } = require('./schema-calendar');
+const { initWikiSchema } = require('./schema-wiki');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -15,6 +16,7 @@ function getDb() {
     initSchema(db);
     initFarmSchema(db);
     initCalendarSchema(db);
+    initWikiSchema(db);
   }
   return db;
 }
