@@ -10,6 +10,9 @@ import {
   Map as MapIcon,
   CalendarDays,
   BookOpen,
+  Wrench,
+  Beef,
+  Factory,
 } from 'lucide-react';
 
 const navItems = [
@@ -17,6 +20,9 @@ const navItems = [
   { to: '/map', icon: MapIcon, label: 'Farm Map' },
   { to: '/calendar', icon: CalendarDays, label: 'Calendar' },
   { to: '/wiki', icon: BookOpen, label: 'Wiki' },
+  { to: '/equipment', icon: Wrench, label: 'Equipment' },
+  { to: '/livestock', icon: Beef, label: 'Livestock' },
+  { to: '/production', icon: Factory, label: 'Production' },
   { to: '/projects', icon: FolderOpen, label: 'CapEx' },
   { to: '/compare', icon: GitCompare, label: 'Compare' },
 ];

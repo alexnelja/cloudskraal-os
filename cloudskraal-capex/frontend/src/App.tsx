@@ -7,6 +7,9 @@ import CompareProjects from './pages/CompareProjects';
 import FarmMapPage from './pages/FarmMapPage';
 import CalendarPage from './pages/CalendarPage';
 import WikiPage from './pages/WikiPage';
+import EquipmentPage from './pages/EquipmentPage';
+import LivestockPage from './pages/LivestockPage';
+import ProductionPage from './pages/ProductionPage';
 
 function PageWrapper({ children }: { children: React.ReactNode }) {
   return <div className="p-4 md:p-8"><div className="max-w-7xl mx-auto">{children}</div></div>;
@@ -29,6 +32,9 @@ export default function App() {
           <Route path="/projects" element={<PageWrapper><ProjectsList /></PageWrapper>} />
           <Route path="/projects/:id" element={<PageWrapper><ProjectDetail /></PageWrapper>} />
           <Route path="/compare" element={<PageWrapper><CompareProjects /></PageWrapper>} />
+          <Route path="/equipment" element={<EquipmentPage />} />
+          <Route path="/livestock" element={<LivestockPage />} />
+          <Route path="/production" element={<ProductionPage />} />
         </Routes>
       </AppShell>
     </BrowserRouter>
