@@ -7,6 +7,9 @@ import {
   Award,
   Plus,
   ArrowRight,
+  CalendarDays,
+  Clock,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   BarChart,
@@ -23,6 +26,9 @@ import ProjectModal from '../components/ProjectModal';
 import { getProjects, getDashboardStats, createProject } from '../api/client';
 import type { ProjectSummary, DashboardStats, CreateProjectPayload } from '../types';
 import { formatZAR, formatPercent, formatCompactZAR } from '../utils/format';
+import { getUpcomingTasks, getOverdueTasks } from '../api/calendar';
+import type { Task } from '../types/calendar';
+import { PRIORITY_COLORS, STATUS_COLORS } from '../types/calendar';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -30,6 +36,8 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
+  const [overdueTasks, setOverdueTasks] = useState<Task[]>([]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -48,6 +56,8 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
+    getUpcomingTasks(7).then(setUpcomingTasks).catch(() => {});
+    getOverdueTasks().then(setOverdueTasks).catch(() => {});
   };
 
   useEffect(() => {
@@ -260,6 +270,155 @@ export default function Dashboard() {
                 </div>
               </div>
             ))}
+          </div>
+        );
+      })()}
+
+      {/* Tasks Section */}
+      {(upcomingTasks.length > 0 || overdueTasks.length > 0) && (() => {
+        // Helper: format a due_date string into a day label
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        function dayLabel(dateStr: string): string {
+          const d = new Date(dateStr);
+          d.setHours(0, 0, 0, 0);
+          const diff = Math.round((d.getTime() - today.getTime()) / 86_400_000);
+          if (diff === 0) return 'Today';
+          if (diff === 1) return 'Tomorrow';
+          return d.toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'short' });
+        }
+
+        function formatDueDate(dateStr: string): string {
+          return new Date(dateStr).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' });
+        }
+
+        const TASK_TYPE_ICONS: Record<string, React.ReactNode> = {
+          scheduled: <CalendarDays size={13} className="text-stone-400" />,
+          triggered: <AlertTriangle size={13} className="text-amber-400" />,
+          dependent: <Clock size={13} className="text-blue-400" />,
+          manual: <Clock size={13} className="text-stone-400" />,
+        };
+
+        // Group upcoming tasks by day label (max 10 shown)
+        const capped = upcomingTasks.slice(0, 10);
+        const groups: { label: string; tasks: Task[] }[] = [];
+        for (const task of capped) {
+          if (!task.due_date) continue;
+          const label = dayLabel(task.due_date);
+          const existing = groups.find(g => g.label === label);
+          if (existing) {
+            existing.tasks.push(task);
+          } else {
+            groups.push({ label, tasks: [task] });
+          }
+        }
+
+        return (
+          <div className="bg-white border border-stone-200 rounded-xl shadow-sm mb-6">
+            {/* Card header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200">
+              <div className="flex items-center gap-2">
+                <CalendarDays size={16} className="text-emerald-700" />
+                <h2 className="text-base font-semibold text-stone-800">Upcoming Tasks</h2>
+              </div>
+              <Link
+                to="/calendar/tasks"
+                className="inline-flex items-center gap-1 text-sm text-emerald-700 hover:text-emerald-800 font-medium"
+              >
+                View all in Calendar <ArrowRight size={14} />
+              </Link>
+            </div>
+
+            {/* Overdue alert */}
+            {overdueTasks.length > 0 && (
+              <Link
+                to="/calendar/tasks"
+                className="flex items-center gap-3 px-5 py-3 bg-red-50 border-b border-red-100 hover:bg-red-100 transition-colors"
+              >
+                <AlertTriangle size={16} className="text-red-600 shrink-0" />
+                <span className="text-sm font-semibold text-red-700">
+                  {overdueTasks.length} overdue {overdueTasks.length === 1 ? 'task' : 'tasks'}
+                </span>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 ml-1">
+                  {overdueTasks.slice(0, 4).map(t => (
+                    <span key={t.id} className="text-xs text-red-600">
+                      {t.title}
+                      {t.due_date && (
+                        <span className="text-red-400 ml-1">· {formatDueDate(t.due_date)}</span>
+                      )}
+                      {t.enterprise && (
+                        <span className="ml-1 px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-medium">{t.enterprise}</span>
+                      )}
+                    </span>
+                  ))}
+                  {overdueTasks.length > 4 && (
+                    <span className="text-xs text-red-400">+{overdueTasks.length - 4} more</span>
+                  )}
+                </div>
+              </Link>
+            )}
+
+            {/* Grouped upcoming tasks */}
+            {groups.length > 0 ? (
+              <div className="divide-y divide-stone-100">
+                {groups.map(group => (
+                  <div key={group.label}>
+                    <div className="px-5 py-2 bg-stone-50 border-b border-stone-100">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">{group.label}</span>
+                    </div>
+                    {group.tasks.map(task => (
+                      <Link
+                        key={task.id}
+                        to="/calendar/tasks"
+                        className="flex items-center gap-3 px-5 py-3 hover:bg-stone-50 transition-colors"
+                      >
+                        {/* Priority left border accent */}
+                        <div
+                          className="w-1 h-8 rounded-full shrink-0"
+                          style={{ backgroundColor: PRIORITY_COLORS[task.priority] ?? '#9ca3af' }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-stone-800 truncate">{task.title}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {task.enterprise && (
+                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700">{task.enterprise}</span>
+                            )}
+                            <span
+                              className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                              style={{
+                                backgroundColor: `${STATUS_COLORS[task.status]}22`,
+                                color: STATUS_COLORS[task.status] ?? '#9ca3af',
+                              }}
+                            >
+                              {task.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {TASK_TYPE_ICONS[task.type]}
+                          {task.due_date && (
+                            <span className="text-xs text-stone-400">{formatDueDate(task.due_date)}</span>
+                          )}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ))}
+                {upcomingTasks.length > 10 && (
+                  <div className="px-5 py-3 text-xs text-stone-400">
+                    Showing 10 of {upcomingTasks.length} upcoming tasks.{' '}
+                    <Link to="/calendar/tasks" className="text-emerald-700 hover:text-emerald-800 font-medium">
+                      View all in Calendar →
+                    </Link>
+                  </div>
+                )}
+              </div>
+            ) : (
+              upcomingTasks.length === 0 && overdueTasks.length === 0 && (
+                <div className="px-5 py-6 text-sm text-stone-400 text-center">No tasks in the next 7 days.</div>
+              )
+            )}
           </div>
         );
       })()}
