@@ -10,6 +10,9 @@ import WikiPage from './pages/WikiPage';
 import EquipmentPage from './pages/EquipmentPage';
 import LivestockPage from './pages/LivestockPage';
 import ProductionPage from './pages/ProductionPage';
+import EmployeesPage from './pages/EmployeesPage';
+import InventoryPage from './pages/InventoryPage';
+import FinancialsPage from './pages/FinancialsPage';
 
 function PageWrapper({ children }: { children: React.ReactNode }) {
   return <div className="p-4 md:p-8"><div className="max-w-7xl mx-auto">{children}</div></div>;
@@ -35,6 +38,9 @@ export default function App() {
           <Route path="/equipment" element={<EquipmentPage />} />
           <Route path="/livestock" element={<LivestockPage />} />
           <Route path="/production" element={<ProductionPage />} />
+          <Route path="/employees" element={<EmployeesPage />} />
+          <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/financials" element={<FinancialsPage />} />
         </Routes>
       </AppShell>
     </BrowserRouter>

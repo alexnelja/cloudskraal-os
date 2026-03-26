@@ -13,6 +13,9 @@ import {
   Wrench,
   Beef,
   Factory,
+  Users,
+  Package,
+  BarChart3,
 } from 'lucide-react';
 
 const navItems = [
@@ -23,6 +26,9 @@ const navItems = [
   { to: '/equipment', icon: Wrench, label: 'Equipment' },
   { to: '/livestock', icon: Beef, label: 'Livestock' },
   { to: '/production', icon: Factory, label: 'Production' },
+  { to: '/employees', icon: Users, label: 'Employees' },
+  { to: '/inventory', icon: Package, label: 'Inventory' },
+  { to: '/financials', icon: BarChart3, label: 'Financials' },
   { to: '/projects', icon: FolderOpen, label: 'CapEx' },
   { to: '/compare', icon: GitCompare, label: 'Compare' },
 ];
