@@ -1,12 +1,28 @@
 import { useEffect, useRef, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 
+interface GisLayer {
+  id: string;
+  source_url: string;
+  source_type: string;
+  visible: boolean;
+  opacity: number;
+}
+
 interface FarmMapProps {
   geojson: GeoJSON.FeatureCollection | null;
   selectedFieldId: string | null;
   onFieldSelect: (fieldId: string | null) => void;
   visibleEnterprises?: string[];
   onMapReady?: (map: maplibregl.Map) => void;
+  gisLayers?: GisLayer[];
+}
+
+function getWmsLayerName(url: string): string {
+  if (url.includes('phh2o')) return 'phh2o_0-5cm_mean';
+  if (url.includes('clay')) return 'clay_0-5cm_mean';
+  if (url.includes('soc')) return 'soc_0-5cm_mean';
+  return '';
 }
 
 function addFieldLayers(map: maplibregl.Map, geojson: GeoJSON.FeatureCollection) {
@@ -93,10 +109,12 @@ export default function FarmMap({
   onFieldSelect,
   visibleEnterprises,
   onMapReady,
+  gisLayers,
 }: FarmMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const layersAddedRef = useRef(false);
+  const mapLoadedRef = useRef(false);
 
   const onFieldSelectRef = useRef(onFieldSelect);
   onFieldSelectRef.current = onFieldSelect;
@@ -135,6 +153,7 @@ export default function FarmMap({
 
     map.on('load', () => {
       mapRef.current = map;
+      mapLoadedRef.current = true;
       onMapReadyRef.current?.(map);
 
       if (geojson) {
@@ -162,6 +181,7 @@ export default function FarmMap({
     return () => {
       mapRef.current = null;
       layersAddedRef.current = false;
+      mapLoadedRef.current = false;
       map.remove();
     };
     // geojson is handled via the ref-based approach below for updates;
@@ -222,6 +242,62 @@ export default function FarmMap({
       ]);
     }
   }, [visibleEnterprises]);
+
+  // Manage GIS overlay layers
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoadedRef.current || !gisLayers) return;
+
+    for (const layer of gisLayers) {
+      const layerId = layer.id;
+      const mapLayerId = `gis-${layerId}`;
+
+      if (layer.visible) {
+        if (!map.getSource(layerId)) {
+          // Add source + layer
+          if (layer.source_type === 'arcgis_tiles') {
+            map.addSource(layerId, {
+              type: 'raster',
+              tiles: [`${layer.source_url}/tile/{z}/{y}/{x}`],
+              tileSize: 256,
+            });
+          } else if (layer.source_type === 'wms') {
+            const wmsLayerName = getWmsLayerName(layer.source_url);
+            map.addSource(layerId, {
+              type: 'raster',
+              tiles: [
+                `${layer.source_url}&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${wmsLayerName}&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&SRS=EPSG:3857&FORMAT=image/png&TRANSPARENT=true`,
+              ],
+              tileSize: 256,
+            });
+          }
+
+          if (map.getSource(layerId)) {
+            // Insert below field polygons if the layer exists
+            const beforeLayer = map.getLayer('fields-fill') ? 'fields-fill' : undefined;
+            map.addLayer(
+              {
+                id: mapLayerId,
+                type: 'raster',
+                source: layerId,
+                paint: { 'raster-opacity': layer.opacity },
+              },
+              beforeLayer,
+            );
+          }
+        } else {
+          // Source already present — just update opacity
+          if (map.getLayer(mapLayerId)) {
+            map.setPaintProperty(mapLayerId, 'raster-opacity', layer.opacity);
+          }
+        }
+      } else {
+        // Not visible — remove layer and source if present
+        if (map.getLayer(mapLayerId)) map.removeLayer(mapLayerId);
+        if (map.getSource(layerId)) map.removeSource(layerId);
+      }
+    }
+  }, [gisLayers]);
 
   return <div ref={mapContainerRef} className="w-full h-full" />;
 }

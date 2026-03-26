@@ -4,8 +4,9 @@ import maplibregl from 'maplibre-gl';
 import FarmMap from '../components/map/FarmMap';
 import FieldPanel from '../components/map/FieldPanel';
 import MapControls from '../components/map/MapControls';
-import { getMapGeoJSON, getFarms, getFields } from '../api/farms';
-import type { Farm, Field } from '../types/farm';
+import LayerControl from '../components/map/LayerControl';
+import { getMapGeoJSON, getFarms, getFields, getMapLayers, updateMapLayer } from '../api/farms';
+import type { Farm, Field, MapLayer } from '../types/farm';
 
 function getBoundsForFarm(
   geojson: GeoJSON.FeatureCollection,
@@ -54,6 +55,7 @@ export default function FarmMapPage() {
   const [loading, setLoading] = useState(true);
   const [visibleEnterprises, setVisibleEnterprises] = useState<string[] | undefined>(undefined);
   const [enterprises, setEnterprises] = useState<string[]>([]);
+  const [mapLayers, setMapLayers] = useState<MapLayer[]>([]);
   const mapRef = useRef<maplibregl.Map | null>(null);
 
   useEffect(() => {
@@ -61,10 +63,12 @@ export default function FarmMapPage() {
       getMapGeoJSON(),
       getFarms(),
       getFields(),
-    ]).then(([gj, farmList, fieldList]) => {
+      getMapLayers(),
+    ]).then(([gj, farmList, fieldList, layerList]) => {
       setGeojson(gj);
       setFarms(farmList);
       setFields(fieldList);
+      setMapLayers(layerList);
       const ents = getUniqueEnterprises(gj);
       setEnterprises(ents);
       setVisibleEnterprises(ents); // start with all visible
@@ -74,6 +78,24 @@ export default function FarmMapPage() {
       setLoading(false);
     });
   }, []);
+
+  function handleLayerToggle(layerId: string, visible: boolean) {
+    setMapLayers(prev =>
+      prev.map(l => l.id === layerId ? { ...l, visible } : l),
+    );
+    updateMapLayer(layerId, { visible }).catch(err =>
+      console.error('Failed to persist layer visibility:', err),
+    );
+  }
+
+  function handleLayerOpacity(layerId: string, opacity: number) {
+    setMapLayers(prev =>
+      prev.map(l => l.id === layerId ? { ...l, opacity } : l),
+    );
+    updateMapLayer(layerId, { opacity }).catch(err =>
+      console.error('Failed to persist layer opacity:', err),
+    );
+  }
 
   function handleEnterpriseToggle(enterprise: string) {
     setVisibleEnterprises(prev => {
@@ -136,6 +158,7 @@ export default function FarmMapPage() {
           onFieldSelect={setSelectedFieldId}
           visibleEnterprises={visibleEnterprises}
           onMapReady={(map) => { mapRef.current = map; }}
+          gisLayers={mapLayers}
         />
       )}
 
@@ -149,6 +172,15 @@ export default function FarmMapPage() {
           onEnterpriseToggle={handleEnterpriseToggle}
           onFarmZoom={handleFarmZoom}
           onFieldSelect={handleFieldSelect}
+        />
+      )}
+
+      {/* GIS layer control */}
+      {!loading && (
+        <LayerControl
+          layers={mapLayers}
+          onToggle={handleLayerToggle}
+          onOpacityChange={handleLayerOpacity}
         />
       )}
 
