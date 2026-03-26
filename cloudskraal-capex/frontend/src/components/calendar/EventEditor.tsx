@@ -8,6 +8,8 @@ interface EventEditorProps {
   open: boolean;
   onClose: () => void;
   onSave: () => void;
+  defaultStartDate?: string;
+  defaultEndDate?: string;
 }
 
 const ENTERPRISES = [
@@ -46,7 +48,7 @@ interface FormState {
   notes: string;
 }
 
-export default function EventEditor({ event, open, onClose, onSave }: EventEditorProps) {
+export default function EventEditor({ event, open, onClose, onSave, defaultStartDate, defaultEndDate }: EventEditorProps) {
   const isEdit = !!event;
 
   const [form, setForm] = useState<FormState>({
@@ -79,8 +81,8 @@ export default function EventEditor({ event, open, onClose, onSave }: EventEdito
         setForm({
           title: '',
           enterprise: '',
-          start_date: '',
-          end_date: '',
+          start_date: defaultStartDate ?? '',
+          end_date: defaultEndDate ?? '',
           all_day: true,
           recurrence_rule: '',
           color: '',
@@ -88,7 +90,7 @@ export default function EventEditor({ event, open, onClose, onSave }: EventEdito
         });
       }
     }
-  }, [open, event]);
+  }, [open, event, defaultStartDate, defaultEndDate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

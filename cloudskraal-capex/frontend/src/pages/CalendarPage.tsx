@@ -35,6 +35,8 @@ export default function CalendarPage() {
   const [showTaskEditor, setShowTaskEditor] = useState(false);
   const [showEventEditor, setShowEventEditor] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
+  const [rangeStartDate, setRangeStartDate] = useState<string | undefined>(undefined);
+  const [rangeEndDate, setRangeEndDate] = useState<string | undefined>(undefined);
 
   const monthStr = `${currentYear}-${pad2(currentMonth)}`;
 
@@ -123,10 +125,18 @@ export default function CalendarPage() {
     setShowTaskEditor(true);
   }
 
+  function handleRangeSelect(startDate: string, endDate: string) {
+    setRangeStartDate(startDate);
+    setRangeEndDate(endDate);
+    setShowEventEditor(true);
+  }
+
   function handleSaveComplete() {
     setShowTaskEditor(false);
     setShowEventEditor(false);
     setEditingTask(undefined);
+    setRangeStartDate(undefined);
+    setRangeEndDate(undefined);
     fetchData();
   }
 
@@ -196,6 +206,7 @@ export default function CalendarPage() {
               tasks={filteredTasks}
               selectedDate={selectedDate}
               onDayClick={setSelectedDate}
+              onRangeSelect={handleRangeSelect}
               onPrevMonth={handlePrevMonth}
               onNextMonth={handleNextMonth}
             />
@@ -277,8 +288,10 @@ export default function CalendarPage() {
       />
       <EventEditor
         open={showEventEditor}
-        onClose={() => setShowEventEditor(false)}
+        onClose={() => { setShowEventEditor(false); setRangeStartDate(undefined); setRangeEndDate(undefined); }}
         onSave={handleSaveComplete}
+        defaultStartDate={rangeStartDate}
+        defaultEndDate={rangeEndDate}
       />
     </div>
   );
