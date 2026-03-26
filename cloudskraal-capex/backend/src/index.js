@@ -3,6 +3,7 @@ const cors = require('cors');
 const { getDb } = require('./db/schema');
 const { seedDatabase } = require('./db/seed');
 const { seedFarms } = require('./db/seed-farms');
+const { seedCalendar } = require('./db/seed-calendar');
 const dashboardRoutes = require('./routes/dashboard');
 const projectRoutes = require('./routes/projects');
 const farmRoutes = require('./routes/farms');
@@ -38,6 +39,7 @@ app.use((err, req, res, next) => {
 const db = getDb();
 seedDatabase(db);
 seedFarms(db);
+seedCalendar(db);
 
 app.listen(PORT, () => {
   console.log(`Cloudskraal CapEx API running on http://localhost:${PORT}`);
