@@ -4,6 +4,7 @@ const { initFarmSchema } = require('./schema-farms');
 const { initCalendarSchema } = require('./schema-calendar');
 const { initWikiSchema } = require('./schema-wiki');
 const { initPhase2Schema } = require('./schema-phase2');
+const { initPhase3Schema } = require('./schema-phase3');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -19,6 +20,7 @@ function getDb() {
     initCalendarSchema(db);
     initWikiSchema(db);
     initPhase2Schema(db);
+    initPhase3Schema(db);
   }
   return db;
 }
