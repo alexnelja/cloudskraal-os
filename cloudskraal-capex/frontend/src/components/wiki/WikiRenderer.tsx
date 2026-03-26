@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import MarkdownIt from 'markdown-it';
 
-const md = new MarkdownIt({ html: false, linkify: true, typographer: true });
+const md = new MarkdownIt({ html: true, linkify: true, typographer: true });
 
 function titleToSlug(title: string): string {
   return title

@@ -5,9 +5,8 @@ import {
   forceManyBody,
   forceCenter,
   forceCollide,
-  SimulationNodeDatum,
-  SimulationLinkDatum,
 } from 'd3-force';
+import type { SimulationNodeDatum, SimulationLinkDatum } from 'd3-force';
 import { getWikiGraph } from '../../api/wiki';
 import { WIKI_CATEGORIES } from '../../types/wiki';
 

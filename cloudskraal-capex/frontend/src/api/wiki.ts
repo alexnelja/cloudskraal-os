@@ -55,7 +55,7 @@ export async function deleteWikiPage(slug: string): Promise<void> {
 }
 
 export async function getWikiGraph(): Promise<WikiGraphData> {
-  return request<WikiGraphData>('/wiki-graph');
+  return request<WikiGraphData>('/wiki/graph');
 }
 
 export async function searchWiki(q: string): Promise<WikiPageSummary[]> {
