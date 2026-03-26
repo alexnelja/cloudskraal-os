@@ -4,6 +4,7 @@ import { Plus, Pin, ChevronRight, Trash2, Pencil, ArrowLeft, Network } from 'luc
 import WikiSearch from '../components/wiki/WikiSearch';
 import WikiRenderer from '../components/wiki/WikiRenderer';
 import WikiEditor from '../components/wiki/WikiEditor';
+import WikiGraph from '../components/wiki/WikiGraph';
 import { getWikiPages, getWikiPage, deleteWikiPage } from '../api/wiki';
 import { WIKI_CATEGORIES } from '../types/wiki';
 import type { WikiPageSummary, WikiPage as WikiPageType } from '../types/wiki';
@@ -461,30 +462,34 @@ function WikiSinglePage() {
   );
 }
 
-/* ----- Graph placeholder ----- */
+/* ----- Graph view ----- */
 
 function WikiGraphView() {
   const navigate = useNavigate();
 
+  function handlePageSelect(slug: string) {
+    navigate(`/wiki/${slug}`);
+  }
+
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
-      <div className="flex-shrink-0 border-b border-stone-200 px-4 py-3 flex items-center gap-3 bg-white">
+      <div className="flex-shrink-0 border-b border-stone-800 px-4 py-3 flex items-center gap-3 bg-stone-900">
         <button
           onClick={() => navigate('/wiki')}
-          className="flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 transition-colors"
+          className="flex items-center gap-1 text-sm text-stone-400 hover:text-stone-200 transition-colors"
         >
           <ArrowLeft size={16} />
           Wiki
         </button>
-        <ChevronRight size={14} className="text-stone-300" />
-        <span className="text-xs font-medium text-stone-700">Knowledge Graph</span>
+        <ChevronRight size={14} className="text-stone-600" />
+        <span className="text-xs font-medium text-stone-300 flex items-center gap-1.5">
+          <Network size={13} />
+          Knowledge Graph
+        </span>
+        <div className="flex-1" />
+        <span className="text-xs text-stone-500">Click a node to open page</span>
       </div>
-      <div className="flex-1 flex items-center justify-center bg-stone-50">
-        <div className="text-center">
-          <Network size={48} className="text-stone-300 mx-auto mb-3" />
-          <p className="text-stone-500 text-sm">Knowledge graph — coming soon</p>
-        </div>
-      </div>
+      <WikiGraph onPageSelect={handlePageSelect} />
     </div>
   );
 }
