@@ -11,20 +11,24 @@ const tabs = [
 
 export default function BottomNav() {
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-stone-200 z-50 flex">
+    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 h-20 bg-[#f9f9f8] border-t border-[#bdc9c1]/15 shadow-lg rounded-t-2xl md:hidden pb-2">
       {tabs.map((tab) => (
         <NavLink
           key={tab.to}
           to={tab.to}
           end={tab.to === '/'}
           className={({ isActive }) =>
-            `flex-1 flex flex-col items-center justify-center gap-0.5 ${
-              isActive ? 'text-emerald-700 font-medium' : 'text-stone-400'
-            }`
+            isActive
+              ? 'flex flex-col items-center justify-center text-[#047857] bg-[#047857]/10 rounded-xl px-3 py-1.5 gap-0.5'
+              : 'flex flex-col items-center justify-center text-[#78716c] gap-0.5'
           }
         >
-          <tab.icon size={20} />
-          <span className="text-[10px]">{tab.label}</span>
+          {({ isActive }) => (
+            <>
+              <tab.icon size={20} />
+              <span className="text-[11px] font-medium tracking-wide uppercase">{tab.label}</span>
+            </>
+          )}
         </NavLink>
       ))}
     </nav>

@@ -1,6 +1,40 @@
 @import 'maplibre-gl/dist/maplibre-gl.css';
 @import "tailwindcss";
 
+/* Material Design 3 inspired tokens */
+:root {
+  --primary: #005d42;
+  --primary-container: #047857;
+  --on-primary: #ffffff;
+  --secondary: #712ae2;
+  --secondary-container: #8a4cfc;
+  --tertiary: #7d4200;
+  --error: #ba1a1a;
+  --surface: #f9f9f8;
+  --surface-container: #eeeeed;
+  --surface-container-low: #f3f4f3;
+  --surface-container-lowest: #ffffff;
+  --on-surface: #1a1c1c;
+  --outline: #6e7a73;
+  --outline-variant: #bdc9c1;
+}
+
+/* Refined card styling */
+.card {
+  background: var(--surface-container-lowest);
+  border: 1px solid rgba(189, 201, 193, 0.15);
+  border-radius: 0.75rem;
+}
+
+/* Tiny uppercase labels */
+.label-xs {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--outline);
+}
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -59,3 +93,18 @@ body {
 .wiki-content .callout-question { border-color: #eab308; background: #fefce8; }
 .wiki-content .callout-bug { border-color: #dc2626; background: #fef2f2; }
 .wiki-content .callout-quote { border-color: #6b7280; background: #f9fafb; font-style: italic; }
+
+/* MD3 Design Tokens */
+:root {
+  --md-primary: #005d42;
+  --md-primary-container: #047857;
+  --md-secondary: #712ae2;
+  --md-tertiary: #7d4200;
+  --md-error: #ba1a1a;
+  --md-surface: #f9f9f8;
+  --md-surface-container: #eeeeed;
+  --md-surface-lowest: #ffffff;
+  --md-on-surface: #1a1c1c;
+  --md-outline: #6e7a73;
+  --md-outline-variant: #bdc9c1;
+}
