@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BarChart3, Search, Filter } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getFinancialDashboard, getFinancialTransactions, getEnterprises } from '../api/financials';
 import type { FinancialDashboard, FinancialTransaction, Enterprise } from '../types/phase3';
 
@@ -164,12 +164,13 @@ export default function FinancialsPage() {
                       tick={{ fontSize: 11 }}
                     />
                     <Tooltip
-                      formatter={(value: number) => formatCurrency(value)}
-                      labelFormatter={(_label: string, payload: Array<{ payload?: { fullName?: string } }>) => {
-                        if (payload && payload.length > 0 && payload[0].payload) {
-                          return payload[0].payload.fullName ?? _label;
+                      formatter={(value) => formatCurrency(Number(value))}
+                      labelFormatter={(_label, payload) => {
+                        const p = payload as unknown as Array<{ payload?: { fullName?: string } }>;
+                        if (p && p.length > 0 && p[0].payload) {
+                          return p[0].payload.fullName ?? String(_label);
                         }
-                        return _label;
+                        return String(_label);
                       }}
                     />
                     <Legend />

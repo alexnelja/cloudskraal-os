@@ -272,11 +272,11 @@ function PanelContent({
                     />
                     <Tooltip
                       contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e7e5e4' }}
-                      formatter={(value: number, name: string) => [
-                        `${value.toLocaleString()} kg`,
-                        name,
+                      formatter={(value, name) => [
+                        `${Number(value).toLocaleString()} kg`,
+                        String(name),
                       ]}
-                      labelFormatter={(label: number) => `Year: ${label}`}
+                      labelFormatter={(label) => `Year: ${label}`}
                     />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Bar dataKey="Estimated" fill="#d6d3d1" radius={[2, 2, 0, 0]} />

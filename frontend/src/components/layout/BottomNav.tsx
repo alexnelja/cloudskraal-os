@@ -23,7 +23,7 @@ export default function BottomNav() {
               : 'flex flex-col items-center justify-center text-[#78716c] gap-0.5'
           }
         >
-          {({ isActive }) => (
+          {() => (
             <>
               <tab.icon size={20} />
               <span className="text-[11px] font-medium tracking-wide uppercase">{tab.label}</span>

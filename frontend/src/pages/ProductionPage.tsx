@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Factory, X, ArrowLeft, CheckCircle2, Circle, Clock } from 'lucide-react';
 import { getBatches, getBatch, getProductionDashboard } from '../api/production';
-import type { ProductionBatch, ProductionDashboard, ProcessingStep, QualityTest, Sale } from '../types/phase2';
+import type { ProductionBatch, ProductionDashboard, QualityTest, Sale } from '../types/phase2';
 import { BATCH_STATUS_COLORS } from '../types/phase2';
 import { ENTERPRISE_COLORS } from '../types/farm';
 

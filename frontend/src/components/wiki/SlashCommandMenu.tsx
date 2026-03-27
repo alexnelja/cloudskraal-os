@@ -45,7 +45,7 @@ interface SlashCommand {
   label: string;
   description: string;
   group: string;
-  icon: React.ComponentType<{ size?: number }>;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
   insert?: string;
   database?: string;
 }

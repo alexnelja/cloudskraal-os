@@ -105,7 +105,7 @@ export default function WikiInlineEditor({
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState(initialBody);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const previewTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Slash command state
   const [slashMenu, setSlashMenu] = useState<{

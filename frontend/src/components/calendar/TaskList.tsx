@@ -1,6 +1,6 @@
 import { Clock, Zap, Link, Hand, CheckCircle2 } from 'lucide-react';
 import type { Task } from '../../types/calendar';
-import { PRIORITY_COLORS, STATUS_COLORS, TASK_TYPE_LABELS } from '../../types/calendar';
+import { PRIORITY_COLORS, STATUS_COLORS } from '../../types/calendar';
 import { ENTERPRISE_COLORS, ENTERPRISE_LABELS } from '../../types/farm';
 
 interface TaskListProps {

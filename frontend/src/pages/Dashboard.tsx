@@ -170,7 +170,7 @@ export default function Dashboard() {
                     <XAxis type="number" tick={{ fontSize: 12, fill: '#6e7a73' }} />
                     <YAxis dataKey="type" type="category" tick={{ fontSize: 12, fill: '#6e7a73' }} width={90} />
                     <Tooltip
-                      formatter={(value: number) => [`R ${value}M`, 'CapEx']}
+                      formatter={(value) => [`R ${value}M`, 'CapEx']}
                       contentStyle={{ borderRadius: '8px', border: '1px solid rgba(189,201,193,0.15)', fontSize: '13px' }}
                     />
                     <Bar dataKey="total" fill="#047857" radius={[0, 6, 6, 0]} />
@@ -212,7 +212,7 @@ export default function Dashboard() {
                     <XAxis type="number" tick={{ fontSize: 12, fill: '#6e7a73' }} />
                     <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#6e7a73' }} width={140} />
                     <Tooltip
-                      formatter={(value: number) => [`R ${value}K`, 'NPV']}
+                      formatter={(value) => [`R ${value}K`, 'NPV']}
                       contentStyle={{ borderRadius: '8px', border: '1px solid rgba(189,201,193,0.15)', fontSize: '13px' }}
                     />
                     <Bar dataKey="npv" radius={[0, 6, 6, 0]}>

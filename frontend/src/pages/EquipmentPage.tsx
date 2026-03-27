@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, AlertTriangle, Wrench, Plus, X } from 'lucide-react';
 import { getEquipment, getEquipmentById, getEquipmentSummary, getEquipmentAlerts, addMaintenanceLog } from '../api/equipment';
-import type { Equipment, EquipmentSummary, MaintenanceLog } from '../types/phase2';
+import type { Equipment, EquipmentSummary } from '../types/phase2';
 import { EQUIPMENT_TYPE_ICONS } from '../types/phase2';
 
 function formatCurrency(val: number | null): string {

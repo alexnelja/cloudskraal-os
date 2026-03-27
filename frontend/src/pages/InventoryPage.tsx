@@ -164,7 +164,7 @@ export default function InventoryPage() {
                     : undefined
                 }
               >
-                {c.charAt(0).toUpperCase() + c.slice(1)} ({(summary!.byCategory as Record<string, {products: number; value: number}>)[c]?.products ?? 0})
+                {c.charAt(0).toUpperCase() + c.slice(1)} ({(summary!.byCategory as unknown as Record<string, {products: number; value: number}>)[c]?.products ?? 0})
               </button>
             ))}
           </div>
