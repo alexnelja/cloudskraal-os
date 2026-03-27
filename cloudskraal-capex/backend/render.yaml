@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: cloudskraal-api
+    runtime: node
+    buildCommand: npm install
+    startCommand: node src/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
