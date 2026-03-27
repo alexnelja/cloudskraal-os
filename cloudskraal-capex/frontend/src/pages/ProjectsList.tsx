@@ -147,7 +147,7 @@ export default function ProjectsList() {
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-700 text-white text-sm font-medium rounded-lg hover:bg-emerald-800 transition-colors shadow-sm"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-700 text-white text-sm font-medium rounded-lg hover:bg-emerald-800 transition-colors"
         >
           <Plus size={18} />
           New Project
@@ -199,7 +199,7 @@ export default function ProjectsList() {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl overflow-hidden">
         {loading ? (
           <div className="p-8 space-y-3">
             {[...Array(5)].map((_, i) => (
@@ -221,7 +221,7 @@ export default function ProjectsList() {
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="bg-stone-50 border-b border-stone-200">
+              <tr className="bg-[#f3f4f3] border-b border-[#f3f4f3]">
                 <SortHeader field="name">Name</SortHeader>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wider">
                   Type

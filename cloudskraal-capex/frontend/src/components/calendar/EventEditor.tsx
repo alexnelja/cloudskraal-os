@@ -127,7 +127,7 @@ export default function EventEditor({ event, open, onClose, onSave, defaultStart
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#f3f4f3]">
           <h2 className="text-lg font-semibold text-stone-800">
             {isEdit ? 'Edit Event' : 'New Event'}
           </h2>
@@ -239,7 +239,7 @@ export default function EventEditor({ event, open, onClose, onSave, defaultStart
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-stone-100">
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#f3f4f3]">
             <button
               type="button"
               onClick={onClose}

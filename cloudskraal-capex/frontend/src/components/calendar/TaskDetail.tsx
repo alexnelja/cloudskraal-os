@@ -156,7 +156,7 @@ export default function TaskDetail({ taskId, onClose, onRefresh, onEdit }: TaskD
         className={`
           hidden md:flex flex-col
           fixed top-0 right-0 h-full w-[420px]
-          bg-white border-l border-stone-200 shadow-xl
+          bg-white border-l border-[#f3f4f3] shadow-xl
           overflow-y-auto z-40
           transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}
@@ -254,7 +254,7 @@ function PanelContent({
       )}
 
       {/* Header */}
-      <div className="sticky top-0 bg-white border-b border-stone-200 px-4 py-3 flex items-start justify-between gap-3 flex-shrink-0 z-10">
+      <div className="sticky top-0 bg-white border-b border-[#f3f4f3] px-4 py-3 flex items-start justify-between gap-3 flex-shrink-0 z-10">
         <div className="flex-1 min-w-0">
           {loading ? (
             <div className="h-5 w-40 bg-stone-200 rounded animate-pulse" />
@@ -399,7 +399,7 @@ function PanelContent({
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b border-stone-200">
+                      <tr className="border-b border-[#f3f4f3]">
                         <th className="text-left py-1 pr-2 text-stone-500 font-medium">Product</th>
                         <th className="text-right py-1 px-2 text-stone-500 font-medium">Rate</th>
                         <th className="text-right py-1 px-2 text-stone-500 font-medium">Applied</th>
@@ -408,7 +408,7 @@ function PanelContent({
                     </thead>
                     <tbody>
                       {task.inputs.map((input) => (
-                        <tr key={input.id} className="border-b border-stone-100">
+                        <tr key={input.id} className="border-b border-[#f3f4f3]">
                           <td className="py-1.5 pr-2 text-stone-800">{input.product_name}</td>
                           <td className="py-1.5 px-2 text-right text-stone-600">
                             {input.rate != null ? `${input.rate} ${input.rate_unit ?? ''}` : '—'}

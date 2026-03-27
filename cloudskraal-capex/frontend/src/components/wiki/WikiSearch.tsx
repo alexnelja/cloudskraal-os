@@ -83,7 +83,7 @@ export default function WikiSearch({ onSelect }: WikiSearchProps) {
       </div>
 
       {open && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-stone-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
           {results.map((page) => {
             const cat = page.category ? WIKI_CATEGORIES[page.category] : null;
             return (
@@ -115,7 +115,7 @@ export default function WikiSearch({ onSelect }: WikiSearchProps) {
       )}
 
       {open && query.trim() && results.length === 0 && !loading && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-stone-200 rounded-lg shadow-lg z-50 p-3">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg z-50 p-3">
           <p className="text-sm text-stone-400">No pages found.</p>
         </div>
       )}

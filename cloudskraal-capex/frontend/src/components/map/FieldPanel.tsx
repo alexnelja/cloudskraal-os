@@ -99,7 +99,7 @@ export default function FieldPanel({ fieldId, onClose }: FieldPanelProps) {
         className={`
           hidden md:flex flex-col
           fixed top-0 right-0 h-full w-[400px]
-          bg-white border-l border-stone-200 shadow-xl
+          bg-white border-l border-[#f3f4f3] shadow-xl
           overflow-y-auto z-40
           transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}
@@ -188,7 +188,7 @@ function PanelContent({
       )}
 
       {/* Header */}
-      <div className="sticky top-0 bg-white border-b border-stone-200 px-4 py-3 flex items-start justify-between gap-3 flex-shrink-0 z-10">
+      <div className="sticky top-0 bg-white border-b border-[#f3f4f3] px-4 py-3 flex items-start justify-between gap-3 flex-shrink-0 z-10">
         <div className="flex-1 min-w-0">
           {loading ? (
             <div className="h-5 w-40 bg-stone-200 rounded animate-pulse" />
@@ -296,7 +296,7 @@ function PanelContent({
                   {field.field_notes.map((note) => (
                     <li
                       key={note.id}
-                      className="border border-stone-200 rounded-lg p-3 bg-stone-50"
+                      className="rounded-lg p-3 bg-stone-50"
                     >
                       {note.title && (
                         <p className="text-sm font-medium text-stone-800 mb-0.5">{note.title}</p>
@@ -318,7 +318,7 @@ function PanelContent({
 
       {/* Quick Actions */}
       {field && !loading && (
-        <div className="flex-shrink-0 border-t border-stone-200 p-4">
+        <div className="flex-shrink-0 border-t border-[#f3f4f3] p-4">
           <button
             onClick={() => console.log('Add note for field:', field.id)}
             className="w-full border border-emerald-700 text-emerald-700 rounded-lg py-2 px-4 text-sm font-medium hover:bg-emerald-50 transition-colors"

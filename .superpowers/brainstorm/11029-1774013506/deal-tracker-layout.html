@@ -1,0 +1,288 @@
+<h2>Deal Tracker — Pipeline + Shipment View</h2>
+<p class="subtitle">Two sub-views: pipeline for deal status, shipment for material location. Click to select your preferred default view.</p>
+
+<div class="cards">
+  <!-- Option A: Pipeline Default -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 0; overflow: hidden;">
+      <div style="height: 380px; font-family: system-ui; font-size: 11px; color: #94a3b8; background: #0f172a; display: flex; flex-direction: column;">
+        <!-- Tab bar -->
+        <div style="display: flex; border-bottom: 1px solid #1e293b; padding: 0 12px;">
+          <div style="padding: 10px 16px; color: #e2e8f0; font-weight: 600; font-size: 11px; border-bottom: 2px solid #f59e0b;">Pipeline</div>
+          <div style="padding: 10px 16px; color: #64748b; font-size: 11px;">Shipments</div>
+          <div style="margin-left: auto; padding: 10px 0; display: flex; gap: 6px;">
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 2px 8px; font-size: 10px;">All commodities ▾</div>
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 2px 8px; font-size: 10px;">My deals ▾</div>
+          </div>
+        </div>
+        <!-- Kanban columns -->
+        <div style="flex: 1; display: flex; gap: 1px; padding: 10px; overflow: hidden;">
+          <!-- Interest -->
+          <div style="flex: 1; background: #1e293b44; border-radius: 8px; padding: 6px; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding: 0 2px;">
+              <span style="color: #94a3b8; font-size: 10px; font-weight: 600;">Interest</span>
+              <span style="background: #334155; color: #e2e8f0; padding: 0 6px; border-radius: 10px; font-size: 9px;">3</span>
+            </div>
+            <div style="background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 7px; margin-bottom: 4px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #f59e0b; font-size: 9px; font-weight: 600;">Chrome 42%</span>
+                <span style="color: #64748b; font-size: 8px;">2d ago</span>
+              </div>
+              <div style="color: #e2e8f0; font-size: 10px; margin-top: 2px;">15,000t FOB</div>
+              <div style="color: #64748b; font-size: 9px;">→ Buyer: TradeCo Ltd</div>
+              <div style="display: flex; gap: 2px; margin-top: 4px;">
+                <span style="color: #f59e0b; font-size: 8px;">★★★★★</span>
+              </div>
+            </div>
+            <div style="background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 7px; margin-bottom: 4px; opacity: 0.7;">
+              <div style="color: #a78bfa; font-size: 9px; font-weight: 600;">Mn 44%</div>
+              <div style="color: #e2e8f0; font-size: 10px; margin-top: 2px;">30,000t CIF</div>
+              <div style="color: #64748b; font-size: 9px;">→ Buyer: SinoSteel</div>
+            </div>
+          </div>
+          <!-- Negotiation -->
+          <div style="flex: 1; background: #1e293b44; border-radius: 8px; padding: 6px; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding: 0 2px;">
+              <span style="color: #60a5fa; font-size: 10px; font-weight: 600;">Negotiation</span>
+              <span style="background: #334155; color: #e2e8f0; padding: 0 6px; border-radius: 10px; font-size: 9px;">2</span>
+            </div>
+            <div style="background: #0f172a; border: 1px solid #1e3a5f; border-radius: 6px; padding: 7px; margin-bottom: 4px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #60a5fa; font-size: 9px; font-weight: 600;">Fe 62%</span>
+                <span style="color: #64748b; font-size: 8px;">5d ago</span>
+              </div>
+              <div style="color: #e2e8f0; font-size: 10px; margin-top: 2px;">50,000t FOB $108/t</div>
+              <div style="color: #64748b; font-size: 9px;">↔ ArcelorMittal</div>
+              <div style="background: #1e293b; border-radius: 4px; padding: 3px 5px; margin-top: 4px; font-size: 8px; color: #60a5fa;">Spec review pending</div>
+            </div>
+          </div>
+          <!-- Escrow -->
+          <div style="flex: 1; background: #1e293b44; border-radius: 8px; padding: 6px; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding: 0 2px;">
+              <span style="color: #f59e0b; font-size: 10px; font-weight: 600;">Escrow</span>
+              <span style="background: #334155; color: #e2e8f0; padding: 0 6px; border-radius: 10px; font-size: 9px;">1</span>
+            </div>
+            <div style="background: #0f172a; border: 1px solid #f59e0b33; border-radius: 6px; padding: 7px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #f59e0b; font-size: 9px; font-weight: 600;">Chrome 40%</span>
+                <span style="color: #f59e0b; font-size: 8px;">🔒</span>
+              </div>
+              <div style="color: #e2e8f0; font-size: 10px; margin-top: 2px;">8,000t CIF $172/t</div>
+              <div style="color: #64748b; font-size: 9px;">→ TurkMin AŞ</div>
+              <div style="background: #f59e0b22; border: 1px solid #f59e0b33; border-radius: 4px; padding: 3px 5px; margin-top: 4px; font-size: 8px; color: #f59e0b;">$1.37M held</div>
+            </div>
+          </div>
+          <!-- In Transit -->
+          <div style="flex: 1; background: #1e293b44; border-radius: 8px; padding: 6px; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding: 0 2px;">
+              <span style="color: #a78bfa; font-size: 10px; font-weight: 600;">In Transit</span>
+              <span style="background: #334155; color: #e2e8f0; padding: 0 6px; border-radius: 10px; font-size: 9px;">2</span>
+            </div>
+            <div style="background: #0f172a; border: 1px solid #7c3aed33; border-radius: 6px; padding: 7px; margin-bottom: 4px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #a78bfa; font-size: 9px; font-weight: 600;">Chrome 42%</span>
+                <span style="color: #a78bfa; font-size: 8px;">🚢</span>
+              </div>
+              <div style="color: #e2e8f0; font-size: 10px; margin-top: 2px;">20,000t → Shanghai</div>
+              <div style="color: #64748b; font-size: 9px;">ETA: 14 days</div>
+              <div style="background: #1e293b; border-radius: 10px; height: 4px; margin-top: 5px; overflow: hidden;">
+                <div style="background: #a78bfa; height: 100%; width: 60%; border-radius: 10px;"></div>
+              </div>
+            </div>
+          </div>
+          <!-- Completed -->
+          <div style="flex: 1; background: #1e293b44; border-radius: 8px; padding: 6px; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding: 0 2px;">
+              <span style="color: #10b981; font-size: 10px; font-weight: 600;">Completed</span>
+              <span style="background: #334155; color: #e2e8f0; padding: 0 6px; border-radius: 10px; font-size: 9px;">8</span>
+            </div>
+            <div style="background: #0f172a; border: 1px solid #10b98133; border-radius: 6px; padding: 7px; margin-bottom: 4px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #10b981; font-size: 9px; font-weight: 600;">Mn 44%</span>
+                <span style="color: #10b981; font-size: 8px;">✓</span>
+              </div>
+              <div style="color: #e2e8f0; font-size: 10px; margin-top: 2px;">30,000t CIF $4.20</div>
+              <div style="color: #64748b; font-size: 9px;">Delivered Mar 8</div>
+              <div style="display: flex; gap: 2px; margin-top: 3px; font-size: 8px;">
+                <span style="color: #f59e0b;">★★★★★</span>
+                <span style="color: #64748b;">Rated</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Pipeline-First (Kanban)</h3>
+      <p>Kanban board as default with tab to switch to Shipments. Each deal card shows commodity, counterparty, value, and stage-relevant info (escrow amount, transit progress, rating). Click any card to expand into full deal detail with timeline, docs, and map.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Shipment Map Default -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 0; overflow: hidden;">
+      <div style="height: 380px; font-family: system-ui; font-size: 11px; color: #94a3b8; background: #0f172a; display: flex; flex-direction: column;">
+        <!-- Tab bar -->
+        <div style="display: flex; border-bottom: 1px solid #1e293b; padding: 0 12px;">
+          <div style="padding: 10px 16px; color: #64748b; font-size: 11px;">Pipeline</div>
+          <div style="padding: 10px 16px; color: #e2e8f0; font-weight: 600; font-size: 11px; border-bottom: 2px solid #a78bfa;">Shipments</div>
+        </div>
+        <!-- Main content: map + sidebar -->
+        <div style="flex: 1; display: flex;">
+          <!-- Map area -->
+          <div style="flex: 1; background: #0c1425; position: relative; overflow: hidden;">
+            <!-- World map outline (simplified) -->
+            <div style="position: absolute; inset: 0; opacity: 0.08;">
+              <svg viewBox="0 0 600 300" style="width: 100%; height: 100%;">
+                <!-- Africa outline -->
+                <path d="M280,80 L310,75 L330,90 L340,120 L335,160 L320,200 L290,230 L260,220 L250,190 L255,150 L260,110 Z" fill="none" stroke="#475569" stroke-width="1.5"/>
+                <!-- Asia outline -->
+                <path d="M350,40 L420,30 L480,50 L520,80 L510,120 L480,140 L440,130 L400,100 L370,70 Z" fill="none" stroke="#475569" stroke-width="1.5"/>
+                <!-- Europe outline -->
+                <path d="M280,30 L320,25 L340,40 L330,60 L300,65 L280,50 Z" fill="none" stroke="#475569" stroke-width="1.5"/>
+              </svg>
+            </div>
+
+            <!-- SA port (Richards Bay) -->
+            <div style="position: absolute; top: 65%; left: 35%; width: 10px; height: 10px; background: #10b981; border-radius: 2px; border: 2px solid #0c1425; z-index: 2;"></div>
+            <div style="position: absolute; top: 65%; left: 35%; transform: translate(12px, -2px); color: #10b981; font-size: 8px; white-space: nowrap; z-index: 2;">Richards Bay</div>
+
+            <!-- Ship 1: en route to Shanghai -->
+            <div style="position: absolute; top: 42%; left: 58%; z-index: 3;">
+              <div style="width: 16px; height: 16px; background: #a78bfa; border-radius: 50%; border: 2px solid #0c1425; box-shadow: 0 0 12px #a78bfa66; animation: shipPulse 2s infinite;"></div>
+            </div>
+            <div style="position: absolute; top: 42%; left: 58%; transform: translate(18px, 0px); z-index: 3;">
+              <div style="background: #0f172aee; border: 1px solid #7c3aed44; border-radius: 6px; padding: 4px 8px; white-space: nowrap;">
+                <div style="color: #a78bfa; font-size: 9px; font-weight: 600;">MV Pacific Star</div>
+                <div style="color: #e2e8f0; font-size: 8px;">Chrome 42% — 20,000t</div>
+                <div style="color: #64748b; font-size: 8px;">→ Shanghai · ETA 14d</div>
+              </div>
+            </div>
+
+            <!-- Ship 2: en route to Mersin -->
+            <div style="position: absolute; top: 35%; left: 38%; z-index: 3;">
+              <div style="width: 12px; height: 12px; background: #f59e0b; border-radius: 50%; border: 2px solid #0c1425; box-shadow: 0 0 10px #f59e0b55; animation: shipPulse 2s infinite 0.5s;"></div>
+            </div>
+            <div style="position: absolute; top: 35%; left: 38%; transform: translate(14px, -4px); z-index: 3;">
+              <div style="background: #0f172aee; border: 1px solid #f59e0b33; border-radius: 6px; padding: 4px 8px; white-space: nowrap;">
+                <div style="color: #f59e0b; font-size: 9px; font-weight: 600;">MV Anatolia</div>
+                <div style="color: #e2e8f0; font-size: 8px;">Chrome 40% — 8,000t</div>
+                <div style="color: #64748b; font-size: 8px;">→ Mersin · ETA 6d</div>
+              </div>
+            </div>
+
+            <!-- Destination ports -->
+            <div style="position: absolute; top: 28%; left: 78%; width: 8px; height: 8px; background: #60a5fa; border-radius: 2px; border: 1px solid #0c1425; z-index: 2;"></div>
+            <div style="position: absolute; top: 28%; left: 78%; transform: translate(8px, -2px); color: #60a5fa; font-size: 8px; z-index: 2;">Shanghai</div>
+
+            <div style="position: absolute; top: 28%; left: 33%; width: 8px; height: 8px; background: #60a5fa; border-radius: 2px; border: 1px solid #0c1425; z-index: 2;"></div>
+            <div style="position: absolute; top: 28%; left: 33%; transform: translate(8px, -2px); color: #60a5fa; font-size: 8px; z-index: 2;">Mersin</div>
+
+            <!-- Route lines -->
+            <svg style="position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1;">
+              <!-- Richards Bay to Shanghai (via Indian Ocean) -->
+              <path d="M 37% 67% Q 55% 60%, 60% 44%" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.5"/>
+              <path d="M 60% 44% Q 70% 35%, 79% 30%" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.3"/>
+              <!-- Richards Bay to Mersin -->
+              <path d="M 37% 67% Q 35% 50%, 39% 37%" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.5"/>
+              <path d="M 39% 37% Q 36% 32%, 34% 30%" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.3"/>
+            </svg>
+          </div>
+
+          <!-- Right: Deal status sidebar -->
+          <div style="width: 280px; border-left: 1px solid #1e293b; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="padding: 8px 12px; border-bottom: 1px solid #1e293b; color: #e2e8f0; font-weight: 600; font-size: 11px;">Active Shipments (2)</div>
+
+            <!-- Deal card 1 -->
+            <div style="padding: 10px 12px; border-bottom: 1px solid #1e293b; cursor: pointer;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: #a78bfa; font-weight: 600; font-size: 11px;">Chrome 42% UG2</span>
+                <span style="background: #7c3aed22; color: #a78bfa; padding: 2px 8px; border-radius: 10px; font-size: 9px;">In Transit</span>
+              </div>
+              <div style="color: #64748b; font-size: 10px; margin-top: 4px;">Richards Bay → Shanghai</div>
+              <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px;">
+                <span style="color: #e2e8f0;">20,000t · $185/t FOB</span>
+              </div>
+              <!-- Progress -->
+              <div style="margin-top: 8px;">
+                <div style="display: flex; justify-content: space-between; font-size: 9px; color: #64748b; margin-bottom: 3px;">
+                  <span>Departed Mar 6</span>
+                  <span>ETA Apr 3</span>
+                </div>
+                <div style="background: #1e293b; border-radius: 10px; height: 6px; overflow: hidden;">
+                  <div style="background: linear-gradient(90deg, #a78bfa, #7c3aed); height: 100%; width: 60%; border-radius: 10px;"></div>
+                </div>
+              </div>
+              <!-- Milestones -->
+              <div style="display: flex; gap: 10px; margin-top: 8px; font-size: 9px;">
+                <div style="text-align: center;">
+                  <div style="width: 18px; height: 18px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2px; font-size: 8px; color: white;">✓</div>
+                  <div style="color: #10b981;">Loaded</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="width: 18px; height: 18px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2px; font-size: 8px; color: white;">✓</div>
+                  <div style="color: #10b981;">Departed</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="width: 18px; height: 18px; background: #a78bfa; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2px; font-size: 10px; color: white;">●</div>
+                  <div style="color: #a78bfa;">At Sea</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="width: 18px; height: 18px; background: #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2px; font-size: 8px; color: #64748b;">○</div>
+                  <div style="color: #64748b;">Arrived</div>
+                </div>
+                <div style="text-align: center;">
+                  <div style="width: 18px; height: 18px; background: #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2px; font-size: 8px; color: #64748b;">○</div>
+                  <div style="color: #64748b;">Delivered</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Deal card 2 -->
+            <div style="padding: 10px 12px; border-bottom: 1px solid #1e293b; cursor: pointer; opacity: 0.8;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: #f59e0b; font-weight: 600; font-size: 11px;">Chrome 40% Lumpy</span>
+                <span style="background: #f59e0b22; color: #f59e0b; padding: 2px 8px; border-radius: 10px; font-size: 9px;">In Transit</span>
+              </div>
+              <div style="color: #64748b; font-size: 10px; margin-top: 4px;">Richards Bay → Mersin</div>
+              <div style="color: #e2e8f0; font-size: 10px; margin-top: 4px;">8,000t · $172/t CIF</div>
+              <div style="margin-top: 8px;">
+                <div style="display: flex; justify-content: space-between; font-size: 9px; color: #64748b; margin-bottom: 3px;">
+                  <span>Departed Mar 14</span>
+                  <span>ETA Mar 26</span>
+                </div>
+                <div style="background: #1e293b; border-radius: 10px; height: 6px; overflow: hidden;">
+                  <div style="background: linear-gradient(90deg, #f59e0b, #d97706); height: 100%; width: 45%; border-radius: 10px;"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Escrow status -->
+            <div style="margin-top: auto; padding: 10px 12px; background: #1e293b44; border-top: 1px solid #1e293b;">
+              <div style="color: #64748b; font-size: 9px; text-transform: uppercase; margin-bottom: 4px;">Escrow Summary</div>
+              <div style="display: flex; justify-content: space-between; font-size: 10px;">
+                <span style="color: #e2e8f0;">Total held</span>
+                <span style="color: #f59e0b; font-weight: 600;">$5.06M</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 2px;">
+                <span style="color: #e2e8f0;">Pending release</span>
+                <span style="color: #10b981; font-weight: 600;">$1.37M</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Shipment Map + Status Sidebar</h3>
+      <p>World map showing vessel positions with animated route lines. Right sidebar shows each shipment's deal details, progress bar, milestone tracker, and escrow status. Click a ship to focus. Becomes live-tracking ready in v2.</p>
+    </div>
+  </div>
+</div>
+
+<style>
+  @keyframes shipPulse {
+    0%, 100% { box-shadow: 0 0 8px currentColor; transform: scale(1); }
+    50% { box-shadow: 0 0 16px currentColor; transform: scale(1.1); }
+  }
+</style>

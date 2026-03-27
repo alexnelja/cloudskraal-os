@@ -52,7 +52,7 @@ export default function LayerControl({ layers, onToggle, onOpacityChange }: Laye
       {/* Expanded panel */}
       {expanded && (
         <div className="mt-1 bg-white rounded-xl shadow-lg w-64 max-h-[60vh] overflow-y-auto">
-          <div className="px-3 py-2 border-b border-stone-100">
+          <div className="px-3 py-2 border-b border-[#f3f4f3]">
             <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">GIS Layers</p>
           </div>
 
@@ -61,7 +61,7 @@ export default function LayerControl({ layers, onToggle, onOpacityChange }: Laye
           ) : (
             categories.map(category => (
               <div key={category}>
-                <div className="px-3 py-1.5 bg-stone-50 border-b border-stone-100">
+                <div className="px-3 py-1.5 bg-[#f3f4f3] border-b border-[#f3f4f3]">
                   <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">{category}</p>
                 </div>
                 {grouped[category].map(layer => (
@@ -89,7 +89,7 @@ interface LayerRowProps {
 
 function LayerRow({ layer, onToggle, onOpacityChange }: LayerRowProps) {
   return (
-    <div className="px-3 py-2 border-b border-stone-50 last:border-b-0">
+    <div className="px-3 py-2 border-b border-[#f3f4f3] last:border-b-0">
       {/* Toggle row */}
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm text-stone-700 flex-1 leading-tight">{layer.name}</span>

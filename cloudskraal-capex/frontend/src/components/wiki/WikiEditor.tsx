@@ -111,7 +111,7 @@ export default function WikiEditor({ page, open, onClose, onSave }: WikiEditorPr
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#f3f4f3] flex-shrink-0">
           <h2 className="text-lg font-bold text-stone-900">
             {page ? 'Edit Page' : 'New Wiki Page'}
           </h2>
@@ -204,7 +204,7 @@ export default function WikiEditor({ page, open, onClose, onSave }: WikiEditorPr
           </div>
 
           {/* Mobile tabs */}
-          <div className="flex sm:hidden border-b border-stone-200">
+          <div className="flex sm:hidden border-b border-[#f3f4f3]">
             <button
               onClick={() => setMobileTab('edit')}
               className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -246,7 +246,7 @@ export default function WikiEditor({ page, open, onClose, onSave }: WikiEditorPr
             {/* Preview */}
             <div className={`${mobileTab === 'edit' ? 'hidden sm:block' : ''}`}>
               <p className="text-sm font-medium text-stone-700 mb-1 hidden sm:block">Preview</p>
-              <div className="border border-stone-200 rounded-lg p-4 h-[300px] sm:h-[400px] overflow-y-auto bg-stone-50">
+              <div className="rounded-lg p-4 h-[300px] sm:h-[400px] overflow-y-auto bg-stone-50">
                 {body.trim() ? (
                   <WikiRenderer body={body} />
                 ) : (
@@ -260,7 +260,7 @@ export default function WikiEditor({ page, open, onClose, onSave }: WikiEditorPr
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-stone-200 flex-shrink-0">
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-[#f3f4f3] flex-shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-stone-700 border border-stone-300 rounded-lg hover:bg-stone-50 transition-colors"

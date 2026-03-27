@@ -79,7 +79,7 @@ export default function EmployeesPage() {
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-[#bdc9c1]/15 px-4 py-3 bg-white">
+      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <Users size={20} className="text-emerald-700" />
@@ -155,7 +155,7 @@ export default function EmployeesPage() {
               {employees.map((emp) => {
                 const isExpanded = expandedId === emp.id;
                 return (
-                  <div key={emp.id} className="border border-[#bdc9c1]/15 rounded-lg overflow-hidden">
+                  <div key={emp.id} className="rounded-2xl overflow-hidden">
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : emp.id)}
                       className="w-full text-left p-4 hover:bg-stone-50 transition-colors"
@@ -197,7 +197,7 @@ export default function EmployeesPage() {
 
                     {/* Expanded: time entries */}
                     {isExpanded && (
-                      <div className="border-t border-[#bdc9c1]/15 p-4 bg-stone-50">
+                      <div className="border-t border-[#f3f4f3] p-4 bg-stone-50">
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
                             Recent Time Entries ({expandedEmployee?.time_entries?.length ?? 0})
@@ -213,7 +213,7 @@ export default function EmployeesPage() {
 
                         {/* Time entry form */}
                         {showTimeForm && (
-                          <form onSubmit={handleTimeSubmit} className="bg-white rounded-lg p-3 mb-3 space-y-2 border border-[#bdc9c1]/15">
+                          <form onSubmit={handleTimeSubmit} className="bg-white rounded-lg p-3 mb-3 space-y-2">
                             <div className="grid grid-cols-2 gap-2">
                               <input
                                 type="date"
@@ -297,7 +297,7 @@ export default function EmployeesPage() {
                               </thead>
                               <tbody>
                                 {expandedEmployee.time_entries.slice(0, 10).map((te) => (
-                                  <tr key={te.id} className="border-b border-stone-100">
+                                  <tr key={te.id} className="border-b border-[#f3f4f3]">
                                     <td className="px-2 py-1.5 text-stone-800">{formatDate(te.date)}</td>
                                     <td className="px-2 py-1.5 text-right text-stone-800 font-medium">{te.hours_worked ?? '-'}</td>
                                     <td className="px-2 py-1.5 text-stone-600">{te.activity_type ?? '-'}</td>

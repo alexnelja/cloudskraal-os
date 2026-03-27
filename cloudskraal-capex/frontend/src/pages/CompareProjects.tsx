@@ -139,7 +139,7 @@ export default function CompareProjects() {
       </div>
 
       {/* Selection area */}
-      <div className="bg-white border border-stone-200 rounded-xl shadow-sm p-5 mb-6">
+      <div className="bg-white rounded-2xl p-5 mb-6">
         <div className="space-y-3">
           {selections.map((sel, index) => {
             const project = loadedProjects[sel.projectId];
@@ -200,10 +200,10 @@ export default function CompareProjects() {
       {comparisonRows.length >= 2 && (
         <div className="space-y-6">
           {/* Side-by-side comparison table */}
-          <div className="bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="bg-stone-50 border-b border-stone-200">
+                <tr className="bg-[#f3f4f3] border-b border-[#f3f4f3]">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">
                     Metric
                   </th>
@@ -319,7 +319,7 @@ export default function CompareProjects() {
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Grouped bar chart */}
-            <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
+            <div className="bg-white rounded-2xl p-5">
               <h3 className="text-sm font-semibold text-stone-700 mb-4">Metric Comparison</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={barData}>
@@ -342,7 +342,7 @@ export default function CompareProjects() {
             </div>
 
             {/* Radar chart */}
-            <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
+            <div className="bg-white rounded-2xl p-5">
               <h3 className="text-sm font-semibold text-stone-700 mb-4">
                 Performance Radar (normalised)
               </h3>

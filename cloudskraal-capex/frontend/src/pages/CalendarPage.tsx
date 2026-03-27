@@ -143,7 +143,7 @@ export default function CalendarPage() {
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
       {/* Top bar: enterprise filters + action buttons */}
-      <div className="flex-shrink-0 border-b border-stone-200 px-4 py-3 flex items-center gap-3 flex-wrap bg-white">
+      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 flex items-center gap-3 flex-wrap bg-white">
         <div className="flex items-center gap-2 flex-wrap flex-1">
           {FILTER_ENTERPRISES.map((ent) => {
             const active = enterpriseFilter.has(ent);
@@ -214,7 +214,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Right panel: day detail */}
-        <div className="md:w-[400px] md:flex-shrink-0 border-t md:border-t-0 md:border-l border-stone-200 bg-white overflow-y-auto">
+        <div className="md:w-[400px] md:flex-shrink-0 border-t md:border-t-0 md:border-l border-[#f3f4f3] bg-white overflow-y-auto">
           <div className="p-4">
             <h3 className="text-sm font-semibold text-stone-700 mb-3">
               {selectedDate

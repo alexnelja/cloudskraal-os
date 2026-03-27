@@ -94,7 +94,7 @@ export default function EquipmentPage() {
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-stone-200 px-4 py-3 bg-white">
+      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <Wrench size={20} className="text-emerald-700" />
@@ -173,7 +173,7 @@ export default function EquipmentPage() {
             </div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-stone-50 border-b border-stone-200">
+              <thead className="sticky top-0 bg-[#f3f4f3] border-b border-[#f3f4f3]">
                 <tr>
                   <th className="text-left px-4 py-2 font-medium text-stone-600">Name</th>
                   <th className="text-left px-4 py-2 font-medium text-stone-600 hidden sm:table-cell">Type</th>
@@ -191,7 +191,7 @@ export default function EquipmentPage() {
                     <tr
                       key={item.id}
                       onClick={() => setSelectedId(item.id)}
-                      className={`border-b border-stone-100 cursor-pointer transition-colors ${
+                      className={`border-b border-[#f3f4f3] cursor-pointer transition-colors ${
                         selectedId === item.id ? 'bg-emerald-50' : 'hover:bg-stone-50'
                       }`}
                     >
@@ -235,7 +235,7 @@ export default function EquipmentPage() {
 
         {/* Detail panel */}
         {selectedId && (
-          <div className="md:w-[420px] md:flex-shrink-0 border-t md:border-t-0 md:border-l border-stone-200 bg-white overflow-y-auto">
+          <div className="md:w-[420px] md:flex-shrink-0 border-t md:border-t-0 md:border-l border-[#f3f4f3] bg-white overflow-y-auto">
             {detailLoading ? (
               <div className="flex items-center justify-center py-16">
                 <p className="text-stone-400 text-sm">Loading...</p>
@@ -331,7 +331,7 @@ export default function EquipmentPage() {
                     </div>
                   )}
                   {selectedItem.notes && (
-                    <div className="pt-2 border-t border-stone-200">
+                    <div className="pt-2 border-t border-[#f3f4f3]">
                       <p className="text-stone-500 text-xs mb-1">Notes</p>
                       <p className="text-stone-700 text-xs">{selectedItem.notes}</p>
                     </div>

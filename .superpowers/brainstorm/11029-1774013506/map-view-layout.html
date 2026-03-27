@@ -1,0 +1,266 @@
+<h2>Map View Layout — Which split feels right?</h2>
+<p class="subtitle">This is the primary landing view. Airbnb-inspired: list + map side by side. Click to select your preference.</p>
+
+<div class="cards">
+  <!-- Option A: Classic Airbnb Split -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 0; overflow: hidden;">
+      <div style="display: flex; height: 320px; font-family: system-ui; font-size: 11px; color: #94a3b8;">
+        <!-- Left Panel -->
+        <div style="width: 42%; background: #0f172a; border-right: 1px solid #1e293b; display: flex; flex-direction: column; overflow: hidden;">
+          <!-- Filter Bar -->
+          <div style="padding: 10px 12px; border-bottom: 1px solid #1e293b; display: flex; gap: 6px; flex-wrap: wrap;">
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 20px; padding: 3px 10px; font-size: 10px; color: #e2e8f0;">Chrome ×</div>
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 20px; padding: 3px 10px; font-size: 10px;">Manganese</div>
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 20px; padding: 3px 10px; font-size: 10px;">Iron Ore</div>
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 20px; padding: 3px 10px; font-size: 10px;">Coal</div>
+            <div style="background: transparent; border: 1px dashed #334155; border-radius: 20px; padding: 3px 10px; font-size: 10px; color: #64748b;">+ More filters</div>
+          </div>
+          <!-- Listing Cards -->
+          <div style="flex: 1; overflow: hidden; padding: 8px;">
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px; margin-bottom: 6px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: #e2e8f0; font-weight: 600; font-size: 12px;">Chrome Ore 42%</span>
+                <span style="background: #065f46; color: #6ee7b7; padding: 1px 6px; border-radius: 10px; font-size: 9px;">✓ Verified</span>
+              </div>
+              <div style="color: #64748b; font-size: 10px; margin-top: 4px;">Limpopo Mine, SA → Richards Bay</div>
+              <div style="display: flex; justify-content: space-between; margin-top: 6px;">
+                <span style="color: #f59e0b; font-weight: 600;">$185/t FOB</span>
+                <span style="color: #64748b;">15,000t available</span>
+              </div>
+              <div style="display: flex; gap: 4px; margin-top: 6px;">
+                <span style="background: #172554; color: #60a5fa; padding: 1px 5px; border-radius: 4px; font-size: 9px;">FOB</span>
+                <span style="background: #172554; color: #60a5fa; padding: 1px 5px; border-radius: 4px; font-size: 9px;">CIF</span>
+              </div>
+            </div>
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px; margin-bottom: 6px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: #e2e8f0; font-weight: 600; font-size: 12px;">Manganese 44%</span>
+                <span style="color: #64748b; font-size: 9px;">Unverified</span>
+              </div>
+              <div style="color: #64748b; font-size: 10px; margin-top: 4px;">Hotazel, NC → Saldanha Bay</div>
+              <div style="display: flex; justify-content: space-between; margin-top: 6px;">
+                <span style="color: #f59e0b; font-weight: 600;">$4.20/dmtu CIF</span>
+                <span style="color: #64748b;">30,000t available</span>
+              </div>
+            </div>
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px; opacity: 0.7;">
+              <div style="color: #e2e8f0; font-weight: 600; font-size: 12px;">Iron Ore 62% Fe</div>
+              <div style="color: #64748b; font-size: 10px; margin-top: 4px;">Sishen, NC → Saldanha Bay</div>
+              <div style="display: flex; justify-content: space-between; margin-top: 6px;">
+                <span style="color: #f59e0b; font-weight: 600;">$108/t FOB</span>
+                <span style="color: #64748b;">50,000t available</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Right: Map -->
+        <div style="flex: 1; background: #0c1425; position: relative; overflow: hidden;">
+          <!-- SA Map representation -->
+          <div style="position: absolute; inset: 0; opacity: 0.15;">
+            <svg viewBox="0 0 400 350" style="width: 100%; height: 100%;">
+              <path d="M180,40 L250,35 L310,60 L340,100 L350,160 L330,220 L300,260 L260,290 L220,310 L180,300 L140,280 L100,240 L90,200 L85,160 L95,120 L120,80 Z" fill="none" stroke="#334155" stroke-width="2"/>
+            </svg>
+          </div>
+          <!-- Mine pins -->
+          <div style="position: absolute; top: 25%; left: 55%; width: 12px; height: 12px; background: #f59e0b; border-radius: 50%; border: 2px solid #0c1425; box-shadow: 0 0 8px #f59e0b55;"></div>
+          <div style="position: absolute; top: 25%; left: 55%; transform: translate(10px, -2px); color: #f59e0b; font-size: 9px; white-space: nowrap;">Limpopo Chrome</div>
+
+          <div style="position: absolute; top: 45%; left: 35%; width: 12px; height: 12px; background: #a78bfa; border-radius: 50%; border: 2px solid #0c1425; box-shadow: 0 0 8px #a78bfa55;"></div>
+          <div style="position: absolute; top: 45%; left: 35%; transform: translate(10px, -2px); color: #a78bfa; font-size: 9px; white-space: nowrap;">Hotazel Mn</div>
+
+          <div style="position: absolute; top: 50%; left: 28%; width: 12px; height: 12px; background: #60a5fa; border-radius: 50%; border: 2px solid #0c1425; box-shadow: 0 0 8px #60a5fa55;"></div>
+          <div style="position: absolute; top: 50%; left: 28%; transform: translate(10px, -2px); color: #60a5fa; font-size: 9px; white-space: nowrap;">Sishen Fe</div>
+
+          <!-- Harbour pins -->
+          <div style="position: absolute; top: 30%; left: 82%; width: 10px; height: 10px; background: #10b981; border-radius: 2px; border: 2px solid #0c1425;"></div>
+          <div style="position: absolute; top: 30%; left: 82%; transform: translate(10px, -2px); color: #10b981; font-size: 9px; white-space: nowrap;">Richards Bay</div>
+
+          <div style="position: absolute; top: 68%; left: 22%; width: 10px; height: 10px; background: #10b981; border-radius: 2px; border: 2px solid #0c1425;"></div>
+          <div style="position: absolute; top: 68%; left: 22%; transform: translate(10px, -2px); color: #10b981; font-size: 9px; white-space: nowrap;">Saldanha</div>
+
+          <!-- Route line -->
+          <svg style="position: absolute; inset: 0; width: 100%; height: 100%;">
+            <line x1="57%" y1="28%" x2="83%" y2="33%" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
+          </svg>
+
+          <!-- Legend -->
+          <div style="position: absolute; bottom: 10px; left: 10px; background: #0f172aee; border: 1px solid #1e293b; border-radius: 6px; padding: 6px 8px; font-size: 9px;">
+            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 3px;"><div style="width: 6px; height: 6px; background: #f59e0b; border-radius: 50%;"></div> Chrome</div>
+            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 3px;"><div style="width: 6px; height: 6px; background: #a78bfa; border-radius: 50%;"></div> Manganese</div>
+            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 3px;"><div style="width: 6px; height: 6px; background: #60a5fa; border-radius: 50%;"></div> Iron Ore</div>
+            <div style="display: flex; align-items: center; gap: 4px;"><div style="width: 6px; height: 6px; background: #10b981; border-radius: 3px;"></div> Harbour</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Classic 40/60 Split</h3>
+      <p>Listings panel left, map right. Filters inline above listings. Hovering a listing highlights pin on map. Clicking a pin scrolls to listing. Direct Airbnb pattern.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Map-Dominant with Drawer -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 0; overflow: hidden;">
+      <div style="height: 320px; font-family: system-ui; font-size: 11px; color: #94a3b8; position: relative; background: #0c1425;">
+        <!-- Full map background -->
+        <div style="position: absolute; inset: 0; opacity: 0.15;">
+          <svg viewBox="0 0 600 350" style="width: 100%; height: 100%;">
+            <path d="M280,40 L350,35 L410,60 L440,100 L450,160 L430,220 L400,260 L360,290 L320,310 L280,300 L240,280 L200,240 L190,200 L185,160 L195,120 L220,80 Z" fill="none" stroke="#334155" stroke-width="2"/>
+          </svg>
+        </div>
+
+        <!-- Top filter bar -->
+        <div style="position: absolute; top: 0; left: 0; right: 0; padding: 10px 16px; background: #0f172aee; border-bottom: 1px solid #1e293b; display: flex; gap: 6px; z-index: 2;">
+          <div style="background: #1e293b; border: 1px solid #334155; border-radius: 20px; padding: 3px 10px; font-size: 10px; color: #e2e8f0;">Chrome ×</div>
+          <div style="background: #1e293b; border: 1px solid #334155; border-radius: 20px; padding: 3px 10px; font-size: 10px;">FOB</div>
+          <div style="background: #1e293b; border: 1px solid #334155; border-radius: 20px; padding: 3px 10px; font-size: 10px;">$100-200/t</div>
+          <div style="background: #1e293b; border: 1px solid #334155; border-radius: 20px; padding: 3px 10px; font-size: 10px;">Verified only</div>
+          <div style="margin-left: auto; background: transparent; border: 1px solid #334155; border-radius: 6px; padding: 3px 10px; font-size: 10px; color: #e2e8f0;">☰ List view</div>
+        </div>
+
+        <!-- Mine pins on map -->
+        <div style="position: absolute; top: 30%; left: 55%; width: 14px; height: 14px; background: #f59e0b; border-radius: 50%; border: 2px solid #0c1425; box-shadow: 0 0 10px #f59e0b55; z-index: 1;"></div>
+        <div style="position: absolute; top: 50%; left: 38%; width: 14px; height: 14px; background: #a78bfa; border-radius: 50%; border: 2px solid #0c1425; box-shadow: 0 0 10px #a78bfa55; z-index: 1;"></div>
+        <div style="position: absolute; top: 55%; left: 32%; width: 14px; height: 14px; background: #60a5fa; border-radius: 50%; border: 2px solid #0c1425; box-shadow: 0 0 10px #60a5fa55; z-index: 1;"></div>
+        <div style="position: absolute; top: 35%; left: 78%; width: 10px; height: 10px; background: #10b981; border-radius: 2px; border: 2px solid #0c1425; z-index: 1;"></div>
+
+        <!-- Bottom drawer (collapsed) -->
+        <div style="position: absolute; bottom: 0; left: 0; right: 0; background: #0f172af0; border-top: 1px solid #1e293b; z-index: 2; backdrop-filter: blur(8px);">
+          <div style="text-align: center; padding: 6px; color: #64748b; font-size: 10px;">⌃ Drag up to see listings — 24 results</div>
+          <div style="display: flex; gap: 8px; padding: 0 12px 10px; overflow: hidden;">
+            <div style="min-width: 200px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px;">
+              <div style="color: #e2e8f0; font-weight: 600; font-size: 11px;">Chrome Ore 42%</div>
+              <div style="color: #64748b; font-size: 9px; margin-top: 2px;">Limpopo → Richards Bay</div>
+              <div style="color: #f59e0b; font-weight: 600; margin-top: 4px;">$185/t FOB</div>
+            </div>
+            <div style="min-width: 200px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px;">
+              <div style="color: #e2e8f0; font-weight: 600; font-size: 11px;">Manganese 44%</div>
+              <div style="color: #64748b; font-size: 9px; margin-top: 2px;">Hotazel → Saldanha</div>
+              <div style="color: #f59e0b; font-weight: 600; margin-top: 4px;">$4.20/dmtu CIF</div>
+            </div>
+            <div style="min-width: 200px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px; opacity: 0.6;">
+              <div style="color: #e2e8f0; font-weight: 600; font-size: 11px;">Iron Ore 62%</div>
+              <div style="color: #64748b; font-size: 9px; margin-top: 2px;">Sishen → Saldanha</div>
+              <div style="color: #f59e0b; font-weight: 600; margin-top: 4px;">$108/t FOB</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Map-Dominant with Bottom Drawer</h3>
+      <p>Full-screen map with filters floating on top. Listings in a draggable bottom sheet (mobile-native pattern). More map real estate — better for route visualization. Drawer pulls up for full listing browse.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Three-Panel -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 0; overflow: hidden;">
+      <div style="display: flex; height: 320px; font-family: system-ui; font-size: 11px; color: #94a3b8;">
+        <!-- Left: Filters -->
+        <div style="width: 18%; background: #0f172a; border-right: 1px solid #1e293b; padding: 10px; overflow: hidden;">
+          <div style="color: #e2e8f0; font-weight: 600; font-size: 11px; margin-bottom: 8px;">Filters</div>
+          <div style="margin-bottom: 10px;">
+            <div style="color: #64748b; font-size: 9px; text-transform: uppercase; margin-bottom: 4px;">Commodity</div>
+            <div style="background: #1e293b; border: 1px solid #f59e0b44; border-radius: 4px; padding: 3px 6px; font-size: 10px; color: #f59e0b; margin-bottom: 3px;">● Chrome</div>
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 4px; padding: 3px 6px; font-size: 10px; margin-bottom: 3px;">● Manganese</div>
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 4px; padding: 3px 6px; font-size: 10px; margin-bottom: 3px;">● Iron Ore</div>
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 4px; padding: 3px 6px; font-size: 10px;">● Coal</div>
+          </div>
+          <div style="margin-bottom: 10px;">
+            <div style="color: #64748b; font-size: 9px; text-transform: uppercase; margin-bottom: 4px;">Incoterm</div>
+            <div style="display: flex; gap: 3px; flex-wrap: wrap;">
+              <div style="background: #172554; color: #60a5fa; border-radius: 4px; padding: 2px 6px; font-size: 9px;">FOB</div>
+              <div style="background: #1e293b; border-radius: 4px; padding: 2px 6px; font-size: 9px;">CIF</div>
+              <div style="background: #1e293b; border-radius: 4px; padding: 2px 6px; font-size: 9px;">CFR</div>
+            </div>
+          </div>
+          <div style="margin-bottom: 10px;">
+            <div style="color: #64748b; font-size: 9px; text-transform: uppercase; margin-bottom: 4px;">Price Range</div>
+            <div style="background: #1e293b; border-radius: 4px; height: 4px; position: relative;">
+              <div style="position: absolute; left: 20%; right: 40%; top: 0; height: 4px; background: #60a5fa; border-radius: 4px;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 9px; color: #64748b; margin-top: 3px;"><span>$100</span><span>$300</span></div>
+          </div>
+          <div>
+            <div style="color: #64748b; font-size: 9px; text-transform: uppercase; margin-bottom: 4px;">Trust</div>
+            <div style="display: flex; gap: 2px;">
+              <div style="color: #f59e0b;">★★★★</div><div style="color: #334155;">★</div>
+            </div>
+            <div style="font-size: 9px; color: #64748b; margin-top: 2px;">4+ stars only</div>
+          </div>
+        </div>
+        <!-- Center: Listings -->
+        <div style="width: 32%; background: #0f172a; border-right: 1px solid #1e293b; overflow: hidden;">
+          <div style="padding: 8px 10px; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #e2e8f0; font-size: 11px; font-weight: 600;">24 listings</span>
+            <span style="color: #64748b; font-size: 10px;">Sort: Price ↑</span>
+          </div>
+          <div style="padding: 6px;">
+            <div style="background: #1e293b; border: 1px solid #f59e0b44; border-radius: 8px; padding: 8px; margin-bottom: 5px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #e2e8f0; font-weight: 600; font-size: 11px;">Chrome Ore 42%</span>
+                <span style="background: #065f46; color: #6ee7b7; padding: 1px 5px; border-radius: 8px; font-size: 8px;">✓</span>
+              </div>
+              <div style="color: #64748b; font-size: 9px; margin-top: 3px;">Limpopo → Richards Bay</div>
+              <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                <span style="color: #f59e0b; font-weight: 600; font-size: 11px;">$185/t</span>
+                <span style="color: #64748b; font-size: 9px;">15,000t</span>
+              </div>
+              <div style="display: flex; gap: 3px; margin-top: 4px; align-items: center;">
+                <span style="color: #f59e0b; font-size: 9px;">★★★★★</span>
+                <span style="color: #64748b; font-size: 9px;">Platinum Seller</span>
+              </div>
+            </div>
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px; margin-bottom: 5px;">
+              <div style="color: #e2e8f0; font-weight: 600; font-size: 11px;">Chrome Ore 40%</div>
+              <div style="color: #64748b; font-size: 9px; margin-top: 3px;">Mpumalanga → Richards Bay</div>
+              <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                <span style="color: #f59e0b; font-weight: 600; font-size: 11px;">$172/t</span>
+                <span style="color: #64748b; font-size: 9px;">8,000t</span>
+              </div>
+            </div>
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px; opacity: 0.6;">
+              <div style="color: #e2e8f0; font-weight: 600; font-size: 11px;">Chrome Conc. 46%</div>
+              <div style="color: #64748b; font-size: 9px; margin-top: 3px;">Northwest → Maputo</div>
+            </div>
+          </div>
+        </div>
+        <!-- Right: Map -->
+        <div style="flex: 1; background: #0c1425; position: relative; overflow: hidden;">
+          <div style="position: absolute; inset: 0; opacity: 0.12;">
+            <svg viewBox="0 0 300 350" style="width: 100%; height: 100%;">
+              <path d="M130,40 L200,35 L260,60 L280,100 L285,160 L270,220 L240,260 L200,290 L160,300 L130,290 L100,270 L70,230 L60,190 L55,150 L65,110 L90,70 Z" fill="none" stroke="#334155" stroke-width="2"/>
+            </svg>
+          </div>
+          <div style="position: absolute; top: 25%; left: 55%; width: 14px; height: 14px; background: #f59e0b; border-radius: 50%; border: 2px solid #0c1425; box-shadow: 0 0 12px #f59e0b66; animation: pulse 2s infinite;"></div>
+          <div style="position: absolute; top: 35%; left: 65%; width: 12px; height: 12px; background: #f59e0b; border-radius: 50%; border: 2px solid #0c1425; box-shadow: 0 0 8px #f59e0b44;"></div>
+          <div style="position: absolute; top: 30%; left: 82%; width: 10px; height: 10px; background: #10b981; border-radius: 2px; border: 2px solid #0c1425;"></div>
+          <svg style="position: absolute; inset: 0; width: 100%; height: 100%;">
+            <line x1="57%" y1="28%" x2="83%" y2="33%" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,3" opacity="0.7"/>
+            <line x1="67%" y1="38%" x2="83%" y2="33%" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.5"/>
+          </svg>
+          <div style="position: absolute; bottom: 8px; right: 8px; background: #0f172aee; border: 1px solid #1e293b; border-radius: 6px; padding: 4px;">
+            <div style="display: flex; flex-direction: column; gap: 1px;">
+              <div style="background: #1e293b; color: #e2e8f0; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px 4px 0 0; font-size: 14px; cursor: pointer;">+</div>
+              <div style="background: #1e293b; color: #e2e8f0; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 0 0 4px 4px; font-size: 14px; cursor: pointer;">−</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Three-Panel (Filters | Listings | Map)</h3>
+      <p>Dedicated filter sidebar on the left, listings in the center, map on the right. More powerful filtering with sliders, checkboxes, star ratings visible at all times. Best for power users who filter heavily.</p>
+    </div>
+  </div>
+</div>
+
+<style>
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 8px #f59e0b44; }
+    50% { box-shadow: 0 0 16px #f59e0b88; }
+  }
+</style>

@@ -80,7 +80,7 @@ export default function LivestockPage() {
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-stone-200 px-4 py-3 bg-white">
+      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
         <div className="flex items-center gap-2">
           <Beef size={20} className="text-emerald-700" />
           <h1 className="text-lg font-bold text-stone-900">Livestock Tracker</h1>
@@ -117,21 +117,21 @@ export default function LivestockPage() {
 
           {/* KPI row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="border border-stone-200 rounded-lg p-3 text-center">
+            <div className="rounded-lg p-3 text-center">
               <p className="text-[10px] text-stone-400 uppercase tracking-wide mb-0.5">Lambing %</p>
               <p className="text-xl font-bold text-emerald-700">{lambingPct}</p>
               <p className="text-[10px] text-stone-400">born / joined</p>
             </div>
-            <div className="border border-stone-200 rounded-lg p-3 text-center">
+            <div className="rounded-lg p-3 text-center">
               <p className="text-[10px] text-stone-400 uppercase tracking-wide mb-0.5">Weaning %</p>
               <p className="text-xl font-bold text-emerald-700">{weaningPct}</p>
               <p className="text-[10px] text-stone-400">weaned / joined</p>
             </div>
-            <div className="border border-stone-200 rounded-lg p-3 text-center">
+            <div className="rounded-lg p-3 text-center">
               <p className="text-[10px] text-stone-400 uppercase tracking-wide mb-0.5">Avg Wool/Head</p>
               <p className="text-xl font-bold text-emerald-700">{avgWoolPerHead}</p>
             </div>
-            <div className="border border-stone-200 rounded-lg p-3 text-center">
+            <div className="rounded-lg p-3 text-center">
               <p className="text-[10px] text-stone-400 uppercase tracking-wide mb-0.5">Mortality Rate</p>
               <p className="text-xl font-bold text-red-600">{mortalityRate}</p>
               <p className="text-[10px] text-stone-400">deaths / born</p>
@@ -140,12 +140,12 @@ export default function LivestockPage() {
 
           {/* Groups section */}
           <div>
-            <h2 className="text-sm font-semibold text-stone-700 mb-3">Flock Groups</h2>
+            <h2 className="text-[10px] font-bold uppercase tracking-wider text-[#6e7a73] mb-3">Flock Groups</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {groups.map((group) => (
                 <div
                   key={group.id}
-                  className="border border-stone-200 rounded-lg overflow-hidden"
+                  className="rounded-2xl overflow-hidden"
                 >
                   <button
                     onClick={() => setExpandedGroup(expandedGroup === group.id ? null : group.id)}
@@ -178,7 +178,7 @@ export default function LivestockPage() {
                     </div>
                   </button>
                   {expandedGroup === group.id && (
-                    <div className="border-t border-stone-200 p-4 bg-stone-50">
+                    <div className="border-t border-[#f3f4f3] p-4 bg-stone-50">
                       <p className="text-xs text-stone-500">
                         {group.average_weight_kg ? `Avg weight: ${group.average_weight_kg} kg` : 'No weight data'}
                         {group.record_count != null && ` | ${group.record_count} records`}
@@ -196,9 +196,9 @@ export default function LivestockPage() {
           {/* Breeding Tracker */}
           {breedingSeasons.length > 0 && (
             <div>
-              <h2 className="text-sm font-semibold text-stone-700 mb-3">Breeding Tracker</h2>
+              <h2 className="text-[10px] font-bold uppercase tracking-wider text-[#6e7a73] mb-3">Breeding Tracker</h2>
               {breedingSeasons.map((season) => (
-                <div key={season.id} className="border border-stone-200 rounded-lg p-4 mb-3">
+                <div key={season.id} className="rounded-2xl p-4 mb-3">
                   <div className="flex items-center gap-2 mb-4">
                     <h3 className="text-sm font-bold text-stone-800">
                       {season.group_name ?? 'Season'} {season.year}
@@ -264,10 +264,10 @@ export default function LivestockPage() {
           {/* Shearing Records */}
           {shearingRecords.length > 0 && (
             <div>
-              <h2 className="text-sm font-semibold text-stone-700 mb-3">Shearing Records</h2>
-              <div className="overflow-x-auto border border-stone-200 rounded-lg">
+              <h2 className="text-[10px] font-bold uppercase tracking-wider text-[#6e7a73] mb-3">Shearing Records</h2>
+              <div className="overflow-x-auto rounded-2xl">
                 <table className="w-full text-sm">
-                  <thead className="bg-stone-50 border-b border-stone-200">
+                  <thead className="bg-[#f3f4f3] border-b border-[#f3f4f3]">
                     <tr>
                       <th className="text-left px-4 py-2 font-medium text-stone-600">Date</th>
                       <th className="text-left px-4 py-2 font-medium text-stone-600 hidden sm:table-cell">Group</th>
@@ -282,7 +282,7 @@ export default function LivestockPage() {
                   </thead>
                   <tbody>
                     {shearingRecords.map((rec) => (
-                      <tr key={rec.id} className="border-b border-stone-100">
+                      <tr key={rec.id} className="border-b border-[#f3f4f3]">
                         <td className="px-4 py-2.5 text-stone-800">{formatDate(rec.date)}</td>
                         <td className="px-4 py-2.5 text-stone-600 hidden sm:table-cell">{rec.group_name ?? '-'}</td>
                         <td className="px-4 py-2.5 text-right text-stone-800">{rec.head_shorn ?? '-'}</td>

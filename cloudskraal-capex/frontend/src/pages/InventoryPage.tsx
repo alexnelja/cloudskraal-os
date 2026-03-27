@@ -115,7 +115,7 @@ export default function InventoryPage() {
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-[#bdc9c1]/15 px-4 py-3 bg-white">
+      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <Package size={20} className="text-emerald-700" />
@@ -197,7 +197,7 @@ export default function InventoryPage() {
             </div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-stone-50 border-b border-[#bdc9c1]/15">
+              <thead className="sticky top-0 bg-[#f3f4f3] border-b border-[#f3f4f3]">
                 <tr>
                   <th className="text-left px-4 py-2 font-medium text-stone-600">Product</th>
                   <th className="text-left px-4 py-2 font-medium text-stone-600 hidden sm:table-cell">Category</th>
@@ -215,7 +215,7 @@ export default function InventoryPage() {
                     <tr
                       key={prod.id}
                       onClick={() => setSelectedId(prod.id)}
-                      className={`border-b border-stone-100 cursor-pointer transition-colors ${
+                      className={`border-b border-[#f3f4f3] cursor-pointer transition-colors ${
                         selectedId === prod.id ? 'bg-emerald-50' : 'hover:bg-stone-50'
                       }`}
                     >
@@ -252,7 +252,7 @@ export default function InventoryPage() {
 
         {/* Detail panel */}
         {selectedId && (
-          <div className="md:w-[420px] md:flex-shrink-0 border-t md:border-t-0 md:border-l border-[#bdc9c1]/15 bg-white overflow-y-auto">
+          <div className="md:w-[420px] md:flex-shrink-0 border-t md:border-t-0 md:border-l border-[#f3f4f3] bg-white overflow-y-auto">
             {detailLoading ? (
               <div className="flex items-center justify-center py-16">
                 <p className="text-stone-400 text-sm">Loading...</p>
@@ -318,7 +318,7 @@ export default function InventoryPage() {
                     </div>
                   )}
                   {selectedProduct.notes && (
-                    <div className="pt-2 border-t border-[#bdc9c1]/15">
+                    <div className="pt-2 border-t border-[#f3f4f3]">
                       <p className="text-stone-500 text-xs mb-1">Notes</p>
                       <p className="text-stone-700 text-xs">{selectedProduct.notes}</p>
                     </div>
@@ -369,7 +369,7 @@ export default function InventoryPage() {
 
                 {/* Transaction modal (inline) */}
                 {showModal && (
-                  <form onSubmit={handleTxSubmit} className="bg-stone-50 rounded-lg p-3 mb-4 space-y-2 border border-[#bdc9c1]/15">
+                  <form onSubmit={handleTxSubmit} className="bg-stone-50 rounded-lg p-3 mb-4 space-y-2">
                     <p className="text-xs font-semibold text-stone-700">
                       Record {showModal === 'purchase' ? 'Purchase' : 'Usage'}
                     </p>

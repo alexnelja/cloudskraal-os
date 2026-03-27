@@ -74,7 +74,7 @@ function WikiHome() {
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex-shrink-0 border-b border-stone-200 px-4 py-3 flex items-center gap-3 flex-wrap bg-white">
+      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 flex items-center gap-3 flex-wrap bg-white">
         <div className="flex-1 min-w-0">
           <WikiSearch onSelect={handleSearchSelect} />
         </div>
@@ -97,7 +97,7 @@ function WikiHome() {
       </div>
 
       {/* Category filter pills */}
-      <div className="flex-shrink-0 border-b border-stone-200 px-4 py-2 flex items-center gap-2 flex-wrap bg-white">
+      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-2 flex items-center gap-2 flex-wrap bg-white">
         <button
           onClick={() => setCategoryFilter(null)}
           className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
@@ -331,7 +331,7 @@ function WikiSinglePage() {
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex-shrink-0 border-b border-stone-200 px-4 py-3 flex items-center gap-3 bg-white">
+      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 flex items-center gap-3 bg-white">
         <button
           onClick={() => navigate('/wiki')}
           className="flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 transition-colors"
@@ -405,7 +405,7 @@ function WikiSinglePage() {
           /* Inline edit mode */
           <div className="max-w-4xl mx-auto">
             {/* Editable metadata fields */}
-            <div className="px-6 pt-6 pb-4 space-y-3 border-b border-stone-200">
+            <div className="px-6 pt-6 pb-4 space-y-3 border-b border-[#f3f4f3]">
               <input
                 type="text"
                 value={editTitle}
@@ -501,7 +501,7 @@ function WikiSinglePage() {
             </div>
 
             {/* Sidebar (desktop) / Below content (mobile) */}
-            <div className="md:w-[280px] md:flex-shrink-0 border-t md:border-t-0 md:border-l border-stone-200 p-4 md:p-5">
+            <div className="md:w-[280px] md:flex-shrink-0 border-t md:border-t-0 md:border-l border-[#f3f4f3] p-4 md:p-5">
               {/* Outgoing links */}
               {page.outgoing_links.length > 0 && (
                 <div className="mb-5">

@@ -111,7 +111,7 @@ export default function FinancialsPage() {
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-[#bdc9c1]/15 px-4 py-3 bg-white">
+      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
         <div className="flex items-center gap-2">
           <BarChart3 size={20} className="text-emerald-700" />
           <h1 className="text-lg font-bold text-stone-900">Financials</h1>
@@ -124,15 +124,15 @@ export default function FinancialsPage() {
           {/* Dashboard metric cards */}
           {dashboard && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-5 text-center">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
                 <p className="text-xs text-emerald-600 uppercase tracking-wide mb-1">Total Revenue</p>
                 <p className="text-3xl font-bold text-emerald-800">{formatCurrencyShort(dashboard.totalRevenue)}</p>
               </div>
-              <div className="bg-red-50 border border-red-200 rounded-lg p-5 text-center">
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-center">
                 <p className="text-xs text-red-600 uppercase tracking-wide mb-1">Total Expenses</p>
                 <p className="text-3xl font-bold text-red-800">{formatCurrencyShort(dashboard.totalExpenses)}</p>
               </div>
-              <div className={`border rounded-lg p-5 text-center ${
+              <div className={`border rounded-2xl p-5 text-center ${
                 dashboard.netIncome >= 0
                   ? 'bg-emerald-50 border-emerald-200'
                   : 'bg-red-50 border-red-200'
@@ -149,7 +149,7 @@ export default function FinancialsPage() {
           {chartData.length > 0 && (
             <div>
               <h2 className="text-sm font-semibold text-stone-700 mb-3">Enterprise P&L</h2>
-              <div className="border border-[#bdc9c1]/15 rounded-lg p-4">
+              <div className="rounded-2xl p-4">
                 <ResponsiveContainer width="100%" height={Math.max(200, chartData.length * 50 + 60)}>
                   <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
                     <XAxis
@@ -189,7 +189,7 @@ export default function FinancialsPage() {
                 {dashboard.byEnterprise.map((ent) => {
                   const margin = ent.revenue > 0 ? ((ent.net / ent.revenue) * 100).toFixed(0) : '0';
                   return (
-                    <div key={ent.name} className="border border-[#bdc9c1]/15 rounded-lg p-4">
+                    <div key={ent.name} className="rounded-2xl p-4">
                       <h3 className="text-sm font-bold text-stone-800 mb-3">{ent.name}</h3>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
@@ -200,7 +200,7 @@ export default function FinancialsPage() {
                           <span className="text-stone-500">Expenses</span>
                           <span className="text-red-600 font-medium">{formatCurrency(ent.expenses)}</span>
                         </div>
-                        <div className="flex justify-between pt-2 border-t border-[#bdc9c1]/15">
+                        <div className="flex justify-between pt-2 border-t border-[#f3f4f3]">
                           <span className="text-stone-500">Net</span>
                           <span className={`font-bold ${ent.net >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                             {formatCurrency(ent.net)}
@@ -302,7 +302,7 @@ export default function FinancialsPage() {
             </div>
 
             {/* Transactions table */}
-            <div className="overflow-x-auto border border-[#bdc9c1]/15 rounded-lg">
+            <div className="overflow-x-auto rounded-2xl">
               {txLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <p className="text-stone-400 text-sm">Loading transactions...</p>
@@ -313,7 +313,7 @@ export default function FinancialsPage() {
                 </div>
               ) : (
                 <table className="w-full text-sm">
-                  <thead className="bg-stone-50 border-b border-[#bdc9c1]/15">
+                  <thead className="bg-[#f3f4f3] border-b border-[#f3f4f3]">
                     <tr>
                       <th className="text-left px-4 py-2 font-medium text-stone-600">Date</th>
                       <th className="text-left px-4 py-2 font-medium text-stone-600">Description</th>
@@ -325,7 +325,7 @@ export default function FinancialsPage() {
                   </thead>
                   <tbody>
                     {filteredTransactions.map((tx) => (
-                      <tr key={tx.id} className="border-b border-stone-100">
+                      <tr key={tx.id} className="border-b border-[#f3f4f3]">
                         <td className="px-4 py-2.5 text-stone-800 whitespace-nowrap">{formatDate(tx.date)}</td>
                         <td className="px-4 py-2.5 text-stone-600">
                           {tx.description ?? '-'}

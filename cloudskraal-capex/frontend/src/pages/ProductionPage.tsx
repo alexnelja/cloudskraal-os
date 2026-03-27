@@ -82,7 +82,7 @@ export default function ProductionPage() {
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-[#bdc9c1]/15 px-4 py-3 bg-white">
+      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <Factory size={20} className="text-emerald-700" />
@@ -136,7 +136,7 @@ export default function ProductionPage() {
                           key={batch.id}
                           onClick={() => setSelectedId(batch.id)}
                           className={`w-full text-left bg-white rounded-lg border p-3 transition-colors ${
-                            selectedId === batch.id ? 'border-emerald-500' : 'border-[#bdc9c1]/15'
+                            selectedId === batch.id ? 'border-emerald-500' : 'border-[#f3f4f3]'
                           }`}
                         >
                           <p className="text-sm font-bold text-stone-800 mb-1">{batch.batch_code}</p>
@@ -170,7 +170,7 @@ export default function ProductionPage() {
                         </button>
                       ))}
                       {items.length === 0 && (
-                        <div className="rounded-lg border border-dashed border-[#bdc9c1]/15 p-4 text-center">
+                        <div className="rounded-lg border border-dashed border-[#f3f4f3] p-4 text-center">
                           <p className="text-xs text-stone-400">No batches</p>
                         </div>
                       )}
@@ -184,7 +184,7 @@ export default function ProductionPage() {
 
         {/* Detail panel */}
         {selectedId && (
-          <div className="md:w-[440px] md:flex-shrink-0 border-t md:border-t-0 md:border-l border-[#bdc9c1]/15 bg-white overflow-y-auto">
+          <div className="md:w-[440px] md:flex-shrink-0 border-t md:border-t-0 md:border-l border-[#f3f4f3] bg-white overflow-y-auto">
             {detailLoading ? (
               <div className="flex items-center justify-center py-16">
                 <p className="text-stone-400 text-sm">Loading...</p>
@@ -255,7 +255,7 @@ export default function ProductionPage() {
                     </div>
                   )}
                   {selectedBatch.notes && (
-                    <div className="pt-2 border-t border-[#bdc9c1]/15">
+                    <div className="pt-2 border-t border-[#f3f4f3]">
                       <p className="text-stone-500 text-xs mb-1">Notes</p>
                       <p className="text-stone-700 text-xs">{selectedBatch.notes}</p>
                     </div>
@@ -350,9 +350,9 @@ export default function ProductionPage() {
                     <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">
                       Quality Tests ({selectedBatch.quality_tests.length})
                     </h3>
-                    <div className="border border-[#bdc9c1]/15 rounded-lg overflow-hidden">
+                    <div className="rounded-2xl overflow-hidden">
                       <table className="w-full text-xs">
-                        <thead className="bg-stone-50 border-b border-[#bdc9c1]/15">
+                        <thead className="bg-[#f3f4f3] border-b border-[#f3f4f3]">
                           <tr>
                             <th className="text-left px-3 py-1.5 font-medium text-stone-600">Type</th>
                             <th className="text-left px-3 py-1.5 font-medium text-stone-600">Date</th>
@@ -362,7 +362,7 @@ export default function ProductionPage() {
                         </thead>
                         <tbody>
                           {selectedBatch.quality_tests.map((qt: QualityTest) => (
-                            <tr key={qt.id} className="border-b border-stone-100">
+                            <tr key={qt.id} className="border-b border-[#f3f4f3]">
                               <td className="px-3 py-2 text-stone-800">{qt.test_type ?? '-'}</td>
                               <td className="px-3 py-2 text-stone-600">{formatDate(qt.test_date)}</td>
                               <td className="px-3 py-2 text-stone-600">{qt.results ?? '-'}</td>

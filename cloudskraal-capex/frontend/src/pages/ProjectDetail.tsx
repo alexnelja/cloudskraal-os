@@ -210,7 +210,7 @@ export default function ProjectDetail() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-stone-200 mb-6">
+      <div className="border-b border-[#f3f4f3] mb-6">
         <div className="flex gap-6">
           {tabs.map((tab) => (
             <button
@@ -232,8 +232,8 @@ export default function ProjectDetail() {
       {activeTab === 'overview' && (
         <div className="space-y-6">
           {/* Project info card */}
-          <div className="bg-white border border-stone-200 rounded-xl shadow-sm">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200">
+          <div className="bg-white rounded-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#f3f4f3]">
               <h3 className="text-sm font-semibold text-stone-800">Project Information</h3>
               {editingInfo ? (
                 <div className="flex items-center gap-2">
@@ -383,7 +383,7 @@ export default function ProjectDetail() {
                 {scenarios.map((s) => (
                   <div
                     key={s.id}
-                    className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm"
+                    className="bg-white rounded-2xl p-4"
                   >
                     <h4 className="text-sm font-semibold text-stone-800 mb-3">{s.name}</h4>
                     <div className="grid grid-cols-2 gap-2">
@@ -424,7 +424,7 @@ export default function ProjectDetail() {
 
           {/* NPV comparison chart */}
           {scenarioChartData.length > 0 && (
-            <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
+            <div className="bg-white rounded-2xl p-5">
               <h3 className="text-sm font-semibold text-stone-700 mb-4">
                 NPV Comparison (R thousands)
               </h3>
