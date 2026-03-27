@@ -18,19 +18,31 @@ import {
   BarChart3,
 } from 'lucide-react';
 
-const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/map', icon: MapIcon, label: 'Farm Map' },
-  { to: '/calendar', icon: CalendarDays, label: 'Calendar' },
-  { to: '/wiki', icon: BookOpen, label: 'Wiki' },
-  { to: '/equipment', icon: Wrench, label: 'Equipment' },
-  { to: '/livestock', icon: Beef, label: 'Livestock' },
-  { to: '/production', icon: Factory, label: 'Production' },
-  { to: '/employees', icon: Users, label: 'Employees' },
-  { to: '/inventory', icon: Package, label: 'Inventory' },
-  { to: '/financials', icon: BarChart3, label: 'Financials' },
-  { to: '/projects', icon: FolderOpen, label: 'CapEx' },
-  { to: '/compare', icon: GitCompare, label: 'Compare' },
+const navGroups = [
+  {
+    items: [
+      { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+      { to: '/map', icon: MapIcon, label: 'Farm Map' },
+      { to: '/calendar', icon: CalendarDays, label: 'Calendar' },
+      { to: '/wiki', icon: BookOpen, label: 'Wiki' },
+    ],
+  },
+  {
+    items: [
+      { to: '/equipment', icon: Wrench, label: 'Equipment' },
+      { to: '/livestock', icon: Beef, label: 'Livestock' },
+      { to: '/production', icon: Factory, label: 'Production' },
+    ],
+  },
+  {
+    items: [
+      { to: '/employees', icon: Users, label: 'Employees' },
+      { to: '/inventory', icon: Package, label: 'Inventory' },
+      { to: '/financials', icon: BarChart3, label: 'Financials' },
+      { to: '/projects', icon: FolderOpen, label: 'CapEx' },
+      { to: '/compare', icon: GitCompare, label: 'Compare' },
+    ],
+  },
 ];
 
 export default function Sidebar() {
@@ -43,7 +55,7 @@ export default function Sidebar() {
       }`}
     >
       {/* Logo area */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-emerald-700">
+      <div className="flex items-center gap-3 px-5 py-6 border-b border-emerald-700">
         <div className="flex-shrink-0 w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
           <Wheat size={18} className="text-white" />
         </div>
@@ -57,22 +69,33 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 py-4">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/'}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-colors ${
-                isActive
-                  ? 'bg-emerald-700 text-white'
-                  : 'text-emerald-200 hover:bg-emerald-700/50 hover:text-white'
-              }`
-            }
-          >
-            <item.icon size={20} className="flex-shrink-0" />
-            {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
-          </NavLink>
+        {navGroups.map((group, groupIdx) => (
+          <div key={groupIdx}>
+            {groupIdx > 0 && (
+              <div className="my-3" />
+            )}
+            {group.items.map((item) => (
+              <div key={item.to}>
+                <NavLink
+                  to={item.to}
+                  end={item.to === '/'}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-5 py-3 mx-2 rounded-lg transition-colors ${
+                      isActive
+                        ? 'bg-gradient-to-br from-[#005d42] to-[#047857] text-white font-medium'
+                        : 'text-emerald-200 hover:bg-emerald-700/50 hover:text-white'
+                    }`
+                  }
+                >
+                  <item.icon size={20} className="flex-shrink-0" />
+                  {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+                </NavLink>
+                {(item.to === '/wiki' || item.to === '/production') && (
+                  <div className="mt-2" />
+                )}
+              </div>
+            ))}
+          </div>
         ))}
       </nav>
 

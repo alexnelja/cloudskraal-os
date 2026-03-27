@@ -232,11 +232,11 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
       }}
     >
       <div
-        className="w-full max-w-xl mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden"
+        className="w-full max-w-xl mx-4 bg-white/90 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Search input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-stone-100">
+        <div className="flex items-center gap-3 px-4 py-3">
           <svg
             className="w-5 h-5 text-stone-400 flex-shrink-0"
             fill="none"
@@ -257,7 +257,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search Cloudskraal OS…"
-            className="flex-1 text-lg text-stone-900 placeholder-stone-400 outline-none bg-transparent"
+            className="flex-1 text-lg text-[#1a1c1c] placeholder-stone-400 outline-none bg-[#f3f4f3] rounded-lg px-3 py-2"
           />
           <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-stone-400 border border-stone-200 rounded">
             Esc
@@ -278,7 +278,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
           {Object.entries(grouped).map(([category, categoryItems]) => (
             <div key={category}>
               <div className="px-4 pt-3 pb-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">
+                <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#047857]">
                   {category}
                 </span>
               </div>
@@ -292,8 +292,8 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                     data-selected={isSelected}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
                       isSelected
-                        ? 'bg-emerald-50'
-                        : 'hover:bg-stone-50'
+                        ? 'bg-[#047857]/8'
+                        : 'hover:bg-[#f3f4f3]'
                     }`}
                     onMouseEnter={() => setSelectedIndex(currentIndex)}
                     onClick={() => handleSelect(item)}
@@ -303,7 +303,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                     </span>
                     <div className="flex-1 min-w-0">
                       <span className={`block text-sm font-medium truncate ${
-                        isSelected ? 'text-emerald-900' : 'text-stone-800'
+                        isSelected ? 'text-[#1a1c1c]' : 'text-[#1a1c1c]'
                       }`}>
                         {item.title}
                       </span>
@@ -331,7 +331,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2 border-t border-stone-100 flex items-center gap-4 text-xs text-stone-400">
+        <div className="px-4 py-2 bg-[#f3f4f3] flex items-center gap-4 text-xs text-[#6e7a73]">
           <span className="flex items-center gap-1">
             <kbd className="px-1 border border-stone-200 rounded">↑↓</kbd> navigate
           </span>

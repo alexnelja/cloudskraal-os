@@ -19,20 +19,67 @@
   --outline-variant: #bdc9c1;
 }
 
-/* Refined card styling */
+/* Refined card styling — no-line rule: tonal contrast, no borders */
 .card {
   background: var(--surface-container-lowest);
-  border: 1px solid rgba(189, 201, 193, 0.15);
-  border-radius: 0.75rem;
+  border-radius: 1rem;
 }
 
 /* Tiny uppercase labels */
 .label-xs {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
   color: var(--outline);
+}
+
+/* Stitch Design System */
+.btn-primary {
+  background: linear-gradient(145deg, #005d42, #047857);
+  color: white;
+  border-radius: 0.5rem;
+  font-weight: 600;
+}
+.btn-primary:hover {
+  background: linear-gradient(145deg, #004d38, #065f46);
+}
+.glass {
+  background: rgba(255,255,255,0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.glass-dark {
+  background: rgba(26,28,28,0.8);
+  backdrop-filter: blur(20px);
+}
+
+/* Secondary button — no border */
+.btn-secondary {
+  background: #e2e2e2;
+  color: #1a1c1c;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 0.625rem 1rem;
+  border: none;
+  cursor: pointer;
+}
+
+/* Input — no border, tonal bg, focus bottom line */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  background: var(--surface-container-low);
+  border: 2px solid transparent;
+  border-radius: 0.5rem;
+  transition: border-color 0.15s;
+}
+input:not([type="checkbox"]):not([type="radio"]):focus,
+textarea:focus,
+select:focus {
+  border-bottom-color: var(--primary);
+  outline: none;
 }
 
 body {

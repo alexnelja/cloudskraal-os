@@ -21,7 +21,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f9f9f8]">
       {/* Mobile top bar */}
-      <header className="fixed top-0 w-full flex justify-between items-center px-4 h-14 bg-[#f9f9f8] border-b border-[#bdc9c1]/15 z-40 md:hidden">
+      <header className="fixed top-0 w-full flex justify-between items-center px-4 h-14 bg-white/80 backdrop-blur-xl z-40 md:hidden">
         <div className="flex items-center gap-2 text-[#005d42] font-bold">
           <Wheat size={20} />
           <span className="text-base font-semibold tracking-tight">Cloudskraal</span>

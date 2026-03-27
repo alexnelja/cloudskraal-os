@@ -93,12 +93,12 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1c]">Dashboard</h1>
+          <h1 className="text-xl font-semibold text-[#1a1c1c]">Dashboard</h1>
           <p className="text-sm text-[#6e7a73]">Capital expenditure overview for Cloudskraal Boerderye</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#005d42] text-white text-sm font-medium rounded-lg hover:bg-[#004d37] transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-[#005d42] to-[#047857] text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
         >
           <Plus size={18} />
           New Project
@@ -109,7 +109,7 @@ export default function Dashboard() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white border border-[#bdc9c1]/15 rounded-xl p-4 animate-pulse">
+            <div key={i} className="bg-white rounded-2xl p-5 animate-pulse">
               <div className="h-3 bg-stone-200 rounded w-20 mb-3" />
               <div className="h-6 bg-stone-200 rounded w-32" />
             </div>
@@ -162,8 +162,8 @@ export default function Dashboard() {
               }))
               .sort((a, b) => b.total - a.total);
             return (
-              <div className="bg-white border border-[#bdc9c1]/15 rounded-xl p-5">
-                <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#6e7a73] mb-4">Budget by Type (R millions)</h3>
+              <div className="bg-white rounded-2xl p-5">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#6e7a73] mb-4">Budget by Type (R millions)</h3>
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={budgetByType} layout="vertical" margin={{ left: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#bdc9c1" strokeOpacity={0.3} />
@@ -204,8 +204,8 @@ export default function Dashboard() {
               }));
             if (topNpv.length === 0) return null;
             return (
-              <div className="bg-white border border-[#bdc9c1]/15 rounded-xl p-5">
-                <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#6e7a73] mb-4">Top 10 NPV Ranking (R thousands)</h3>
+              <div className="bg-white rounded-2xl p-5">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#6e7a73] mb-4">Top 10 NPV Ranking (R thousands)</h3>
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={topNpv} layout="vertical" margin={{ left: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#bdc9c1" strokeOpacity={0.3} />
@@ -247,9 +247,9 @@ export default function Dashboard() {
             {tiers.map(t => {
               const TierIcon = t.icon;
               return (
-                <div key={t.tier} className={`bg-white p-4 rounded-xl border border-[#bdc9c1]/15 border-l-4 ${t.borderColor}`}>
+                <div key={t.tier} className={`bg-white p-5 rounded-2xl border-l-4 ${t.borderColor}`}>
                   <div className="flex items-center justify-between mb-3">
-                    <span className={`text-[10px] font-bold uppercase tracking-wider ${t.textColor}`}>{t.label}</span>
+                    <span className={`text-[11px] font-bold uppercase tracking-[0.05em] ${t.textColor}`}>{t.label}</span>
                     <TierIcon size={16} className={t.textColor} />
                   </div>
                   <p className="text-lg font-bold text-[#1a1c1c]">{formatCompactZAR(t.totalBudget)}</p>
@@ -313,9 +313,9 @@ export default function Dashboard() {
         }
 
         return (
-          <div className="bg-white border border-[#bdc9c1]/15 rounded-xl mb-6">
+          <div className="bg-white rounded-2xl mb-6">
             {/* Card header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#bdc9c1]/15">
+            <div className="flex items-center justify-between px-5 py-4">
               <div className="flex items-center gap-2">
                 <CalendarDays size={16} className="text-[#005d42]" />
                 <h2 className="text-base font-semibold text-[#1a1c1c]">Upcoming Tasks</h2>
@@ -332,7 +332,7 @@ export default function Dashboard() {
             {overdueTasks.length > 0 && (
               <Link
                 to="/calendar/tasks"
-                className="flex items-center gap-3 px-5 py-3 bg-[#ba1a1a]/10 text-[#ba1a1a] border border-[#ba1a1a]/20 rounded-xl hover:bg-[#ba1a1a]/15 transition-colors mx-4 my-2"
+                className="flex items-center gap-3 px-5 py-3 bg-[#ba1a1a]/10 text-[#ba1a1a] rounded-2xl hover:bg-[#ba1a1a]/15 transition-colors mx-4 my-2"
               >
                 <AlertTriangle size={16} className="text-[#ba1a1a] shrink-0" />
                 <span className="text-sm font-semibold text-[#ba1a1a]">
@@ -359,17 +359,17 @@ export default function Dashboard() {
 
             {/* Grouped upcoming tasks */}
             {groups.length > 0 ? (
-              <div className="divide-y divide-[#bdc9c1]/15">
+              <div className="space-y-1 px-4 pb-4">
                 {groups.map(group => (
                   <div key={group.label}>
-                    <div className="px-5 py-2 bg-[#f3f4f3] border-b border-[#bdc9c1]/15">
-                      <span className="text-[11px] font-bold uppercase tracking-widest text-[#6e7a73]">{group.label}</span>
+                    <div className="px-1 py-2 bg-[#f3f4f3] rounded-lg mt-2">
+                      <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#6e7a73] px-2">{group.label}</span>
                     </div>
                     {group.tasks.map(task => (
                       <Link
                         key={task.id}
                         to="/calendar/tasks"
-                        className="flex items-center gap-3 px-5 py-3 hover:bg-[#f3f4f3] transition-colors border border-[#bdc9c1]/15 rounded-xl"
+                        className="flex items-center gap-3 px-3 py-3 hover:bg-[#f3f4f3] transition-colors rounded-xl"
                       >
                         {/* Priority left border accent */}
                         <div
@@ -422,8 +422,8 @@ export default function Dashboard() {
       })()}
 
       {/* Recent projects */}
-      <div className="bg-white border border-[#bdc9c1]/15 rounded-xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#bdc9c1]/15">
+      <div className="bg-white rounded-2xl">
+        <div className="flex items-center justify-between px-5 py-4">
           <h2 className="text-base font-semibold text-[#1a1c1c]">Recent Projects</h2>
           <Link
             to="/projects"
@@ -451,12 +451,12 @@ export default function Dashboard() {
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-[#bdc9c1]/15">
+          <div className="px-2 pb-2">
             {recentProjects.map((project) => (
               <Link
                 key={project.id}
                 to={`/projects/${project.id}`}
-                className="flex items-center justify-between px-5 py-4 hover:bg-[#f3f4f3] transition-colors"
+                className="flex items-center justify-between px-3 py-4 hover:bg-[#f3f4f3] rounded-xl transition-colors"
               >
                 <div>
                   <p className="text-sm font-bold text-[#1a1c1c]">{project.name}</p>
