@@ -4,8 +4,9 @@ import { Plus, Pin, ChevronRight, Trash2, Pencil, ArrowLeft, Network } from 'luc
 import WikiSearch from '../components/wiki/WikiSearch';
 import WikiRenderer from '../components/wiki/WikiRenderer';
 import WikiEditor from '../components/wiki/WikiEditor';
+import WikiInlineEditor from '../components/wiki/WikiInlineEditor';
 import WikiGraph from '../components/wiki/WikiGraph';
-import { getWikiPages, getWikiPage, deleteWikiPage } from '../api/wiki';
+import { getWikiPages, getWikiPage, deleteWikiPage, updateWikiPage } from '../api/wiki';
 import { WIKI_CATEGORIES } from '../types/wiki';
 import type { WikiPageSummary, WikiPage as WikiPageType } from '../types/wiki';
 import { ENTERPRISE_COLORS, ENTERPRISE_LABELS } from '../types/farm';
@@ -238,8 +239,13 @@ function WikiSinglePage() {
   const [page, setPage] = useState<WikiPageType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showEditor, setShowEditor] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editEnterprise, setEditEnterprise] = useState('');
+  const [editTagsStr, setEditTagsStr] = useState('');
 
   const fetchPage = useCallback(() => {
     if (!slug) return;
@@ -261,6 +267,43 @@ function WikiSinglePage() {
     fetchPage();
   }, [fetchPage]);
 
+  function startEditing() {
+    if (!page) return;
+    setEditTitle(page.title);
+    setEditCategory(page.category ?? '');
+    setEditEnterprise(page.enterprise ?? '');
+    setEditTagsStr(page.tags.join(', '));
+    setEditing(true);
+  }
+
+  async function handleInlineSave(body: string) {
+    if (!slug || !page) return;
+    setSaving(true);
+    try {
+      const tags = editTagsStr
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+      await updateWikiPage(slug, {
+        title: editTitle.trim() || page.title,
+        body,
+        category: editCategory || undefined,
+        enterprise: editEnterprise || undefined,
+        tags,
+      });
+      setSaving(false);
+      setEditing(false);
+      fetchPage();
+    } catch (err) {
+      console.error('Failed to save:', err);
+      setSaving(false);
+    }
+  }
+
+  function handleCancelEdit() {
+    setEditing(false);
+  }
+
   async function handleDelete() {
     if (!slug) return;
     try {
@@ -271,14 +314,19 @@ function WikiSinglePage() {
     }
   }
 
-  function handleEditorSave() {
-    setShowEditor(false);
-    fetchPage();
-  }
-
   const cat = page?.category ? WIKI_CATEGORIES[page.category] : null;
   const entColor = page?.enterprise ? ENTERPRISE_COLORS[page.enterprise] : null;
   const entLabel = page?.enterprise ? (ENTERPRISE_LABELS[page.enterprise] ?? page.enterprise) : null;
+
+  const ENTERPRISES = [
+    { value: '', label: 'None' },
+    { value: 'rooibos', label: 'Rooibos' },
+    { value: 'wine', label: 'Wine' },
+    { value: 'sheep', label: 'Sheep' },
+    { value: 'buchu', label: 'Buchu' },
+    { value: 'sceletium', label: 'Sceletium' },
+    { value: 'all', label: 'All Enterprises' },
+  ];
 
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
@@ -291,7 +339,7 @@ function WikiSinglePage() {
           <ArrowLeft size={16} />
           Wiki
         </button>
-        {cat && (
+        {cat && !editing && (
           <>
             <ChevronRight size={14} className="text-stone-300" />
             <span className="text-xs font-medium" style={{ color: cat.color }}>
@@ -300,10 +348,10 @@ function WikiSinglePage() {
           </>
         )}
         <div className="flex-1" />
-        {page && (
+        {page && !editing && (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowEditor(true)}
+              onClick={startEditing}
               className="flex items-center gap-1 px-3 py-1.5 border border-stone-300 text-stone-700 text-xs font-medium rounded-lg hover:bg-stone-50 transition-colors"
             >
               <Pencil size={14} />
@@ -352,6 +400,58 @@ function WikiSinglePage() {
             >
               Back to Wiki
             </button>
+          </div>
+        ) : page && editing ? (
+          /* Inline edit mode */
+          <div className="max-w-4xl mx-auto">
+            {/* Editable metadata fields */}
+            <div className="px-6 pt-6 pb-4 space-y-3 border-b border-stone-200">
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Page title"
+                className="w-full text-2xl font-bold text-stone-900 bg-transparent border-none outline-none focus:ring-0 placeholder:text-stone-300"
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <select
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value)}
+                  className="px-3 py-1.5 border border-stone-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">No category</option>
+                  {Object.entries(WIKI_CATEGORIES).map(([key, val]) => (
+                    <option key={key} value={key}>
+                      {val.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={editEnterprise}
+                  onChange={(e) => setEditEnterprise(e.target.value)}
+                  className="px-3 py-1.5 border border-stone-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  {ENTERPRISES.map((ent) => (
+                    <option key={ent.value} value={ent.value}>
+                      {ent.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={editTagsStr}
+                  onChange={(e) => setEditTagsStr(e.target.value)}
+                  placeholder="Tags (comma-separated)"
+                  className="px-3 py-1.5 border border-stone-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+            <WikiInlineEditor
+              initialBody={page.body}
+              onSave={handleInlineSave}
+              onCancel={handleCancelEdit}
+              saving={saving}
+            />
           </div>
         ) : page ? (
           <div className="flex flex-col md:flex-row">
@@ -449,15 +549,6 @@ function WikiSinglePage() {
           </div>
         ) : null}
       </div>
-
-      {page && (
-        <WikiEditor
-          page={page}
-          open={showEditor}
-          onClose={() => setShowEditor(false)}
-          onSave={handleEditorSave}
-        />
-      )}
     </div>
   );
 }
