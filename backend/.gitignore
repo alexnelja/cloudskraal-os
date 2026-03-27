@@ -1,0 +1,4 @@
+node_modules/
+data/capex.db
+.env
+data/google-credentials.json

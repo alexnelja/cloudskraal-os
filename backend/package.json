@@ -1,0 +1,23 @@
+{
+  "name": "cloudskraal-capex-backend",
+  "version": "1.0.0",
+  "description": "Cloudskraal CapEx evaluation API",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.2",
+    "better-sqlite3": "^11.7.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
+    "express": "^4.21.0",
+    "googleapis": "^171.4.0",
+    "uuid": "^10.0.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
