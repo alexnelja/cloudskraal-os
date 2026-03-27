@@ -38,3 +38,24 @@ body {
 .wiki-content th { background: #fafaf9; font-weight: 600; }
 .wiki-content blockquote { border-left: 3px solid #d6d3d1; margin: 0.75rem 0; padding: 0.25rem 1rem; color: #78716c; }
 .wiki-content hr { border: none; border-top: 1px solid #e7e5e4; margin: 1.5rem 0; }
+
+/* Wiki callout styles */
+.wiki-content .callout {
+  border-left: 4px solid;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+}
+.wiki-content .callout-title { font-weight: 600; margin-bottom: 0.25rem; font-size: 0.875rem; }
+.wiki-content .callout-content { font-size: 0.875rem; }
+.wiki-content .callout-note { border-color: #2563eb; background: #eff6ff; }
+.wiki-content .callout-warning { border-color: #d97706; background: #fffbeb; }
+.wiki-content .callout-tip { border-color: #047857; background: #ecfdf5; }
+.wiki-content .callout-danger { border-color: #dc2626; background: #fef2f2; }
+.wiki-content .callout-example { border-color: #7c3aed; background: #f5f3ff; }
+.wiki-content .callout-todo { border-color: #6b7280; background: #f9fafb; }
+.wiki-content .callout-info { border-color: #0ea5e9; background: #f0f9ff; }
+.wiki-content .callout-success { border-color: #16a34a; background: #f0fdf4; }
+.wiki-content .callout-question { border-color: #eab308; background: #fefce8; }
+.wiki-content .callout-bug { border-color: #dc2626; background: #fef2f2; }
+.wiki-content .callout-quote { border-color: #6b7280; background: #f9fafb; font-style: italic; }
