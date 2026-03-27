@@ -10,9 +10,13 @@ import type { SimulationNodeDatum, SimulationLinkDatum } from 'd3-force';
 import { getWikiGraph } from '../../api/wiki';
 import { WIKI_CATEGORIES } from '../../types/wiki';
 
+type ThemeMode = 'light' | 'dark' | 'system';
+
 interface WikiGraphProps {
   onPageSelect: (slug: string) => void;
+  onNodePreview?: (slug: string, position: { x: number; y: number }) => void;
   highlightSlug?: string | null;
+  theme?: ThemeMode;
 }
 
 interface GraphNode extends SimulationNodeDatum {
@@ -44,7 +48,22 @@ function nodeColor(category: string): string {
   return WIKI_CATEGORIES[category]?.color ?? '#9ca3af';
 }
 
-export default function WikiGraph({ onPageSelect, highlightSlug }: WikiGraphProps) {
+function useSystemDark(): boolean {
+  const [dark, setDark] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => setDark(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return dark;
+}
+
+export default function WikiGraph({ onPageSelect, onNodePreview, highlightSlug, theme = 'system' }: WikiGraphProps) {
+  const systemDark = useSystemDark();
+  const isDark = theme === 'dark' || (theme === 'system' && systemDark);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const simRef = useRef<ReturnType<typeof forceSimulation<GraphNode>> | null>(null);
@@ -237,9 +256,14 @@ export default function WikiGraph({ onPageSelect, highlightSlug }: WikiGraphProp
     return `M ${s.x} ${s.y} Q ${cx} ${cy} ${t.x} ${t.y}`;
   }
 
+  // Theme-aware colors
+  const colors = isDark
+    ? { bg: 'bg-stone-950', legendBg: 'bg-stone-900/90', legendBorder: 'border-stone-700', legendText: 'text-stone-300', hintText: 'text-stone-500', tooltipBg: 'bg-stone-900', tooltipBorder: 'border-stone-600', tooltipTitle: 'text-white', tooltipMeta: 'text-stone-400', tooltipSub: 'text-stone-500', edgeColor: '#44403c', nodeStroke: '#1c1917', labelFill: '#d6d3d1', divider: 'border-stone-700' }
+    : { bg: 'bg-[#f3f4f3]', legendBg: 'bg-white/90 backdrop-blur-xl', legendBorder: 'border-[#bdc9c1]/15', legendText: 'text-stone-700', hintText: 'text-stone-400', tooltipBg: 'bg-white', tooltipBorder: 'border-[#bdc9c1]/30', tooltipTitle: 'text-stone-900', tooltipMeta: 'text-stone-500', tooltipSub: 'text-stone-400', edgeColor: '#bdc9c1', nodeStroke: '#ffffff', labelFill: '#44403c', divider: 'border-[#bdc9c1]/20' };
+
   if (loading) {
     return (
-      <div ref={containerRef} className="flex-1 flex items-center justify-center bg-stone-50">
+      <div ref={containerRef} className={`flex-1 flex items-center justify-center ${colors.bg}`}>
         <p className="text-stone-400 text-sm">Building graph...</p>
       </div>
     );
@@ -247,7 +271,7 @@ export default function WikiGraph({ onPageSelect, highlightSlug }: WikiGraphProp
 
   if (error) {
     return (
-      <div ref={containerRef} className="flex-1 flex items-center justify-center bg-stone-50">
+      <div ref={containerRef} className={`flex-1 flex items-center justify-center ${colors.bg}`}>
         <p className="text-red-500 text-sm">{error}</p>
       </div>
     );
@@ -259,18 +283,18 @@ export default function WikiGraph({ onPageSelect, highlightSlug }: WikiGraphProp
   return (
     <div
       ref={containerRef}
-      className="flex-1 relative overflow-hidden bg-stone-950 select-none"
+      className={`flex-1 relative overflow-hidden ${colors.bg} select-none`}
       style={{ cursor: isPanningRef.current ? 'grabbing' : 'grab' }}
     >
       {/* Legend */}
-      <div className="absolute top-3 right-3 z-10 bg-stone-900/90 border border-stone-700 rounded-lg px-3 py-2.5 text-xs">
+      <div className={`absolute top-3 right-3 z-10 ${colors.legendBg} border ${colors.legendBorder} rounded-2xl px-3 py-2.5 text-xs`}>
         {Object.entries(WIKI_CATEGORIES).map(([key, val]) => (
           <div key={key} className="flex items-center gap-2 py-0.5">
             <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: val.color }} />
-            <span className="text-stone-300">{val.label}</span>
+            <span className={colors.legendText}>{val.label}</span>
           </div>
         ))}
-        <div className="border-t border-stone-700 mt-1.5 pt-1.5 text-stone-500">
+        <div className={`border-t ${colors.divider} mt-1.5 pt-1.5 ${colors.hintText}`}>
           Scroll to zoom · Drag to pan
         </div>
       </div>
@@ -278,14 +302,15 @@ export default function WikiGraph({ onPageSelect, highlightSlug }: WikiGraphProp
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="absolute z-20 pointer-events-none bg-stone-900 border border-stone-600 rounded-lg px-3 py-2 text-xs shadow-xl max-w-[200px]"
+          className={`absolute z-20 pointer-events-none ${colors.tooltipBg} border ${colors.tooltipBorder} rounded-2xl px-3 py-2 text-xs shadow-xl max-w-[220px]`}
           style={{ left: tooltip.x + 12, top: tooltip.y - 10 }}
         >
-          <p className="font-semibold text-white truncate">{tooltip.node.title}</p>
-          <p className="text-stone-400 mt-0.5">
+          <p className={`font-semibold ${colors.tooltipTitle} truncate`}>{tooltip.node.title}</p>
+          <p className={`${colors.tooltipMeta} mt-0.5`}>
             {WIKI_CATEGORIES[tooltip.node.category]?.label ?? tooltip.node.category}
           </p>
-          <p className="text-stone-500 mt-0.5">{tooltip.node.linkCount} link{tooltip.node.linkCount !== 1 ? 's' : ''}</p>
+          <p className={`${colors.tooltipSub} mt-0.5`}>{tooltip.node.linkCount} link{tooltip.node.linkCount !== 1 ? 's' : ''}</p>
+          <p className={`${colors.hintText} mt-1 text-[10px]`}>Click to preview</p>
         </div>
       )}
 
@@ -317,9 +342,9 @@ export default function WikiGraph({ onPageSelect, highlightSlug }: WikiGraphProp
                   className="link"
                   d={edgePath(edge)}
                   fill="none"
-                  stroke={isHighlighted ? '#d97706' : '#44403c'}
+                  stroke={isHighlighted ? '#d97706' : colors.edgeColor}
                   strokeWidth={isHighlighted ? 1.5 : 0.5}
-                  strokeOpacity={isHighlighted ? 0.8 : 0.5}
+                  strokeOpacity={isHighlighted ? 0.8 : isDark ? 0.5 : 0.4}
                 />
               );
             })}
@@ -339,7 +364,17 @@ export default function WikiGraph({ onPageSelect, highlightSlug }: WikiGraphProp
                   onMouseDown={(e) => handleNodeMouseDown(e, node)}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onPageSelect(node.slug);
+                    if (onNodePreview) {
+                      const rect = svgRef.current?.getBoundingClientRect();
+                      if (rect) {
+                        onNodePreview(node.slug, {
+                          x: e.clientX - rect.left,
+                          y: e.clientY - rect.top,
+                        });
+                      }
+                    } else {
+                      onPageSelect(node.slug);
+                    }
                   }}
                   onMouseEnter={(e) => {
                     const rect = svgRef.current?.getBoundingClientRect();
@@ -368,8 +403,8 @@ export default function WikiGraph({ onPageSelect, highlightSlug }: WikiGraphProp
                     r={node.radius}
                     fill={color}
                     fillOpacity={0.85}
-                    stroke={isHighlighted ? '#f59e0b' : '#1c1917'}
-                    strokeWidth={isHighlighted ? 2 : 1}
+                    stroke={isHighlighted ? '#f59e0b' : colors.nodeStroke}
+                    strokeWidth={isHighlighted ? 2 : isDark ? 1 : 1.5}
                   />
                   {/* Label */}
                   {showLabel && (
@@ -378,7 +413,7 @@ export default function WikiGraph({ onPageSelect, highlightSlug }: WikiGraphProp
                       textAnchor="middle"
                       y={node.radius + 10}
                       fontSize={9}
-                      fill="#d6d3d1"
+                      fill={colors.labelFill}
                       style={{ pointerEvents: 'none', userSelect: 'none' }}
                     >
                       {node.title.length > 18 ? node.title.slice(0, 16) + '…' : node.title}

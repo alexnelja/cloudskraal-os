@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { Plus, Pin, ChevronRight, Trash2, Pencil, ArrowLeft, Network } from 'lucide-react';
+import { Plus, Pin, ChevronRight, Trash2, Pencil, ArrowLeft, Network, X } from 'lucide-react';
 import WikiSearch from '../components/wiki/WikiSearch';
 import WikiRenderer from '../components/wiki/WikiRenderer';
 import WikiEditor from '../components/wiki/WikiEditor';
@@ -557,30 +557,155 @@ function WikiSinglePage() {
 
 function WikiGraphView() {
   const navigate = useNavigate();
+  const [graphTheme, setGraphTheme] = useState<'light' | 'dark' | 'system'>('system');
+  const [previewSlug, setPreviewSlug] = useState<string | null>(null);
+  const [previewPos, setPreviewPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [previewPage, setPreviewPage] = useState<WikiPageType | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   function handlePageSelect(slug: string) {
     navigate(`/wiki/${slug}`);
   }
 
+  function handleNodePreview(slug: string, position: { x: number; y: number }) {
+    if (previewSlug === slug) {
+      // Toggle off
+      setPreviewSlug(null);
+      setPreviewPage(null);
+      return;
+    }
+    setPreviewSlug(slug);
+    setPreviewPos(position);
+    setPreviewLoading(true);
+    getWikiPage(slug)
+      .then((page) => { setPreviewPage(page); setPreviewLoading(false); })
+      .catch(() => { setPreviewLoading(false); });
+  }
+
+  // Determine header colors based on theme
+  const systemDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = graphTheme === 'dark' || (graphTheme === 'system' && systemDark);
+  const headerBg = isDark ? 'bg-stone-900 border-stone-800' : 'bg-white/80 backdrop-blur-xl border-[#f3f4f3]';
+  const headerText = isDark ? 'text-stone-300' : 'text-stone-700';
+  const headerMuted = isDark ? 'text-stone-400' : 'text-stone-500';
+  const headerDivider = isDark ? 'text-stone-600' : 'text-stone-300';
+
+  const themeIcons = { light: '☀️', dark: '🌙', system: '💻' };
+
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
-      <div className="flex-shrink-0 border-b border-stone-800 px-4 py-3 flex items-center gap-3 bg-stone-900">
+      <div className={`flex-shrink-0 border-b ${headerBg} px-4 py-3 flex items-center gap-3`}>
         <button
           onClick={() => navigate('/wiki')}
-          className="flex items-center gap-1 text-sm text-stone-400 hover:text-stone-200 transition-colors"
+          className={`flex items-center gap-1 text-sm ${headerMuted} hover:${headerText} transition-colors`}
         >
           <ArrowLeft size={16} />
           Wiki
         </button>
-        <ChevronRight size={14} className="text-stone-600" />
-        <span className="text-xs font-medium text-stone-300 flex items-center gap-1.5">
+        <ChevronRight size={14} className={headerDivider} />
+        <span className={`text-xs font-medium ${headerText} flex items-center gap-1.5`}>
           <Network size={13} />
           Knowledge Graph
         </span>
         <div className="flex-1" />
-        <span className="text-xs text-stone-500">Click a node to open page</span>
+        {/* Theme toggle */}
+        <div className="flex items-center gap-1 bg-stone-800/20 rounded-full p-0.5">
+          {(['light', 'dark', 'system'] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setGraphTheme(t)}
+              className={`px-2 py-1 rounded-full text-[10px] font-medium transition-all ${
+                graphTheme === t
+                  ? isDark ? 'bg-stone-700 text-white' : 'bg-white text-stone-900 shadow-sm'
+                  : isDark ? 'text-stone-400 hover:text-stone-200' : 'text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              {themeIcons[t]}
+            </button>
+          ))}
+        </div>
+        <span className={`text-xs ${headerMuted}`}>Click a node to preview</span>
       </div>
-      <WikiGraph onPageSelect={handlePageSelect} />
+      <div className="flex-1 relative">
+        <WikiGraph
+          onPageSelect={handlePageSelect}
+          onNodePreview={handleNodePreview}
+          highlightSlug={previewSlug}
+          theme={graphTheme}
+        />
+
+        {/* Preview popup */}
+        {previewSlug && (
+          <div
+            className="absolute z-30 w-[360px] max-h-[420px] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            style={{
+              left: Math.min(previewPos.x + 16, (typeof window !== 'undefined' ? window.innerWidth - 400 : 600)),
+              top: Math.min(previewPos.y - 40, (typeof window !== 'undefined' ? window.innerHeight - 500 : 400)),
+            }}
+          >
+            {previewLoading ? (
+              <div className="p-6 flex items-center justify-center">
+                <p className="text-stone-400 text-sm">Loading...</p>
+              </div>
+            ) : previewPage ? (
+              <>
+                {/* Popup header */}
+                <div className="px-4 pt-4 pb-3 border-b border-[#f3f4f3]">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="text-base font-bold text-stone-900">{previewPage.title}</h3>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        {previewPage.category && (
+                          <span
+                            className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full text-white"
+                            style={{ backgroundColor: WIKI_CATEGORIES[previewPage.category]?.color ?? '#6b7280' }}
+                          >
+                            {WIKI_CATEGORIES[previewPage.category]?.label ?? previewPage.category}
+                          </span>
+                        )}
+                        {previewPage.enterprise && (
+                          <span className="text-[10px] font-medium text-stone-500">{previewPage.enterprise}</span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { setPreviewSlug(null); setPreviewPage(null); }}
+                      className="p-1 text-stone-400 hover:text-stone-600 rounded-lg hover:bg-stone-100"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+                {/* Popup body — rendered markdown preview */}
+                <div className="px-4 py-3 overflow-y-auto flex-1 max-h-[260px]">
+                  <WikiRenderer body={previewPage.body.slice(0, 800) + (previewPage.body.length > 800 ? '\n\n...' : '')} />
+                </div>
+                {/* Popup footer */}
+                <div className="px-4 py-3 border-t border-[#f3f4f3] flex items-center justify-between">
+                  <div className="flex items-center gap-3 text-[10px] text-stone-400">
+                    {previewPage.outgoing_links && (
+                      <span>{previewPage.outgoing_links.length} links</span>
+                    )}
+                    {previewPage.backlinks && (
+                      <span>{previewPage.backlinks.length} backlinks</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => navigate(`/wiki/${previewSlug}`)}
+                    className="text-xs font-medium text-white bg-gradient-to-br from-[#005d42] to-[#047857] px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity"
+                  >
+                    Open Page →
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="p-6 text-center">
+                <p className="text-stone-400 text-sm">Page not found</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
