@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Beef, ChevronDown, ChevronUp } from 'lucide-react';
 import { getLivestockGroups, getLivestockDashboard, getBreedingSeasons, getShearingRecords } from '../api/livestock';
 import type { LivestockGroup, LivestockDashboard, BreedingSeason, ShearingRecord } from '../types/phase2';
+import { StepperCell } from '../components/EditableCell';
 
 function formatDate(iso: string | null): string {
   if (!iso) return '-';
@@ -156,8 +157,14 @@ export default function LivestockPage() {
                         <h3 className="text-sm font-bold text-stone-800">{group.name}</h3>
                         <p className="text-xs text-stone-500">{group.breed ?? group.species}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-stone-900">{group.head_count}</p>
+                      <div className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <StepperCell
+                          value={group.head_count}
+                          onSave={(val) => {
+                            setGroups(prev => prev.map(g => g.id === group.id ? { ...g, head_count: val } : g));
+                          }}
+                          className="text-2xl text-stone-900"
+                        />
                         <p className="text-[10px] text-stone-400">head</p>
                       </div>
                     </div>

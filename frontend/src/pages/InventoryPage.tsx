@@ -3,6 +3,7 @@ import { Package, ArrowLeft, X, AlertTriangle, Plus } from 'lucide-react';
 import { getProducts, getProductById, getInventorySummary, getStock, getTransactions, recordTransaction } from '../api/inventory';
 import type { InputProduct, InventorySummary, InventoryTransaction } from '../types/phase3';
 import { INVENTORY_CATEGORY_COLORS } from '../types/phase3';
+import { StepperCell } from '../components/EditableCell';
 
 function formatCurrency(val: number | null): string {
   if (val == null) return '-';
@@ -237,9 +238,16 @@ export default function InventoryPage() {
                       <td className="px-4 py-3 text-right hidden md:table-cell text-stone-600">
                         {prod.cost_per_unit != null ? formatCurrency(prod.cost_per_unit) : '-'}
                       </td>
-                      <td className={`px-4 py-3 text-right font-medium ${isLow ? 'text-amber-600' : 'text-stone-800'}`}>
-                        {stock}
-                        {isLow && ' !'}
+                      <td className={`px-4 py-3 text-right font-medium ${isLow ? 'text-amber-600' : 'text-stone-800'}`} onClick={(e) => e.stopPropagation()}>
+                        <StepperCell
+                          value={stock}
+                          onSave={(_val) => {
+                            // Optimistic UI — in production would call API
+                            fetchData();
+                          }}
+                          className={isLow ? 'text-amber-600' : 'text-stone-800'}
+                        />
+                        {isLow && <span className="text-amber-600 ml-0.5">!</span>}
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell text-stone-600">{prod.supplier ?? '-'}</td>
                     </tr>

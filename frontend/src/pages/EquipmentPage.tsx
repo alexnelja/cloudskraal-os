@@ -3,6 +3,7 @@ import { ArrowLeft, AlertTriangle, Wrench, Plus, X } from 'lucide-react';
 import { getEquipment, getEquipmentById, getEquipmentSummary, getEquipmentAlerts, addMaintenanceLog } from '../api/equipment';
 import type { Equipment, EquipmentSummary } from '../types/phase2';
 import { EQUIPMENT_TYPE_ICONS } from '../types/phase2';
+import EditableCell from '../components/EditableCell';
 
 function formatCurrency(val: number | null): string {
   if (val == null) return '-';
@@ -210,17 +211,27 @@ export default function EquipmentPage() {
                       <td className="px-4 py-3 hidden lg:table-cell text-stone-600">
                         {item.farm_name ?? '-'}
                       </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium text-white"
-                          style={{ backgroundColor: STATUS_COLORS[item.status] ?? '#6b7280' }}
-                        >
-                          {item.status}
-                        </span>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <EditableCell
+                          value={item.status}
+                          type="select"
+                          options={['active', 'maintenance', 'decommissioned', 'stored']}
+                          onSave={(val) => {
+                            // Optimistic update
+                            setEquipment(prev => prev.map(eq => eq.id === item.id ? { ...eq, status: val } : eq));
+                          }}
+                          className="text-[10px] font-medium"
+                        />
                       </td>
-                      <td className={`px-4 py-3 hidden md:table-cell ${overdue ? 'text-red-600 font-medium' : 'text-stone-600'}`}>
-                        {formatDate(item.next_service_date)}
-                        {overdue && ' (overdue)'}
+                      <td className={`px-4 py-3 hidden md:table-cell ${overdue ? 'text-red-600 font-medium' : 'text-stone-600'}`} onClick={(e) => e.stopPropagation()}>
+                        <EditableCell
+                          value={item.next_service_date ?? ''}
+                          type="date"
+                          onSave={(val) => {
+                            setEquipment(prev => prev.map(eq => eq.id === item.id ? { ...eq, next_service_date: val || null } : eq));
+                          }}
+                          className={overdue ? 'text-red-600 font-medium' : 'text-stone-600'}
+                        />
                       </td>
                       <td className="px-4 py-3 text-right hidden sm:table-cell text-stone-600">
                         {formatCurrency(item.current_value)}
