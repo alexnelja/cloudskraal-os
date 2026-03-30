@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { X, ClipboardList, BookOpen, BarChart3 } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -116,6 +117,7 @@ export default function FieldPanel({ fieldId, onClose }: FieldPanelProps) {
           statusClass={statusClass}
           onClose={onClose}
           showDragHandle={false}
+          fieldId={fieldId}
         />
       </div>
 
@@ -141,6 +143,7 @@ export default function FieldPanel({ fieldId, onClose }: FieldPanelProps) {
           statusClass={statusClass}
           onClose={onClose}
           showDragHandle
+          fieldId={fieldId}
         />
       </div>
     </>
@@ -164,6 +167,7 @@ interface PanelContentProps {
   statusClass: string;
   onClose: () => void;
   showDragHandle: boolean;
+  fieldId: string | null;
 }
 
 function PanelContent({
@@ -177,7 +181,10 @@ function PanelContent({
   statusClass,
   onClose,
   showDragHandle,
+  fieldId,
 }: PanelContentProps) {
+  const navigate = useNavigate();
+  const chartRef = useRef<HTMLDivElement>(null);
   return (
     <div className="flex flex-col min-h-0">
       {/* Drag handle (mobile only) */}
@@ -250,7 +257,7 @@ function PanelContent({
 
             {/* Production Chart */}
             {showChart && (
-              <div className="px-4 pb-4">
+              <div ref={chartRef} className="px-4 pb-4">
                 <h3 className="text-sm font-semibold text-stone-700 mb-3">
                   Production History (kg)
                 </h3>
@@ -277,10 +284,11 @@ function PanelContent({
                         String(name),
                       ]}
                       labelFormatter={(label) => `Year: ${label}`}
+                      cursor={{ fill: 'rgba(5, 150, 105, 0.08)' }}
                     />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="Estimated" fill="#d6d3d1" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="Actual" fill="#059669" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="Estimated" fill="#d6d3d1" radius={[2, 2, 0, 0]} style={{ cursor: 'pointer' }} />
+                    <Bar dataKey="Actual" fill="#059669" radius={[2, 2, 0, 0]} style={{ cursor: 'pointer' }} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -318,13 +326,39 @@ function PanelContent({
 
       {/* Quick Actions */}
       {field && !loading && (
-        <div className="flex-shrink-0 border-t border-[#f3f4f3] p-4">
-          <button
-            onClick={() => console.log('Add note for field:', field.id)}
-            className="w-full border border-emerald-700 text-emerald-700 rounded-lg py-2 px-4 text-sm font-medium hover:bg-emerald-50 transition-colors"
-          >
-            + Add Note
-          </button>
+        <div className="flex-shrink-0 border-t border-[#f3f4f3] p-4 space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-2">Quick Actions</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => navigate(`/calendar?create=true&field_id=${fieldId}`)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-stone-200 text-xs font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+            >
+              <ClipboardList size={14} className="text-emerald-600" />
+              Create Task
+            </button>
+            <button
+              onClick={() => navigate(`/wiki/search?q=${encodeURIComponent(field.name)}`)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-stone-200 text-xs font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+            >
+              <BookOpen size={14} className="text-blue-600" />
+              View in Wiki
+            </button>
+            {showChart && (
+              <button
+                onClick={() => chartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-stone-200 text-xs font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+              >
+                <BarChart3 size={14} className="text-violet-600" />
+                Compare Yield
+              </button>
+            )}
+            <button
+              onClick={() => console.log('Add note for field:', field.id)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors"
+            >
+              + Add Note
+            </button>
+          </div>
         </div>
       )}
     </div>

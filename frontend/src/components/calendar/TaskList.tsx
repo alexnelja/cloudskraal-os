@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Clock, Zap, Link, Hand, CheckCircle2 } from 'lucide-react';
 import type { Task } from '../../types/calendar';
 import { PRIORITY_COLORS, STATUS_COLORS } from '../../types/calendar';
@@ -35,6 +36,21 @@ function relativeDueDate(dueDate: string | null): { text: string; overdue: boole
 }
 
 export default function TaskList({ tasks, selectedTaskId, onSelect, onComplete }: TaskListProps) {
+  const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
+
+  const handleQuickComplete = (taskId: string) => {
+    setCompletingIds(prev => new Set(prev).add(taskId));
+    // Delay the actual complete callback to allow animation to play
+    setTimeout(() => {
+      onComplete(taskId);
+      setCompletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }, 400);
+  };
+
   // Sort: overdue first (ascending due_date), then upcoming
   const sorted = [...tasks].sort((a, b) => {
     if (!a.due_date) return 1;
@@ -46,6 +62,7 @@ export default function TaskList({ tasks, selectedTaskId, onSelect, onComplete }
     <div className="space-y-2">
       {sorted.map((task) => {
         const isCompleted = task.status === 'completed';
+        const isCompleting = completingIds.has(task.id);
         const isSelected = task.id === selectedTaskId;
         const TypeIcon = TYPE_ICONS[task.type] ?? Clock;
         const due = relativeDueDate(task.due_date);
@@ -60,24 +77,24 @@ export default function TaskList({ tasks, selectedTaskId, onSelect, onComplete }
             onClick={() => onSelect(task.id)}
             className={`
               relative flex items-start gap-3 p-3 rounded-lg border cursor-pointer
-              transition-colors
+              transition-all duration-300
               ${isSelected ? 'border-emerald-300 bg-emerald-50/50' : 'border-stone-150 bg-white hover:bg-stone-50'}
-              ${isCompleted ? 'opacity-60' : ''}
+              ${isCompleted || isCompleting ? 'opacity-60' : ''}
             `}
             style={{ borderLeftWidth: 3, borderLeftColor: priorityColor }}
           >
             {/* Complete button */}
-            {!isCompleted && (
+            {!isCompleted && !isCompleting && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onComplete(task.id);
+                  handleQuickComplete(task.id);
                 }}
                 className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full border-2 border-stone-300 hover:border-emerald-500 hover:bg-emerald-50 transition-colors"
                 title="Complete task"
               />
             )}
-            {isCompleted && (
+            {(isCompleted || isCompleting) && (
               <CheckCircle2 size={20} className="flex-shrink-0 mt-0.5 text-emerald-600" />
             )}
 
@@ -86,10 +103,15 @@ export default function TaskList({ tasks, selectedTaskId, onSelect, onComplete }
               <div className="flex items-center gap-2 mb-1">
                 <TypeIcon size={14} className="flex-shrink-0 text-stone-400" />
                 <span
-                  className={`text-sm font-medium truncate ${isCompleted ? 'line-through text-stone-400' : 'text-stone-800'}`}
+                  className={`text-sm font-medium truncate transition-all duration-300 ${isCompleted || isCompleting ? 'line-through text-stone-400' : 'text-stone-800'}`}
                 >
                   {task.title}
                 </span>
+                {isCompleting && (
+                  <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full animate-pulse">
+                    Completed!
+                  </span>
+                )}
               </div>
 
               {/* Meta row */}
