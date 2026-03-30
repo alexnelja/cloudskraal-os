@@ -1,17 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Beef, ChevronDown, ChevronUp } from 'lucide-react';
-import { getLivestockGroups, getLivestockDashboard, getBreedingSeasons, getShearingRecords } from '../api/livestock';
+import { getLivestockGroups, getLivestockDashboard, getBreedingSeasons, getShearingRecords, updateLivestockGroup, updateBreedingSeason, updateShearingRecord } from '../api/livestock';
 import type { LivestockGroup, LivestockDashboard, BreedingSeason, ShearingRecord } from '../types/phase2';
-import { StepperCell } from '../components/EditableCell';
+import EditableCell, { StepperCell } from '../components/EditableCell';
 
 function formatDate(iso: string | null): string {
   if (!iso) return '-';
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function formatCurrency(val: number | null): string {
-  if (val == null) return '-';
-  return `R${val.toLocaleString('en-ZA', { minimumFractionDigits: 0 })}`;
 }
 
 function pct(num: number | null, denom: number | null): string {
@@ -153,15 +148,30 @@ export default function LivestockPage() {
                     className="w-full text-left p-4 hover:bg-stone-50 transition-colors"
                   >
                     <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="text-sm font-bold text-stone-800">{group.name}</h3>
-                        <p className="text-xs text-stone-500">{group.breed ?? group.species}</p>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <EditableCell
+                          value={group.name}
+                          onSave={(val) => {
+                            setGroups(prev => prev.map(g => g.id === group.id ? { ...g, name: val } : g));
+                            updateLivestockGroup(group.id, { name: val }).catch(() => fetchData());
+                          }}
+                          className="text-sm font-bold text-stone-800"
+                        />
+                        <EditableCell
+                          value={group.breed ?? group.species}
+                          onSave={(val) => {
+                            setGroups(prev => prev.map(g => g.id === group.id ? { ...g, breed: val } : g));
+                            updateLivestockGroup(group.id, { breed: val }).catch(() => fetchData());
+                          }}
+                          className="text-xs text-stone-500"
+                        />
                       </div>
                       <div className="text-right" onClick={(e) => e.stopPropagation()}>
                         <StepperCell
                           value={group.head_count}
                           onSave={(val) => {
                             setGroups(prev => prev.map(g => g.id === group.id ? { ...g, head_count: val } : g));
+                            updateLivestockGroup(group.id, { head_count: val }).catch(() => fetchData());
                           }}
                           className="text-2xl text-stone-900"
                         />
@@ -186,10 +196,21 @@ export default function LivestockPage() {
                   </button>
                   {expandedGroup === group.id && (
                     <div className="border-t border-[#f3f4f3] p-4 bg-stone-50">
-                      <p className="text-xs text-stone-500">
-                        {group.average_weight_kg ? `Avg weight: ${group.average_weight_kg} kg` : 'No weight data'}
-                        {group.record_count != null && ` | ${group.record_count} records`}
-                      </p>
+                      <div className="flex items-center gap-2 text-xs text-stone-500">
+                        <span>Avg weight:</span>
+                        <EditableCell
+                          value={group.average_weight_kg != null ? String(group.average_weight_kg) : ''}
+                          type="number"
+                          onSave={(val) => {
+                            const num = val ? Number(val) : null;
+                            setGroups(prev => prev.map(g => g.id === group.id ? { ...g, average_weight_kg: num } : g));
+                            updateLivestockGroup(group.id, { average_weight_kg: num }).catch(() => fetchData());
+                          }}
+                          className="text-xs text-stone-500"
+                        />
+                        <span>kg</span>
+                        {group.record_count != null && <span>| {group.record_count} records</span>}
+                      </div>
                       {group.notes && (
                         <p className="text-xs text-stone-600 mt-1">{group.notes}</p>
                       )}
@@ -222,35 +243,71 @@ export default function LivestockPage() {
                     <PipelineStage
                       label="Joining"
                       detail={season.joining_start ? formatDate(season.joining_start).split(' ').slice(1).join(' ') : '-'}
-                      metric={season.ewes_joined != null ? `${season.ewes_joined} ewes` : null}
-                      subMetric={season.rams_used != null ? `${season.rams_used} rams` : null}
+                      metricValue={season.ewes_joined}
+                      metricSuffix="ewes"
+                      subMetricValue={season.rams_used}
+                      subMetricSuffix="rams"
                       color="#7c3aed"
                       isFirst
+                      onMetricSave={(val) => {
+                        setBreedingSeasons(prev => prev.map(s => s.id === season.id ? { ...s, ewes_joined: val } : s));
+                        updateBreedingSeason(season.id, { ewes_joined: val }).catch(() => fetchData());
+                      }}
+                      onSubMetricSave={(val) => {
+                        setBreedingSeasons(prev => prev.map(s => s.id === season.id ? { ...s, rams_used: val } : s));
+                        updateBreedingSeason(season.id, { rams_used: val }).catch(() => fetchData());
+                      }}
                     />
                     <PipelineArrow />
                     <PipelineStage
                       label="Scanning"
                       detail={season.scanning_date ? formatDate(season.scanning_date).split(' ').slice(1).join(' ') : '-'}
-                      metric={season.pregnant_count != null ? `${season.pregnant_count} pregnant` : null}
-                      subMetric={season.dry_count != null ? `${season.dry_count} dry` : null}
+                      metricValue={season.pregnant_count}
+                      metricSuffix="pregnant"
+                      subMetricValue={season.dry_count}
+                      subMetricSuffix="dry"
                       color="#2563eb"
+                      onMetricSave={(val) => {
+                        setBreedingSeasons(prev => prev.map(s => s.id === season.id ? { ...s, pregnant_count: val } : s));
+                        updateBreedingSeason(season.id, { pregnant_count: val }).catch(() => fetchData());
+                      }}
+                      onSubMetricSave={(val) => {
+                        setBreedingSeasons(prev => prev.map(s => s.id === season.id ? { ...s, dry_count: val } : s));
+                        updateBreedingSeason(season.id, { dry_count: val }).catch(() => fetchData());
+                      }}
                     />
                     <PipelineArrow />
                     <PipelineStage
                       label="Lambing"
                       detail={season.lambing_start ? formatDate(season.lambing_start).split(' ').slice(1).join(' ') : '-'}
-                      metric={season.born_count != null ? `${season.born_count} born` : null}
-                      subMetric={season.survived_count != null ? `${season.survived_count} survived` : null}
+                      metricValue={season.born_count}
+                      metricSuffix="born"
+                      subMetricValue={season.survived_count}
+                      subMetricSuffix="survived"
                       color="#d97706"
+                      onMetricSave={(val) => {
+                        setBreedingSeasons(prev => prev.map(s => s.id === season.id ? { ...s, born_count: val } : s));
+                        updateBreedingSeason(season.id, { born_count: val }).catch(() => fetchData());
+                      }}
+                      onSubMetricSave={(val) => {
+                        setBreedingSeasons(prev => prev.map(s => s.id === season.id ? { ...s, survived_count: val } : s));
+                        updateBreedingSeason(season.id, { survived_count: val }).catch(() => fetchData());
+                      }}
                     />
                     <PipelineArrow />
                     <PipelineStage
                       label="Weaning"
                       detail={season.weaning_date ? formatDate(season.weaning_date).split(' ').slice(1).join(' ') : '-'}
-                      metric={season.weaned_count != null ? `${season.weaned_count} weaned` : null}
-                      subMetric={null}
+                      metricValue={season.weaned_count}
+                      metricSuffix="weaned"
+                      subMetricValue={null}
+                      subMetricSuffix={null}
                       color="#047857"
                       isLast
+                      onMetricSave={(val) => {
+                        setBreedingSeasons(prev => prev.map(s => s.id === season.id ? { ...s, weaned_count: val } : s));
+                        updateBreedingSeason(season.id, { weaned_count: val }).catch(() => fetchData());
+                      }}
                     />
                   </div>
 
@@ -288,19 +345,101 @@ export default function LivestockPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {shearingRecords.map((rec) => (
+                    {shearingRecords.map((rec) => {
+                      const patchShearing = (data: Partial<ShearingRecord>) => {
+                        updateShearingRecord(rec.id, data).catch(() => fetchData());
+                      };
+                      return (
                       <tr key={rec.id} className="border-b border-[#f3f4f3]">
-                        <td className="px-4 py-2.5 text-stone-800">{formatDate(rec.date)}</td>
+                        <td className="px-4 py-2.5 text-stone-800">
+                          <EditableCell
+                            value={rec.date ?? ''}
+                            type="date"
+                            onSave={(val) => {
+                              setShearingRecords(prev => prev.map(r => r.id === rec.id ? { ...r, date: val } : r));
+                              patchShearing({ date: val });
+                            }}
+                          />
+                        </td>
                         <td className="px-4 py-2.5 text-stone-600 hidden sm:table-cell">{rec.group_name ?? '-'}</td>
-                        <td className="px-4 py-2.5 text-right text-stone-800">{rec.head_shorn ?? '-'}</td>
-                        <td className="px-4 py-2.5 text-right font-medium text-stone-800">{rec.total_fleece_kg?.toLocaleString() ?? '-'}</td>
-                        <td className="px-4 py-2.5 text-right text-stone-600 hidden md:table-cell">{rec.avg_fleece_kg?.toFixed(1) ?? '-'}</td>
-                        <td className="px-4 py-2.5 text-right text-stone-600 hidden md:table-cell">{rec.micron_avg ?? '-'}</td>
-                        <td className="px-4 py-2.5 text-right text-stone-600 hidden lg:table-cell">{rec.yield_pct != null ? `${rec.yield_pct}%` : '-'}</td>
-                        <td className="px-4 py-2.5 text-stone-600 hidden lg:table-cell">{rec.buyer ?? '-'}</td>
-                        <td className="px-4 py-2.5 text-right font-medium text-emerald-700 hidden sm:table-cell">{formatCurrency(rec.total_revenue)}</td>
+                        <td className="px-4 py-2.5 text-right text-stone-800">
+                          <EditableCell
+                            value={rec.head_shorn != null ? String(rec.head_shorn) : ''}
+                            type="number"
+                            onSave={(val) => {
+                              const num = val ? Number(val) : null;
+                              setShearingRecords(prev => prev.map(r => r.id === rec.id ? { ...r, head_shorn: num } : r));
+                              patchShearing({ head_shorn: num });
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-medium text-stone-800">
+                          <EditableCell
+                            value={rec.total_fleece_kg != null ? String(rec.total_fleece_kg) : ''}
+                            type="number"
+                            onSave={(val) => {
+                              const num = val ? Number(val) : null;
+                              setShearingRecords(prev => prev.map(r => r.id === rec.id ? { ...r, total_fleece_kg: num } : r));
+                              patchShearing({ total_fleece_kg: num });
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-stone-600 hidden md:table-cell">
+                          <EditableCell
+                            value={rec.avg_fleece_kg != null ? String(rec.avg_fleece_kg) : ''}
+                            type="number"
+                            onSave={(val) => {
+                              const num = val ? Number(val) : null;
+                              setShearingRecords(prev => prev.map(r => r.id === rec.id ? { ...r, avg_fleece_kg: num } : r));
+                              patchShearing({ avg_fleece_kg: num });
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-stone-600 hidden md:table-cell">
+                          <EditableCell
+                            value={rec.micron_avg != null ? String(rec.micron_avg) : ''}
+                            type="number"
+                            onSave={(val) => {
+                              const num = val ? Number(val) : null;
+                              setShearingRecords(prev => prev.map(r => r.id === rec.id ? { ...r, micron_avg: num } : r));
+                              patchShearing({ micron_avg: num });
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-stone-600 hidden lg:table-cell">
+                          <EditableCell
+                            value={rec.yield_pct != null ? String(rec.yield_pct) : ''}
+                            type="number"
+                            onSave={(val) => {
+                              const num = val ? Number(val) : null;
+                              setShearingRecords(prev => prev.map(r => r.id === rec.id ? { ...r, yield_pct: num } : r));
+                              patchShearing({ yield_pct: num });
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-2.5 text-stone-600 hidden lg:table-cell">
+                          <EditableCell
+                            value={rec.buyer ?? ''}
+                            onSave={(val) => {
+                              setShearingRecords(prev => prev.map(r => r.id === rec.id ? { ...r, buyer: val || null } : r));
+                              patchShearing({ buyer: val || null });
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-medium text-emerald-700 hidden sm:table-cell">
+                          <EditableCell
+                            value={rec.total_revenue != null ? String(rec.total_revenue) : ''}
+                            type="number"
+                            onSave={(val) => {
+                              const num = val ? Number(val) : null;
+                              setShearingRecords(prev => prev.map(r => r.id === rec.id ? { ...r, total_revenue: num } : r));
+                              patchShearing({ total_revenue: num });
+                            }}
+                          />
+                        </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -317,19 +456,27 @@ export default function LivestockPage() {
 function PipelineStage({
   label,
   detail,
-  metric,
-  subMetric,
+  metricValue,
+  metricSuffix,
+  subMetricValue,
+  subMetricSuffix,
   color,
   isFirst,
   isLast,
+  onMetricSave,
+  onSubMetricSave,
 }: {
   label: string;
   detail: string;
-  metric: string | null;
-  subMetric: string | null;
+  metricValue: number | null;
+  metricSuffix: string;
+  subMetricValue?: number | null;
+  subMetricSuffix?: string | null;
   color: string;
   isFirst?: boolean;
   isLast?: boolean;
+  onMetricSave?: (val: number) => void;
+  onSubMetricSave?: (val: number) => void;
 }) {
   return (
     <div
@@ -338,8 +485,28 @@ function PipelineStage({
     >
       <p className="text-xs font-bold" style={{ color }}>{label}</p>
       <p className="text-[10px] text-stone-400 mb-1">{detail}</p>
-      {metric && <p className="text-xs font-medium text-stone-800">{metric}</p>}
-      {subMetric && <p className="text-[10px] text-stone-500">{subMetric}</p>}
+      {metricValue != null ? (
+        <div className="inline-block">
+          <EditableCell
+            value={String(metricValue)}
+            type="number"
+            onSave={(val) => onMetricSave?.(Number(val) || 0)}
+            className="text-xs font-medium text-stone-800"
+          />
+          <span className="text-xs text-stone-600 ml-0.5">{metricSuffix}</span>
+        </div>
+      ) : null}
+      {subMetricValue != null && subMetricSuffix ? (
+        <div className="inline-block">
+          <EditableCell
+            value={String(subMetricValue)}
+            type="number"
+            onSave={(val) => onSubMetricSave?.(Number(val) || 0)}
+            className="text-[10px] text-stone-500"
+          />
+          <span className="text-[10px] text-stone-500 ml-0.5">{subMetricSuffix}</span>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Users, ChevronDown, ChevronUp, Plus, Phone } from 'lucide-react';
-import { getEmployees, getEmployeeSummary, getEmployeeById, addTimeEntry } from '../api/employees';
+import { getEmployees, getEmployeeSummary, getEmployeeById, addTimeEntry, updateEmployee } from '../api/employees';
 import { getEnterprises } from '../api/financials';
 import type { Employee, EmployeeSummary, Enterprise } from '../types/phase3';
 import { EMPLOYEE_TYPE_COLORS } from '../types/phase3';
+import EditableCell, { StatusCycle } from '../components/EditableCell';
 
 function formatCurrency(val: number | null): string {
   if (val == null) return '-';
@@ -156,19 +157,50 @@ export default function EmployeesPage() {
                 const isExpanded = expandedId === emp.id;
                 return (
                   <div key={emp.id} className="rounded-2xl overflow-hidden">
-                    <button
-                      onClick={() => setExpandedId(isExpanded ? null : emp.id)}
-                      className="w-full text-left p-4 hover:bg-stone-50 transition-colors"
+                    <div
+                      className="w-full text-left p-4 hover:bg-stone-50 transition-colors cursor-pointer"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="min-w-0 flex-1">
-                          <h3 className="text-sm font-bold text-stone-800 truncate">{emp.name}</h3>
-                          <p className="text-xs text-stone-500">{emp.role ?? 'No role'}</p>
-                          {emp.department && (
-                            <p className="text-xs text-stone-400">{emp.department}</p>
-                          )}
+                      <div className="flex items-start justify-between" onClick={() => setExpandedId(isExpanded ? null : emp.id)}>
+                        <div className="min-w-0 flex-1" onClick={(e) => e.stopPropagation()}>
+                          <EditableCell
+                            value={emp.name}
+                            onSave={(val) => {
+                              setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, name: val } : e));
+                              updateEmployee(emp.id, { name: val }).catch(() => fetchData());
+                            }}
+                            className="text-sm font-bold text-stone-800"
+                          />
+                          <EditableCell
+                            value={emp.role ?? ''}
+                            onSave={(val) => {
+                              setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, role: val || null } : e));
+                              updateEmployee(emp.id, { role: val || null }).catch(() => fetchData());
+                            }}
+                            className="text-xs text-stone-500"
+                          />
+                          <EditableCell
+                            value={emp.department ?? ''}
+                            type="select"
+                            options={['', 'farming', 'processing', 'admin', 'maintenance', 'livestock', 'irrigation']}
+                            onSave={(val) => {
+                              setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, department: val || null } : e));
+                              updateEmployee(emp.id, { department: val || null }).catch(() => fetchData());
+                            }}
+                            className="text-xs text-stone-400"
+                          />
                         </div>
                         <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                          <span onClick={(e) => e.stopPropagation()}>
+                            <StatusCycle
+                              value={emp.status ?? 'active'}
+                              options={['active', 'inactive']}
+                              colors={{ active: '#047857', inactive: '#9ca3af' }}
+                              onSave={(val) => {
+                                setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, status: val } : e));
+                                updateEmployee(emp.id, { status: val }).catch(() => fetchData());
+                              }}
+                            />
+                          </span>
                           <span
                             className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium text-white"
                             style={{ backgroundColor: EMPLOYEE_TYPE_COLORS[emp.type] ?? '#6b7280' }}
@@ -178,22 +210,49 @@ export default function EmployeesPage() {
                           {isExpanded ? <ChevronUp size={14} className="text-stone-400" /> : <ChevronDown size={14} className="text-stone-400" />}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-stone-500">
-                        {emp.phone && (
-                          <span className="flex items-center gap-1">
-                            <Phone size={10} />
-                            {emp.phone}
-                          </span>
-                        )}
+                      <div className="flex items-center gap-3 mt-2 text-xs text-stone-500" onClick={(e) => e.stopPropagation()}>
+                        <span className="flex items-center gap-1">
+                          <Phone size={10} />
+                          <EditableCell
+                            value={emp.phone ?? ''}
+                            onSave={(val) => {
+                              setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, phone: val || null } : e));
+                              updateEmployee(emp.id, { phone: val || null }).catch(() => fetchData());
+                            }}
+                            className="text-xs text-stone-500"
+                          />
+                        </span>
                         {emp.farm_name && <span>{emp.farm_name}</span>}
                         {emp.monthly_salary != null && (
-                          <span className="ml-auto font-medium text-stone-700">{formatCurrency(emp.monthly_salary)}/mo</span>
+                          <span className="ml-auto font-medium text-stone-700">
+                            <EditableCell
+                              value={String(emp.monthly_salary)}
+                              type="number"
+                              onSave={(val) => {
+                                const num = val ? Number(val) : null;
+                                setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, monthly_salary: num } : e));
+                                updateEmployee(emp.id, { monthly_salary: num }).catch(() => fetchData());
+                              }}
+                              className="text-xs font-medium text-stone-700"
+                            />
+                          </span>
                         )}
                         {emp.hourly_rate != null && !emp.monthly_salary && (
-                          <span className="ml-auto font-medium text-stone-700">R{emp.hourly_rate}/hr</span>
+                          <span className="ml-auto font-medium text-stone-700">
+                            <EditableCell
+                              value={String(emp.hourly_rate)}
+                              type="number"
+                              onSave={(val) => {
+                                const num = val ? Number(val) : null;
+                                setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, hourly_rate: num } : e));
+                                updateEmployee(emp.id, { hourly_rate: num }).catch(() => fetchData());
+                              }}
+                              className="text-xs font-medium text-stone-700"
+                            />
+                          </span>
                         )}
                       </div>
-                    </button>
+                    </div>
 
                     {/* Expanded: time entries */}
                     {isExpanded && (

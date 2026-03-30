@@ -3,6 +3,8 @@ import { Clock, Zap, Link, Hand, CheckCircle2 } from 'lucide-react';
 import type { Task } from '../../types/calendar';
 import { PRIORITY_COLORS, STATUS_COLORS } from '../../types/calendar';
 import { ENTERPRISE_COLORS, ENTERPRISE_LABELS } from '../../types/farm';
+import EditableCell from '../EditableCell';
+import { updateTask } from '../../api/calendar';
 
 interface TaskListProps {
   tasks: Task[];
@@ -102,11 +104,21 @@ export default function TaskList({ tasks, selectedTaskId, onSelect, onComplete }
               {/* Title row */}
               <div className="flex items-center gap-2 mb-1">
                 <TypeIcon size={14} className="flex-shrink-0 text-stone-400" />
-                <span
-                  className={`text-sm font-medium truncate transition-all duration-300 ${isCompleted || isCompleting ? 'line-through text-stone-400' : 'text-stone-800'}`}
-                >
-                  {task.title}
-                </span>
+                {!isCompleted && !isCompleting ? (
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <EditableCell
+                      value={task.title}
+                      onSave={(val) => {
+                        updateTask(task.id, { title: val }).catch(console.error);
+                      }}
+                      className="text-sm font-medium text-stone-800"
+                    />
+                  </span>
+                ) : (
+                  <span className="text-sm font-medium truncate transition-all duration-300 line-through text-stone-400">
+                    {task.title}
+                  </span>
+                )}
                 {isCompleting && (
                   <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full animate-pulse">
                     Completed!

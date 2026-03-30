@@ -27,7 +27,8 @@ import {
 } from 'recharts';
 import MetricCard from '../components/MetricCard';
 import ProjectModal from '../components/ProjectModal';
-import { getProjects, getDashboardStats, createProject } from '../api/client';
+import { StatusCycle } from '../components/EditableCell';
+import { getProjects, getDashboardStats, createProject, updateProject } from '../api/client';
 import type { ProjectSummary, DashboardStats, CreateProjectPayload } from '../types';
 import { formatZAR, formatPercent, formatCompactZAR } from '../utils/format';
 import { getUpcomingTasks, getOverdueTasks } from '../api/calendar';
@@ -306,10 +307,23 @@ export default function Dashboard() {
                   <p className="text-[10px] text-[#6e7a73] mt-0.5">{t.count} projects &middot; NPV: {formatCompactZAR(t.totalNpv)}</p>
                   <div className="mt-3 space-y-1">
                     {t.projects.slice(0, 4).map(p => (
-                      <button key={p.id} onClick={(e) => openProjectPopup(p, e)} className="w-full flex items-center justify-between text-xs hover:bg-[#f3f4f3] rounded px-1.5 py-1 transition-colors text-left">
-                        <span className="text-[#1a1c1c] truncate mr-2">{p.name}</span>
-                        <span className="text-[#6e7a73] whitespace-nowrap">{formatCompactZAR(p.initialOutlay)}</span>
-                      </button>
+                      <div key={p.id} className="w-full flex items-center gap-1.5 text-xs hover:bg-[#f3f4f3] rounded px-1.5 py-1 transition-colors text-left">
+                        <span onClick={(e) => { e.stopPropagation(); }}>
+                          <StatusCycle
+                            value={p.status}
+                            options={['draft', 'evaluating', 'approved']}
+                            colors={{ draft: '#78716c', evaluating: '#d97706', approved: '#047857' }}
+                            onSave={(val) => {
+                              setProjects(prev => prev.map(proj => proj.id === p.id ? { ...proj, status: val as typeof proj.status } : proj));
+                              updateProject(p.id, { status: val as 'draft' | 'evaluating' | 'approved' }).catch(() => fetchData());
+                            }}
+                          />
+                        </span>
+                        <button onClick={(e) => openProjectPopup(p, e)} className="flex-1 flex items-center justify-between min-w-0">
+                          <span className="text-[#1a1c1c] truncate mr-2">{p.name}</span>
+                          <span className="text-[#6e7a73] whitespace-nowrap">{formatCompactZAR(p.initialOutlay)}</span>
+                        </button>
+                      </div>
                     ))}
                     {t.projects.length > 4 && (
                       <p className="text-[10px] text-[#6e7a73] pl-1.5">+{t.projects.length - 4} more</p>
