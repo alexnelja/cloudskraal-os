@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BarChart3, Search, Filter } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getFinancialDashboard, getFinancialTransactions, getEnterprises } from '../api/financials';
 import type { FinancialDashboard, FinancialTransaction, Enterprise } from '../types/phase3';
+import ThreeStatementModel from '../components/financials/ThreeStatementModel';
 
 function formatCurrency(val: number | null): string {
   if (val == null) return '-';
@@ -26,6 +27,7 @@ export default function FinancialsPage() {
   const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
   const [loading, setLoading] = useState(true);
   const [txLoading, setTxLoading] = useState(false);
+  const [view, setView] = useState<'overview' | 'model'>('model');
 
   // Filters
   const [filterEnterprise, setFilterEnterprise] = useState('');
@@ -112,17 +114,42 @@ export default function FinancialsPage() {
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
-        <div className="flex items-center gap-2">
-          <BarChart3 size={20} className="text-emerald-700" />
-          <h1 className="text-lg font-bold text-stone-900">Financials</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BarChart3 size={20} className="text-emerald-700" />
+            <h1 className="text-lg font-bold text-stone-900">Financials</h1>
+          </div>
+          <div className="flex bg-stone-100 rounded-lg p-0.5">
+            <button
+              onClick={() => setView('overview')}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                view === 'overview' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => setView('model')}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                view === 'model' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              Financial Model
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto bg-white">
         <div className="max-w-6xl mx-auto p-4 space-y-6">
 
+          {/* Three-Statement Financial Model */}
+          {view === 'model' && <ThreeStatementModel />}
+
+          {/* === Overview mode === */}
+
           {/* Dashboard metric cards */}
-          {dashboard && (
+          {view === 'overview' && dashboard && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
                 <p className="text-xs text-emerald-600 uppercase tracking-wide mb-1">Total Revenue</p>
@@ -146,7 +173,7 @@ export default function FinancialsPage() {
           )}
 
           {/* Enterprise P&L chart */}
-          {chartData.length > 0 && (
+          {view === 'overview' && chartData.length > 0 && (
             <div>
               <h2 className="text-sm font-semibold text-stone-700 mb-3">Enterprise P&L</h2>
               <div className="rounded-2xl p-4">
@@ -164,12 +191,13 @@ export default function FinancialsPage() {
                       tick={{ fontSize: 11 }}
                     />
                     <Tooltip
-                      formatter={(value: number) => formatCurrency(value)}
-                      labelFormatter={(_label: string, payload: Array<{ payload?: { fullName?: string } }>) => {
-                        if (payload && payload.length > 0 && payload[0].payload) {
-                          return payload[0].payload.fullName ?? _label;
+                      formatter={(value) => formatCurrency(Number(value))}
+                      labelFormatter={(_label, payload) => {
+                        const p = payload as unknown as Array<{ payload?: { fullName?: string } }>;
+                        if (p && p.length > 0 && p[0].payload) {
+                          return p[0].payload.fullName ?? String(_label);
                         }
-                        return _label;
+                        return String(_label);
                       }}
                     />
                     <Legend />
@@ -182,7 +210,7 @@ export default function FinancialsPage() {
           )}
 
           {/* Enterprise breakdown cards */}
-          {dashboard && dashboard.byEnterprise.length > 0 && (
+          {view === 'overview' && dashboard && dashboard.byEnterprise.length > 0 && (
             <div>
               <h2 className="text-sm font-semibold text-stone-700 mb-3">Enterprise Breakdown</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -230,7 +258,7 @@ export default function FinancialsPage() {
           )}
 
           {/* Transactions */}
-          <div>
+          {view === 'overview' && <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-stone-700">Transactions</h2>
               <button
@@ -355,7 +383,7 @@ export default function FinancialsPage() {
                 </table>
               )}
             </div>
-          </div>
+          </div>}
 
         </div>
       </div>

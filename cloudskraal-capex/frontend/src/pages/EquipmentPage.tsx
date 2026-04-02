@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, AlertTriangle, Wrench, Plus, X } from 'lucide-react';
-import { getEquipment, getEquipmentById, getEquipmentSummary, getEquipmentAlerts, addMaintenanceLog } from '../api/equipment';
-import type { Equipment, EquipmentSummary, MaintenanceLog } from '../types/phase2';
+import { getEquipment, getEquipmentById, getEquipmentSummary, getEquipmentAlerts, addMaintenanceLog, updateEquipment } from '../api/equipment';
+import { getFarms } from '../api/farms';
+import type { Equipment, EquipmentSummary } from '../types/phase2';
+import type { Farm } from '../types/farm';
 import { EQUIPMENT_TYPE_ICONS } from '../types/phase2';
+import EditableCell from '../components/EditableCell';
 
 function formatCurrency(val: number | null): string {
   if (val == null) return '-';
@@ -37,6 +40,9 @@ export default function EquipmentPage() {
   const [showLogForm, setShowLogForm] = useState(false);
   const [logForm, setLogForm] = useState({ type: 'service', date: '', description: '', cost: '', performed_by: '' });
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [farms, setFarms] = useState<Farm[]>([]);
+
+  useEffect(() => { getFarms().then(setFarms).catch(() => {}); }, []);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -56,6 +62,13 @@ export default function EquipmentPage() {
         setLoading(false);
       });
   }, [typeFilter]);
+
+  const patchEquipment = useCallback((id: string, data: Partial<Equipment>) => {
+    updateEquipment(id, data).catch((err) => {
+      console.error('Failed to update equipment:', err);
+      fetchData();
+    });
+  }, [fetchData]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -195,8 +208,15 @@ export default function EquipmentPage() {
                         selectedId === item.id ? 'bg-emerald-50' : 'hover:bg-stone-50'
                       }`}
                     >
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-stone-800">{item.name}</p>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <EditableCell
+                          value={item.name}
+                          onSave={(val) => {
+                            setEquipment(prev => prev.map(eq => eq.id === item.id ? { ...eq, name: val } : eq));
+                            patchEquipment(item.id, { name: val });
+                          }}
+                          className="font-medium text-stone-800"
+                        />
                         {item.code && <p className="text-[10px] text-stone-400">{item.code}</p>}
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell">
@@ -204,26 +224,63 @@ export default function EquipmentPage() {
                           {EQUIPMENT_TYPE_ICONS[item.type] ?? ''} {item.type}
                         </span>
                       </td>
-                      <td className="px-4 py-3 hidden md:table-cell text-stone-600">
-                        {[item.make, item.model].filter(Boolean).join(' ') || '-'}
+                      <td className="px-4 py-3 hidden md:table-cell text-stone-600" onClick={(e) => e.stopPropagation()}>
+                        <EditableCell
+                          value={[item.make, item.model].filter(Boolean).join(' ') || ''}
+                          onSave={(val) => {
+                            const parts = val.split(' ');
+                            const make = parts[0] || null;
+                            const model = parts.slice(1).join(' ') || null;
+                            setEquipment(prev => prev.map(eq => eq.id === item.id ? { ...eq, make, model } : eq));
+                            patchEquipment(item.id, { make, model });
+                          }}
+                        />
                       </td>
-                      <td className="px-4 py-3 hidden lg:table-cell text-stone-600">
-                        {item.farm_name ?? '-'}
+                      <td className="px-4 py-3 hidden lg:table-cell text-stone-600" onClick={(e) => e.stopPropagation()}>
+                        <EditableCell
+                          value={item.farm_name ?? ''}
+                          type="select"
+                          options={farms.map(f => f.name)}
+                          onSave={(val) => {
+                            const farm = farms.find(f => f.name === val);
+                            setEquipment(prev => prev.map(eq => eq.id === item.id ? { ...eq, farm_name: val, farm_id: farm?.id ?? null } : eq));
+                            if (farm) patchEquipment(item.id, { farm_id: farm.id });
+                          }}
+                        />
                       </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium text-white"
-                          style={{ backgroundColor: STATUS_COLORS[item.status] ?? '#6b7280' }}
-                        >
-                          {item.status}
-                        </span>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <EditableCell
+                          value={item.status}
+                          type="select"
+                          options={['active', 'maintenance', 'decommissioned', 'stored']}
+                          onSave={(val) => {
+                            setEquipment(prev => prev.map(eq => eq.id === item.id ? { ...eq, status: val } : eq));
+                            patchEquipment(item.id, { status: val });
+                          }}
+                          className="text-[10px] font-medium"
+                        />
                       </td>
-                      <td className={`px-4 py-3 hidden md:table-cell ${overdue ? 'text-red-600 font-medium' : 'text-stone-600'}`}>
-                        {formatDate(item.next_service_date)}
-                        {overdue && ' (overdue)'}
+                      <td className={`px-4 py-3 hidden md:table-cell ${overdue ? 'text-red-600 font-medium' : 'text-stone-600'}`} onClick={(e) => e.stopPropagation()}>
+                        <EditableCell
+                          value={item.next_service_date ?? ''}
+                          type="date"
+                          onSave={(val) => {
+                            setEquipment(prev => prev.map(eq => eq.id === item.id ? { ...eq, next_service_date: val || null } : eq));
+                            patchEquipment(item.id, { next_service_date: val || null });
+                          }}
+                          className={overdue ? 'text-red-600 font-medium' : 'text-stone-600'}
+                        />
                       </td>
-                      <td className="px-4 py-3 text-right hidden sm:table-cell text-stone-600">
-                        {formatCurrency(item.current_value)}
+                      <td className="px-4 py-3 text-right hidden sm:table-cell text-stone-600" onClick={(e) => e.stopPropagation()}>
+                        <EditableCell
+                          value={item.current_value != null ? String(item.current_value) : ''}
+                          type="number"
+                          onSave={(val) => {
+                            const num = val ? Number(val) : null;
+                            setEquipment(prev => prev.map(eq => eq.id === item.id ? { ...eq, current_value: num } : eq));
+                            patchEquipment(item.id, { current_value: num });
+                          }}
+                        />
                       </td>
                     </tr>
                   );

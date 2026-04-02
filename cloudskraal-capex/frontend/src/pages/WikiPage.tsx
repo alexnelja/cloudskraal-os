@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { Plus, Pin, ChevronRight, Trash2, Pencil, ArrowLeft, Network, X } from 'lucide-react';
+import { Plus, Pin, ChevronRight, Trash2, Pencil as PencilIcon, ArrowLeft, Network, X } from 'lucide-react';
+import EditableCell from '../components/EditableCell';
 import WikiSearch from '../components/wiki/WikiSearch';
 import WikiRenderer from '../components/wiki/WikiRenderer';
 import WikiEditor from '../components/wiki/WikiEditor';
@@ -145,7 +146,7 @@ function WikiHome() {
                 </h3>
                 <div className="space-y-1">
                   {pinnedPages.map((page) => (
-                    <PageRow key={page.id} page={page} onClick={() => navigate(`/wiki/${page.slug}`)} />
+                    <PageRow key={page.id} page={page} onClick={() => navigate(`/wiki/${page.slug}`)} onUpdate={fetchPages} />
                   ))}
                 </div>
               </div>
@@ -168,7 +169,7 @@ function WikiHome() {
                   </h3>
                   <div className="space-y-1">
                     {grouped[cat].map((page) => (
-                      <PageRow key={page.id} page={page} onClick={() => navigate(`/wiki/${page.slug}`)} />
+                      <PageRow key={page.id} page={page} onClick={() => navigate(`/wiki/${page.slug}`)} onUpdate={fetchPages} />
                     ))}
                   </div>
                 </div>
@@ -183,51 +184,69 @@ function WikiHome() {
   );
 }
 
-function PageRow({ page, onClick }: { page: WikiPageSummary; onClick: () => void }) {
-  const cat = page.category ? WIKI_CATEGORIES[page.category] : null;
-  const entColor = page.enterprise ? ENTERPRISE_COLORS[page.enterprise] : null;
-  const entLabel = page.enterprise ? ENTERPRISE_LABELS[page.enterprise] ?? page.enterprise : null;
+function PageRow({ page, onClick, onUpdate }: { page: WikiPageSummary; onClick: () => void; onUpdate?: () => void }) {
+  const ENTERPRISES_LIST = ['', 'rooibos', 'wine', 'sheep', 'buchu', 'sceletium', 'all'];
+  const categoryKeys = Object.keys(WIKI_CATEGORIES);
 
   return (
-    <button
-      onClick={onClick}
+    <div
       className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-stone-50 transition-colors group"
     >
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-stone-800 truncate group-hover:text-emerald-700 transition-colors">
-          {page.pinned && <Pin size={12} className="inline mr-1.5 text-amber-500" />}
-          {page.title}
-        </p>
+        <div className="flex items-center gap-1">
+          {page.pinned && <Pin size={12} className="inline mr-1.5 text-amber-500 flex-shrink-0" />}
+          <span onClick={(e) => e.stopPropagation()}>
+            <EditableCell
+              value={page.title}
+              onSave={(val) => {
+                updateWikiPage(page.slug, { title: val }).then(() => onUpdate?.()).catch(console.error);
+              }}
+              className="text-sm font-medium text-stone-800 group-hover:text-emerald-700 transition-colors"
+            />
+          </span>
+        </div>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          {cat && (
-            <span
-              className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium text-white"
-              style={{ backgroundColor: cat.color }}
-            >
-              {cat.label}
-            </span>
-          )}
-          {entLabel && (
-            <span
-              className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium text-white"
-              style={{ backgroundColor: entColor ?? '#6b7280' }}
-            >
-              {entLabel}
-            </span>
-          )}
-          {page.tags.length > 0 && (
-            <span className="text-[10px] text-stone-400">
-              {page.tags.slice(0, 3).join(', ')}
-              {page.tags.length > 3 && ` +${page.tags.length - 3}`}
-            </span>
-          )}
+          <span onClick={(e) => e.stopPropagation()}>
+            <EditableCell
+              value={page.category ?? ''}
+              type="select"
+              options={['', ...categoryKeys]}
+              onSave={(val) => {
+                updateWikiPage(page.slug, { category: val || undefined }).then(() => onUpdate?.()).catch(console.error);
+              }}
+              className="text-[10px]"
+            />
+          </span>
+          <span onClick={(e) => e.stopPropagation()}>
+            <EditableCell
+              value={page.enterprise ?? ''}
+              type="select"
+              options={ENTERPRISES_LIST}
+              onSave={(val) => {
+                updateWikiPage(page.slug, { enterprise: val || undefined }).then(() => onUpdate?.()).catch(console.error);
+              }}
+              className="text-[10px]"
+            />
+          </span>
+          <span onClick={(e) => e.stopPropagation()}>
+            <EditableCell
+              value={page.tags.join(', ')}
+              onSave={(val) => {
+                const tags = val.split(',').map(t => t.trim()).filter(Boolean);
+                updateWikiPage(page.slug, { tags }).then(() => onUpdate?.()).catch(console.error);
+              }}
+              className="text-[10px] text-stone-400"
+            />
+          </span>
         </div>
       </div>
       <span className="text-[10px] text-stone-400 flex-shrink-0 hidden sm:block">
         {formatDate(page.updated_at)}
       </span>
-      <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
-    </button>
+      <button onClick={onClick} className="flex-shrink-0">
+        <ChevronRight size={14} className="text-stone-300" />
+      </button>
+    </div>
   );
 }
 
@@ -354,7 +373,7 @@ function WikiSinglePage() {
               onClick={startEditing}
               className="flex items-center gap-1 px-3 py-1.5 border border-stone-300 text-stone-700 text-xs font-medium rounded-lg hover:bg-stone-50 transition-colors"
             >
-              <Pencil size={14} />
+              <PencilIcon size={14} />
               Edit
             </button>
             {confirmDelete ? (

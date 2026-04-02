@@ -58,6 +58,10 @@ export async function createShearingRecord(data: Partial<ShearingRecord>): Promi
   return request<ShearingRecord>('/livestock/shearing', { method: 'POST', body: JSON.stringify(data) });
 }
 
+export async function updateShearingRecord(id: string, data: Partial<ShearingRecord>): Promise<ShearingRecord> {
+  return request<ShearingRecord>(`/livestock/shearing/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
 export async function getLivestockDashboard(): Promise<LivestockDashboard> {
   return request<LivestockDashboard>('/livestock/dashboard');
 }

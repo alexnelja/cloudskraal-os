@@ -1,0 +1,11 @@
+node_modules/
+.env
+*.db
+*.db-wal
+*.db-shm
+google-credentials.json
+gen-lang-client*.json
+.DS_Store
+dist/
+.worktrees/
+vault/

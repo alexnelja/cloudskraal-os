@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Factory, X, ArrowLeft, CheckCircle2, Circle, Clock } from 'lucide-react';
-import { getBatches, getBatch, getProductionDashboard } from '../api/production';
-import type { ProductionBatch, ProductionDashboard, ProcessingStep, QualityTest, Sale } from '../types/phase2';
+import { getBatches, getBatch, getProductionDashboard, updateBatch } from '../api/production';
+import type { ProductionBatch, ProductionDashboard, QualityTest, Sale } from '../types/phase2';
 import { BATCH_STATUS_COLORS } from '../types/phase2';
 import { ENTERPRISE_COLORS } from '../types/farm';
+import EditableCell from '../components/EditableCell';
 
 function formatDate(iso: string | null): string {
   if (!iso) return '-';
@@ -132,10 +133,10 @@ export default function ProductionPage() {
                     {/* Cards */}
                     <div className="space-y-2">
                       {items.map((batch) => (
-                        <button
+                        <div
                           key={batch.id}
                           onClick={() => setSelectedId(batch.id)}
-                          className={`w-full text-left bg-white rounded-lg border p-3 transition-colors ${
+                          className={`w-full text-left bg-white rounded-lg border p-3 transition-colors cursor-pointer ${
                             selectedId === batch.id ? 'border-emerald-500' : 'border-[#f3f4f3]'
                           }`}
                         >
@@ -150,16 +151,42 @@ export default function ProductionPage() {
                             >
                               {batch.enterprise}
                             </span>
+                            <span onClick={(e) => e.stopPropagation()}>
+                              <EditableCell
+                                value={batch.status}
+                                type="select"
+                                options={KANBAN_COLUMNS}
+                                onSave={(val) => {
+                                  setBatches(prev => prev.map(b => b.id === batch.id ? { ...b, status: val } : b));
+                                  updateBatch(batch.id, { status: val }).catch(() => fetchData());
+                                }}
+                                className="text-[10px] font-medium"
+                              />
+                            </span>
                           </div>
                           <div className="flex items-center justify-between text-xs">
-                            <span className="text-stone-600">
-                              {batch.current_quantity_kg != null ? `${batch.current_quantity_kg.toLocaleString()} kg` : '-'}
+                            <span className="text-stone-600" onClick={(e) => e.stopPropagation()}>
+                              <EditableCell
+                                value={batch.current_quantity_kg != null ? String(batch.current_quantity_kg) : ''}
+                                type="number"
+                                onSave={(val) => {
+                                  const num = val ? Number(val) : null;
+                                  setBatches(prev => prev.map(b => b.id === batch.id ? { ...b, current_quantity_kg: num } : b));
+                                  updateBatch(batch.id, { current_quantity_kg: num }).catch(() => fetchData());
+                                }}
+                                className="text-xs text-stone-600"
+                              />
                             </span>
-                            {batch.quality_grade && (
-                              <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded font-medium">
-                                {batch.quality_grade}
-                              </span>
-                            )}
+                            <span onClick={(e) => e.stopPropagation()}>
+                              <EditableCell
+                                value={batch.quality_grade ?? ''}
+                                onSave={(val) => {
+                                  setBatches(prev => prev.map(b => b.id === batch.id ? { ...b, quality_grade: val || null } : b));
+                                  updateBatch(batch.id, { quality_grade: val || null }).catch(() => fetchData());
+                                }}
+                                className="text-[10px] text-purple-700 font-medium"
+                              />
+                            </span>
                           </div>
                           {batch.latest_step && (
                             <p className="text-[10px] text-stone-400 mt-1">Latest: {batch.latest_step}</p>
@@ -167,7 +194,7 @@ export default function ProductionPage() {
                           {batch.step_count != null && batch.step_count > 0 && (
                             <p className="text-[10px] text-stone-400">{batch.step_count} step{batch.step_count !== 1 ? 's' : ''}</p>
                           )}
-                        </button>
+                        </div>
                       ))}
                       {items.length === 0 && (
                         <div className="rounded-lg border border-dashed border-[#f3f4f3] p-4 text-center">
@@ -239,12 +266,18 @@ export default function ProductionPage() {
                       <span className="text-purple-700 font-medium">{selectedBatch.quality_grade}</span>
                     </div>
                   )}
-                  {selectedBatch.storage_location && (
-                    <div className="flex justify-between">
-                      <span className="text-stone-500">Storage</span>
-                      <span className="text-stone-800">{selectedBatch.storage_location}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between">
+                    <span className="text-stone-500">Storage</span>
+                    <EditableCell
+                      value={selectedBatch.storage_location ?? ''}
+                      onSave={(val) => {
+                        setSelectedBatch(prev => prev ? { ...prev, storage_location: val || null } : prev);
+                        setBatches(prev => prev.map(b => b.id === selectedBatch.id ? { ...b, storage_location: val || null } : b));
+                        updateBatch(selectedBatch.id, { storage_location: val || null }).catch(() => fetchData());
+                      }}
+                      className="text-stone-800"
+                    />
+                  </div>
                   {selectedBatch.harvest_date_start && (
                     <div className="flex justify-between">
                       <span className="text-stone-500">Harvest</span>

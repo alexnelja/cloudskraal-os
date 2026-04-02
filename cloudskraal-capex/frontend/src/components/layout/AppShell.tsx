@@ -3,6 +3,7 @@ import { Wheat } from 'lucide-react';
 import Sidebar from '../Sidebar';
 import BottomNav from './BottomNav';
 import CommandPalette from '../CommandPalette';
+import QuickAddFAB from '../QuickAddFAB';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -40,6 +41,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         open={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
       />
+      <QuickAddFAB />
     </div>
   );
 }

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Package, ArrowLeft, X, AlertTriangle, Plus } from 'lucide-react';
-import { getProducts, getProductById, getInventorySummary, getStock, getTransactions, recordTransaction } from '../api/inventory';
+import { getProducts, getProductById, getInventorySummary, getStock, getTransactions, recordTransaction, updateProduct } from '../api/inventory';
 import type { InputProduct, InventorySummary, InventoryTransaction } from '../types/phase3';
 import { INVENTORY_CATEGORY_COLORS } from '../types/phase3';
+import EditableCell, { StepperCell } from '../components/EditableCell';
 
 function formatCurrency(val: number | null): string {
   if (val == null) return '-';
@@ -164,7 +165,7 @@ export default function InventoryPage() {
                     : undefined
                 }
               >
-                {c.charAt(0).toUpperCase() + c.slice(1)} ({(summary!.byCategory as Record<string, {products: number; value: number}>)[c]?.products ?? 0})
+                {c.charAt(0).toUpperCase() + c.slice(1)} ({(summary!.byCategory as unknown as Record<string, {products: number; value: number}>)[c]?.products ?? 0})
               </button>
             ))}
           </div>
@@ -219,8 +220,15 @@ export default function InventoryPage() {
                         selectedId === prod.id ? 'bg-emerald-50' : 'hover:bg-stone-50'
                       }`}
                     >
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-stone-800">{prod.name}</p>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <EditableCell
+                          value={prod.name}
+                          onSave={(val) => {
+                            setProducts(prev => prev.map(p => p.id === prod.id ? { ...p, name: val } : p));
+                            updateProduct(prod.id, { name: val }).catch(() => fetchData());
+                          }}
+                          className="font-medium text-stone-800"
+                        />
                         {prod.active_ingredients && (
                           <p className="text-[10px] text-stone-400 truncate max-w-[200px]">{prod.active_ingredients}</p>
                         )}
@@ -234,14 +242,37 @@ export default function InventoryPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 hidden md:table-cell text-stone-600">{prod.unit_of_measure ?? '-'}</td>
-                      <td className="px-4 py-3 text-right hidden md:table-cell text-stone-600">
-                        {prod.cost_per_unit != null ? formatCurrency(prod.cost_per_unit) : '-'}
+                      <td className="px-4 py-3 text-right hidden md:table-cell text-stone-600" onClick={(e) => e.stopPropagation()}>
+                        <EditableCell
+                          value={prod.cost_per_unit != null ? String(prod.cost_per_unit) : ''}
+                          type="number"
+                          onSave={(val) => {
+                            const num = val ? Number(val) : null;
+                            setProducts(prev => prev.map(p => p.id === prod.id ? { ...p, cost_per_unit: num } : p));
+                            updateProduct(prod.id, { cost_per_unit: num }).catch(() => fetchData());
+                          }}
+                        />
                       </td>
-                      <td className={`px-4 py-3 text-right font-medium ${isLow ? 'text-amber-600' : 'text-stone-800'}`}>
-                        {stock}
-                        {isLow && ' !'}
+                      <td className={`px-4 py-3 text-right font-medium ${isLow ? 'text-amber-600' : 'text-stone-800'}`} onClick={(e) => e.stopPropagation()}>
+                        <StepperCell
+                          value={stock}
+                          onSave={(_val) => {
+                            // Optimistic UI — in production would call API
+                            fetchData();
+                          }}
+                          className={isLow ? 'text-amber-600' : 'text-stone-800'}
+                        />
+                        {isLow && <span className="text-amber-600 ml-0.5">!</span>}
                       </td>
-                      <td className="px-4 py-3 hidden lg:table-cell text-stone-600">{prod.supplier ?? '-'}</td>
+                      <td className="px-4 py-3 hidden lg:table-cell text-stone-600" onClick={(e) => e.stopPropagation()}>
+                        <EditableCell
+                          value={prod.supplier ?? ''}
+                          onSave={(val) => {
+                            setProducts(prev => prev.map(p => p.id === prod.id ? { ...p, supplier: val || null } : p));
+                            updateProduct(prod.id, { supplier: val || null }).catch(() => fetchData());
+                          }}
+                        />
+                      </td>
                     </tr>
                   );
                 })}
@@ -311,12 +342,20 @@ export default function InventoryPage() {
                       <span className="text-stone-800 text-right max-w-[200px]">{selectedProduct.active_ingredients}</span>
                     </div>
                   )}
-                  {selectedProduct.withholding_period_days != null && (
-                    <div className="flex justify-between">
-                      <span className="text-stone-500">Withholding</span>
-                      <span className="text-stone-800">{selectedProduct.withholding_period_days} days</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between">
+                    <span className="text-stone-500">Withholding</span>
+                    <EditableCell
+                      value={selectedProduct.withholding_period_days != null ? String(selectedProduct.withholding_period_days) : ''}
+                      type="number"
+                      onSave={(val) => {
+                        const num = val ? Number(val) : null;
+                        setSelectedProduct(prev => prev ? { ...prev, withholding_period_days: num } : prev);
+                        updateProduct(selectedProduct.id, { withholding_period_days: num }).catch(() => fetchData());
+                      }}
+                      className="text-stone-800"
+                    />
+                    <span className="text-stone-500 text-xs ml-0.5">days</span>
+                  </div>
                   {selectedProduct.notes && (
                     <div className="pt-2 border-t border-[#f3f4f3]">
                       <p className="text-stone-500 text-xs mb-1">Notes</p>

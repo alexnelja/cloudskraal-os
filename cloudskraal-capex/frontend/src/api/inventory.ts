@@ -30,6 +30,10 @@ export async function getInventorySummary(): Promise<InventorySummary> {
   return request<InventorySummary>('/inventory/summary');
 }
 
+export async function updateProduct(id: string, data: Partial<InputProduct>): Promise<InputProduct> {
+  return request<InputProduct>(`/inventory/products/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
 export async function getStock(): Promise<InventoryStock[]> {
   return request<InventoryStock[]>('/inventory/stock');
 }

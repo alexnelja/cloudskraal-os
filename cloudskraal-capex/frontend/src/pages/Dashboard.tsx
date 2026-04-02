@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FolderOpen,
@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   Sparkles,
   CircleDot,
+  X,
 } from 'lucide-react';
 import {
   BarChart,
@@ -26,12 +27,18 @@ import {
 } from 'recharts';
 import MetricCard from '../components/MetricCard';
 import ProjectModal from '../components/ProjectModal';
-import { getProjects, getDashboardStats, createProject } from '../api/client';
+import { StatusCycle } from '../components/EditableCell';
+import { getProjects, getDashboardStats, createProject, updateProject } from '../api/client';
 import type { ProjectSummary, DashboardStats, CreateProjectPayload } from '../types';
 import { formatZAR, formatPercent, formatCompactZAR } from '../utils/format';
 import { getUpcomingTasks, getOverdueTasks } from '../api/calendar';
 import type { Task } from '../types/calendar';
 import { PRIORITY_COLORS, STATUS_COLORS } from '../types/calendar';
+
+interface ProjectPopup {
+  project: ProjectSummary;
+  position: { x: number; y: number };
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -41,6 +48,22 @@ export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
   const [overdueTasks, setOverdueTasks] = useState<Task[]>([]);
+  const [projectPopup, setProjectPopup] = useState<ProjectPopup | null>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+
+  // Close popup on click outside or ESC
+  const handleClosePopup = useCallback(() => setProjectPopup(null), []);
+
+  useEffect(() => {
+    if (!projectPopup) return;
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClosePopup(); };
+    const handleClick = (e: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) handleClosePopup();
+    };
+    window.addEventListener('keydown', handleKey);
+    window.addEventListener('mousedown', handleClick);
+    return () => { window.removeEventListener('keydown', handleKey); window.removeEventListener('mousedown', handleClick); };
+  }, [projectPopup, handleClosePopup]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -79,6 +102,34 @@ export default function Dashboard() {
   };
 
   const recentProjects = projects.slice(0, 5);
+
+  const handleBudgetBarClick = (data: any) => {
+    if (data?.activePayload?.[0]) {
+      const type = data.activePayload[0].payload.type?.toLowerCase();
+      navigate(`/projects?type=${type}`);
+    }
+  };
+
+  const handleNpvBarClick = (data: Record<string, unknown> | null) => {
+    const payload = data as { activePayload?: { payload: { name: string; type: string } }[] } | null;
+    if (payload?.activePayload?.[0]) {
+      const clickedName = payload.activePayload[0].payload.name;
+      const fullName = clickedName.endsWith('...') ? clickedName.slice(0, -3) : clickedName;
+      const project = projects.find(p => p.name.startsWith(fullName));
+      if (project) {
+        // Position popup centrally since we don't have exact click coords from recharts
+        const x = Math.min(window.innerWidth / 2 - 160, window.innerWidth - 340);
+        const y = Math.min(window.innerHeight / 3, window.innerHeight - 320);
+        setProjectPopup({ project, position: { x, y } });
+      }
+    }
+  };
+
+  const openProjectPopup = (project: ProjectSummary, e: React.MouseEvent) => {
+    const x = Math.min(e.clientX, window.innerWidth - 340);
+    const y = Math.min(e.clientY, window.innerHeight - 320);
+    setProjectPopup({ project, position: { x, y } });
+  };
 
   const statusColors: Record<string, string> = {
     draft: 'bg-stone-500/10 text-stone-600',
@@ -165,15 +216,15 @@ export default function Dashboard() {
               <div className="bg-white rounded-2xl p-5">
                 <h3 className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#6e7a73] mb-4">Budget by Type (R millions)</h3>
                 <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={budgetByType} layout="vertical" margin={{ left: 20 }}>
+                  <BarChart data={budgetByType} layout="vertical" margin={{ left: 20 }} onClick={handleBudgetBarClick}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#bdc9c1" strokeOpacity={0.3} />
                     <XAxis type="number" tick={{ fontSize: 12, fill: '#6e7a73' }} />
                     <YAxis dataKey="type" type="category" tick={{ fontSize: 12, fill: '#6e7a73' }} width={90} />
                     <Tooltip
-                      formatter={(value: number) => [`R ${value}M`, 'CapEx']}
+                      formatter={(value) => [`R ${value}M`, 'CapEx']}
                       contentStyle={{ borderRadius: '8px', border: '1px solid rgba(189,201,193,0.15)', fontSize: '13px' }}
                     />
-                    <Bar dataKey="total" fill="#047857" radius={[0, 6, 6, 0]} />
+                    <Bar dataKey="total" fill="#047857" radius={[0, 6, 6, 0]} style={{ cursor: 'pointer' }} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -207,15 +258,15 @@ export default function Dashboard() {
               <div className="bg-white rounded-2xl p-5">
                 <h3 className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#6e7a73] mb-4">Top 10 NPV Ranking (R thousands)</h3>
                 <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={topNpv} layout="vertical" margin={{ left: 20 }}>
+                  <BarChart data={topNpv} layout="vertical" margin={{ left: 20 }} onClick={handleNpvBarClick}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#bdc9c1" strokeOpacity={0.3} />
                     <XAxis type="number" tick={{ fontSize: 12, fill: '#6e7a73' }} />
                     <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#6e7a73' }} width={140} />
                     <Tooltip
-                      formatter={(value: number) => [`R ${value}K`, 'NPV']}
+                      formatter={(value) => [`R ${value}K`, 'NPV']}
                       contentStyle={{ borderRadius: '8px', border: '1px solid rgba(189,201,193,0.15)', fontSize: '13px' }}
                     />
-                    <Bar dataKey="npv" radius={[0, 6, 6, 0]}>
+                    <Bar dataKey="npv" radius={[0, 6, 6, 0]} style={{ cursor: 'pointer' }}>
                       {topNpv.map((entry, index) => (
                         <Cell key={index} fill={TYPE_COLORS[entry.type] || '#78716c'} />
                       ))}
@@ -256,10 +307,23 @@ export default function Dashboard() {
                   <p className="text-[10px] text-[#6e7a73] mt-0.5">{t.count} projects &middot; NPV: {formatCompactZAR(t.totalNpv)}</p>
                   <div className="mt-3 space-y-1">
                     {t.projects.slice(0, 4).map(p => (
-                      <Link key={p.id} to={`/projects/${p.id}`} className="flex items-center justify-between text-xs hover:bg-[#f3f4f3] rounded px-1.5 py-1 transition-colors">
-                        <span className="text-[#1a1c1c] truncate mr-2">{p.name}</span>
-                        <span className="text-[#6e7a73] whitespace-nowrap">{formatCompactZAR(p.initialOutlay)}</span>
-                      </Link>
+                      <div key={p.id} className="w-full flex items-center gap-1.5 text-xs hover:bg-[#f3f4f3] rounded px-1.5 py-1 transition-colors text-left">
+                        <span onClick={(e) => { e.stopPropagation(); }}>
+                          <StatusCycle
+                            value={p.status}
+                            options={['draft', 'evaluating', 'approved']}
+                            colors={{ draft: '#78716c', evaluating: '#d97706', approved: '#047857' }}
+                            onSave={(val) => {
+                              setProjects(prev => prev.map(proj => proj.id === p.id ? { ...proj, status: val as typeof proj.status } : proj));
+                              updateProject(p.id, { status: val as 'draft' | 'evaluating' | 'approved' }).catch(() => fetchData());
+                            }}
+                          />
+                        </span>
+                        <button onClick={(e) => openProjectPopup(p, e)} className="flex-1 flex items-center justify-between min-w-0">
+                          <span className="text-[#1a1c1c] truncate mr-2">{p.name}</span>
+                          <span className="text-[#6e7a73] whitespace-nowrap">{formatCompactZAR(p.initialOutlay)}</span>
+                        </button>
+                      </div>
                     ))}
                     {t.projects.length > 4 && (
                       <p className="text-[10px] text-[#6e7a73] pl-1.5">+{t.projects.length - 4} more</p>
@@ -488,6 +552,55 @@ export default function Dashboard() {
         onClose={() => setShowModal(false)}
         onSubmit={handleCreate}
       />
+
+      {/* Project Detail Popup */}
+      {projectPopup && (
+        <div
+          ref={popupRef}
+          className="fixed bg-white rounded-2xl shadow-2xl p-5 w-[320px] z-50 animate-in fade-in duration-200"
+          style={{
+            left: `${projectPopup.position.x}px`,
+            top: `${projectPopup.position.y}px`,
+          }}
+        >
+          <div className="flex items-start justify-between mb-3">
+            <h3 className="text-sm font-bold text-[#1a1c1c] leading-tight pr-2">{projectPopup.project.name}</h3>
+            <button onClick={handleClosePopup} className="p-0.5 text-stone-400 hover:text-stone-600 flex-shrink-0">
+              <X size={16} />
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-700 capitalize">{projectPopup.project.type}</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${statusColors[projectPopup.project.status] || 'bg-stone-500/10 text-stone-600'}`}>{projectPopup.project.status}</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-500/10 text-violet-700">{projectPopup.project.priority}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="bg-[#f3f4f3] rounded-lg p-2.5 text-center">
+              <p className="text-[10px] text-[#6e7a73] mb-0.5">NPV</p>
+              <p className="text-sm font-bold text-[#1a1c1c]">{projectPopup.project.bestNpv != null ? formatCompactZAR(projectPopup.project.bestNpv) : '--'}</p>
+            </div>
+            <div className="bg-[#f3f4f3] rounded-lg p-2.5 text-center">
+              <p className="text-[10px] text-[#6e7a73] mb-0.5">IRR</p>
+              <p className="text-sm font-bold text-[#1a1c1c]">{projectPopup.project.bestIrr != null ? formatPercent(projectPopup.project.bestIrr) : '--'}</p>
+            </div>
+            <div className="bg-[#f3f4f3] rounded-lg p-2.5 text-center">
+              <p className="text-[10px] text-[#6e7a73] mb-0.5">Initial Outlay</p>
+              <p className="text-sm font-bold text-[#1a1c1c]">{formatCompactZAR(projectPopup.project.initialOutlay)}</p>
+            </div>
+            <div className="bg-[#f3f4f3] rounded-lg p-2.5 text-center">
+              <p className="text-[10px] text-[#6e7a73] mb-0.5">Priority</p>
+              <p className="text-sm font-bold text-[#1a1c1c] capitalize">{projectPopup.project.priority.replace('tier', 'Tier ')}</p>
+            </div>
+          </div>
+          <Link
+            to={`/projects/${projectPopup.project.id}`}
+            onClick={handleClosePopup}
+            className="block w-full text-center py-2 bg-gradient-to-br from-[#005d42] to-[#047857] text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+          >
+            View Details &rarr;
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
