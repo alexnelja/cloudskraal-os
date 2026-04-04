@@ -76,6 +76,84 @@ export const ENTERPRISE_COLORS: Record<string, string> = {
   unclassified: '#d1d5db',
 };
 
+// Cost of Production types
+export interface FieldInputTransaction {
+  id: string;
+  product_id: string;
+  product_name: string;
+  category: string;
+  unit_of_measure: string;
+  type: string;
+  date: string;
+  quantity: number;
+  unit_cost: number | null;
+  total_cost: number | null;
+  field_id: string;
+  notes: string | null;
+}
+
+export interface FieldTaskInput {
+  id: string;
+  task_id: string;
+  task_title: string;
+  due_date: string | null;
+  completed_date: string | null;
+  task_status: string;
+  product_name: string;
+  category: string;
+  rate: number | null;
+  rate_unit: string | null;
+  total_applied: number | null;
+  total_unit: string | null;
+  cost_per_unit: number | null;
+  total_cost: number | null;
+}
+
+export interface FieldLabourEntry {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  employee_role: string;
+  date: string;
+  hours_worked: number;
+  activity_type: string;
+  hourly_rate: number | null;
+  monthly_salary: number | null;
+  notes: string | null;
+}
+
+export interface FieldTask {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  due_date: string | null;
+  completed_date: string | null;
+  enterprise: string;
+}
+
+export interface FieldCostSummary {
+  total_input_cost: number;
+  total_task_input_cost: number;
+  total_labour_cost: number;
+  total_labour_hours: number;
+  total_cost: number;
+  cost_per_ha: number;
+  total_yield_kg: number;
+  yield_per_ha: number;
+  cost_per_kg: number | null;
+}
+
+export interface FieldCostOfProduction {
+  field: Field;
+  production: FieldProduction[];
+  inputs: FieldInputTransaction[];
+  taskInputs: FieldTaskInput[];
+  labour: FieldLabourEntry[];
+  tasks: FieldTask[];
+  summary: FieldCostSummary;
+}
+
 export const ENTERPRISE_LABELS: Record<string, string> = {
   rooibos: 'Rooibos',
   wine: 'Wine / Grapes',

@@ -1,4 +1,4 @@
-import type { Farm, Field, FieldNote, MapLayer } from '../types/farm';
+import type { Farm, Field, FieldNote, MapLayer, FieldCostOfProduction } from '../types/farm';
 
 import { API_BASE_URL } from './config';
 const BASE_URL = API_BASE_URL;
@@ -53,6 +53,11 @@ export async function getMapLayers(): Promise<MapLayer[]> {
 
 export async function updateMapLayer(id: string, data: { visible?: boolean; opacity?: number }): Promise<MapLayer> {
   return request<MapLayer>(`/map-layers/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function getFieldCostOfProduction(id: string, year?: number): Promise<FieldCostOfProduction> {
+  const qs = year ? `?year=${year}` : '';
+  return request<FieldCostOfProduction>(`/fields/${id}/cost-of-production${qs}`);
 }
 
 export async function createFieldNote(fieldId: string, data: { lat: number; lng: number; title?: string; body?: string; tags?: string[] }): Promise<FieldNote> {

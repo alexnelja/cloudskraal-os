@@ -1,18 +1,16 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, ClipboardList, BookOpen, BarChart3 } from 'lucide-react';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
+  X, ClipboardList, BookOpen, BarChart3, Droplets, Clock, DollarSign, Layers,
+} from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { getField } from '../../api/farms';
-import type { Field, FieldProduction } from '../../types/farm';
+import { getField, getFieldCostOfProduction } from '../../api/farms';
+import type {
+  Field, FieldProduction, FieldCostOfProduction,
+  FieldInputTransaction, FieldTaskInput, FieldLabourEntry, FieldCostSummary,
+} from '../../types/farm';
 import { ENTERPRISE_COLORS, ENTERPRISE_LABELS } from '../../types/farm';
 
 interface FieldPanelProps {
@@ -27,134 +25,90 @@ const STATUS_COLORS: Record<string, string> = {
   retired: 'bg-red-100 text-red-700',
 };
 
+const TABS = ['Overview', 'Inputs', 'Labour', 'Costs'] as const;
+type Tab = typeof TABS[number];
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-ZA', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
+    day: 'numeric', month: 'short', year: 'numeric',
   });
 }
 
-function hasProductionData(production: FieldProduction[]): boolean {
-  return production.some(
-    (p) => p.estimated_yield_kg !== null || p.actual_yield_kg !== null
-  );
+function formatZAR(amount: number): string {
+  return `R${amount.toLocaleString('en-ZA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
+
+function hasProductionData(production: FieldProduction[]): boolean {
+  return production.some(p => p.estimated_yield_kg !== null || p.actual_yield_kg !== null);
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  fertilizer: 'bg-emerald-100 text-emerald-700',
+  herbicide: 'bg-red-100 text-red-700',
+  pesticide: 'bg-amber-100 text-amber-700',
+  fuel: 'bg-stone-200 text-stone-700',
+  seed: 'bg-teal-100 text-teal-700',
+};
 
 export default function FieldPanel({ fieldId, onClose }: FieldPanelProps) {
   const [field, setField] = useState<Field | null>(null);
+  const [costData, setCostData] = useState<FieldCostOfProduction | null>(null);
   const [loading, setLoading] = useState(false);
+  const [costLoading, setCostLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>('Overview');
 
   useEffect(() => {
     if (!fieldId) {
       setField(null);
+      setCostData(null);
+      setActiveTab('Overview');
       return;
     }
     setLoading(true);
     setError(null);
     getField(fieldId)
-      .then((data) => {
-        setField(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load field:', err);
-        setError('Failed to load field details.');
-        setLoading(false);
-      });
+      .then(data => { setField(data); setLoading(false); })
+      .catch(err => { console.error('Failed to load field:', err); setError('Failed to load field details.'); setLoading(false); });
+
+    setCostLoading(true);
+    getFieldCostOfProduction(fieldId)
+      .then(data => { setCostData(data); setCostLoading(false); })
+      .catch(() => setCostLoading(false));
   }, [fieldId]);
 
   const isOpen = fieldId !== null;
 
-  // Production chart data
-  const chartData =
-    field?.production
-      ?.filter(
-        (p) => p.estimated_yield_kg !== null || p.actual_yield_kg !== null
-      )
-      .sort((a, b) => a.year - b.year)
-      .map((p) => ({
-        year: p.year,
-        Estimated: p.estimated_yield_kg ?? 0,
-        Actual: p.actual_yield_kg ?? 0,
-      })) ?? [];
+  const chartData = field?.production
+    ?.filter(p => p.estimated_yield_kg !== null || p.actual_yield_kg !== null)
+    .sort((a, b) => a.year - b.year)
+    .map(p => ({ year: p.year, Estimated: p.estimated_yield_kg ?? 0, Actual: p.actual_yield_kg ?? 0 })) ?? [];
 
-  const showChart =
-    field?.production && hasProductionData(field.production) && chartData.length > 0;
+  const showChart = field?.production && hasProductionData(field.production) && chartData.length > 0;
 
-  const enterpriseColor = field
-    ? ENTERPRISE_COLORS[field.enterprise] ?? ENTERPRISE_COLORS.unclassified
-    : '#d1d5db';
-  const enterpriseLabel = field
-    ? ENTERPRISE_LABELS[field.enterprise] ?? field.enterprise
-    : '';
+  const enterpriseColor = field ? ENTERPRISE_COLORS[field.enterprise] ?? ENTERPRISE_COLORS.unclassified : '#d1d5db';
+  const enterpriseLabel = field ? ENTERPRISE_LABELS[field.enterprise] ?? field.enterprise : '';
+  const statusClass = STATUS_COLORS[field?.status ?? ''] ?? 'bg-stone-100 text-stone-700';
 
-  const statusClass =
-    STATUS_COLORS[field?.status ?? ''] ?? 'bg-stone-100 text-stone-700';
+  const panelProps = {
+    field, loading, error, chartData, showChart: showChart ?? false,
+    enterpriseColor, enterpriseLabel, statusClass, onClose, fieldId,
+    costData, costLoading, activeTab, setActiveTab,
+  };
 
   return (
     <>
-      {/* Desktop panel — fixed right, slides in from right */}
-      <div
-        className={`
-          hidden md:flex flex-col
-          fixed top-0 right-0 h-full w-[400px]
-          bg-white border-l border-[#f3f4f3] shadow-xl
-          overflow-y-auto z-40
-          transition-transform duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0' : 'translate-x-full'}
-        `}
-      >
-        <PanelContent
-          field={field}
-          loading={loading}
-          error={error}
-          chartData={chartData}
-          showChart={showChart ?? false}
-          enterpriseColor={enterpriseColor}
-          enterpriseLabel={enterpriseLabel}
-          statusClass={statusClass}
-          onClose={onClose}
-          showDragHandle={false}
-          fieldId={fieldId}
-        />
+      <div className={`hidden md:flex flex-col fixed top-0 right-0 h-full w-[440px] bg-white border-l border-[#f3f4f3] shadow-xl overflow-y-auto z-40 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <PanelContent {...panelProps} showDragHandle={false} />
       </div>
-
-      {/* Mobile panel — fixed bottom sheet, slides up from bottom */}
-      <div
-        className={`
-          flex md:hidden flex-col
-          fixed bottom-0 left-0 w-full max-h-[70vh]
-          bg-white rounded-t-2xl shadow-xl
-          overflow-y-auto z-40
-          transition-transform duration-300 ease-in-out
-          ${isOpen ? 'translate-y-0' : 'translate-y-full'}
-        `}
-      >
-        <PanelContent
-          field={field}
-          loading={loading}
-          error={error}
-          chartData={chartData}
-          showChart={showChart ?? false}
-          enterpriseColor={enterpriseColor}
-          enterpriseLabel={enterpriseLabel}
-          statusClass={statusClass}
-          onClose={onClose}
-          showDragHandle
-          fieldId={fieldId}
-        />
+      <div className={`flex md:hidden flex-col fixed bottom-0 left-0 w-full max-h-[80vh] bg-white rounded-t-2xl shadow-xl overflow-y-auto z-40 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+        <PanelContent {...panelProps} showDragHandle />
       </div>
     </>
   );
 }
 
-interface ChartRow {
-  year: number;
-  Estimated: number;
-  Actual: number;
-}
+interface ChartRow { year: number; Estimated: number; Actual: number; }
 
 interface PanelContentProps {
   field: Field | null;
@@ -168,26 +122,21 @@ interface PanelContentProps {
   onClose: () => void;
   showDragHandle: boolean;
   fieldId: string | null;
+  costData: FieldCostOfProduction | null;
+  costLoading: boolean;
+  activeTab: Tab;
+  setActiveTab: (tab: Tab) => void;
 }
 
 function PanelContent({
-  field,
-  loading,
-  error,
-  chartData,
-  showChart,
-  enterpriseColor,
-  enterpriseLabel,
-  statusClass,
-  onClose,
-  showDragHandle,
-  fieldId,
+  field, loading, error, chartData, showChart, enterpriseColor, enterpriseLabel,
+  statusClass, onClose, showDragHandle, fieldId, costData, costLoading, activeTab, setActiveTab,
 }: PanelContentProps) {
   const navigate = useNavigate();
   const chartRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="flex flex-col min-h-0">
-      {/* Drag handle (mobile only) */}
       {showDragHandle && (
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
           <div className="w-10 h-1 bg-stone-300 rounded-full" />
@@ -202,25 +151,37 @@ function PanelContent({
           ) : field ? (
             <>
               <h2 className="text-lg font-bold text-stone-900 truncate">{field.name}</h2>
-              <span
-                className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                style={{ backgroundColor: enterpriseColor }}
-              >
-                {enterpriseLabel}
-              </span>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium text-white" style={{ backgroundColor: enterpriseColor }}>
+                  {enterpriseLabel}
+                </span>
+                <span className="text-xs text-stone-500">{field.farm_name}</span>
+                {field.area_ha && <span className="text-xs text-stone-500">· {field.area_ha.toFixed(1)} ha</span>}
+              </div>
             </>
           ) : (
             <h2 className="text-lg font-bold text-stone-900">Field Details</h2>
           )}
         </div>
-        <button
-          onClick={onClose}
-          className="flex-shrink-0 p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors mt-0.5"
-          aria-label="Close panel"
-        >
+        <button onClick={onClose} className="flex-shrink-0 p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors mt-0.5" aria-label="Close panel">
           <X size={18} />
         </button>
       </div>
+
+      {/* Tabs */}
+      {field && !loading && (
+        <div className="flex border-b border-[#f3f4f3] px-2 flex-shrink-0">
+          {TABS.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors ${activeTab === tab ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-stone-500 hover:text-stone-700'}`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto">
@@ -232,94 +193,31 @@ function PanelContent({
           </div>
         )}
 
-        {error && (
-          <div className="p-4">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
+        {error && <div className="p-4"><p className="text-sm text-red-600">{error}</p></div>}
 
         {!loading && !error && field && (
           <>
-            {/* Info Grid */}
-            <div className="p-4 grid grid-cols-2 gap-3">
-              <InfoCell label="Farm" value={field.farm_name ?? '—'} />
-              <InfoCell label="Code" value={field.code ?? '—'} />
-              <InfoCell label="Area" value={`${field.area_ha.toFixed(1)} ha`} />
-              <InfoCell label="Planted" value={field.planted_year ?? '—'} />
-              <div>
-                <p className="text-xs text-stone-500 mb-1">Status</p>
-                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium capitalize ${statusClass}`}>
-                  {field.status}
-                </span>
-              </div>
-              <InfoCell label="Irrigation" value={field.irrigation_type ?? 'Dryland'} />
-            </div>
-
-            {/* Production Chart */}
-            {showChart && (
-              <div ref={chartRef} className="px-4 pb-4">
-                <h3 className="text-sm font-semibold text-stone-700 mb-3">
-                  Production History (kg)
-                </h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart
-                    data={chartData}
-                    margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                    <XAxis
-                      dataKey="year"
-                      tick={{ fontSize: 10, fill: '#78716c' }}
-                      tickFormatter={(val: number) => (val % 5 === 0 ? String(val) : '')}
-                      interval={0}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 10, fill: '#78716c' }}
-                      width={40}
-                    />
-                    <Tooltip
-                      contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e7e5e4' }}
-                      formatter={(value, name) => [
-                        `${Number(value).toLocaleString()} kg`,
-                        String(name),
-                      ]}
-                      labelFormatter={(label) => `Year: ${label}`}
-                      cursor={{ fill: 'rgba(5, 150, 105, 0.08)' }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="Estimated" fill="#d6d3d1" radius={[2, 2, 0, 0]} style={{ cursor: 'pointer' }} />
-                    <Bar dataKey="Actual" fill="#059669" radius={[2, 2, 0, 0]} style={{ cursor: 'pointer' }} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            {activeTab === 'Overview' && (
+              <OverviewTab
+                field={field} statusClass={statusClass} showChart={showChart}
+                chartData={chartData} chartRef={chartRef}
+                costData={costData}
+              />
             )}
-
-            {/* Notes */}
-            <div className="px-4 pb-4">
-              <h3 className="text-sm font-semibold text-stone-700 mb-3">
-                Notes{field.field_notes && field.field_notes.length > 0 ? ` (${field.field_notes.length})` : ''}
-              </h3>
-              {field.field_notes && field.field_notes.length > 0 ? (
-                <ul className="space-y-2">
-                  {field.field_notes.map((note) => (
-                    <li
-                      key={note.id}
-                      className="rounded-lg p-3 bg-stone-50"
-                    >
-                      {note.title && (
-                        <p className="text-sm font-medium text-stone-800 mb-0.5">{note.title}</p>
-                      )}
-                      {note.body && (
-                        <p className="text-xs text-stone-600 line-clamp-2">{note.body}</p>
-                      )}
-                      <p className="text-xs text-stone-400 mt-1">{formatDate(note.created_at)}</p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-stone-400">No notes yet.</p>
-              )}
-            </div>
+            {activeTab === 'Inputs' && (
+              <InputsTab inputs={costData?.inputs ?? []} taskInputs={costData?.taskInputs ?? []} loading={costLoading} />
+            )}
+            {activeTab === 'Labour' && (
+              <LabourTab labour={costData?.labour ?? []} loading={costLoading} />
+            )}
+            {activeTab === 'Costs' && (
+              <CostsTab
+                summary={costData?.summary ?? null}
+                production={costData?.production ?? []}
+                field={field}
+                loading={costLoading}
+              />
+            )}
           </>
         )}
       </div>
@@ -329,34 +227,11 @@ function PanelContent({
         <div className="flex-shrink-0 border-t border-[#f3f4f3] p-4 space-y-2">
           <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-2">Quick Actions</p>
           <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => navigate(`/calendar?create=true&field_id=${fieldId}`)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-stone-200 text-xs font-medium text-stone-700 hover:bg-stone-50 transition-colors"
-            >
-              <ClipboardList size={14} className="text-emerald-600" />
-              Create Task
+            <button onClick={() => navigate(`/calendar?create=true&field_id=${fieldId}`)} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-stone-200 text-xs font-medium text-stone-700 hover:bg-stone-50 transition-colors">
+              <ClipboardList size={14} className="text-emerald-600" /> Create Task
             </button>
-            <button
-              onClick={() => navigate(`/wiki/search?q=${encodeURIComponent(field.name)}`)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-stone-200 text-xs font-medium text-stone-700 hover:bg-stone-50 transition-colors"
-            >
-              <BookOpen size={14} className="text-blue-600" />
-              View in Wiki
-            </button>
-            {showChart && (
-              <button
-                onClick={() => chartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-stone-200 text-xs font-medium text-stone-700 hover:bg-stone-50 transition-colors"
-              >
-                <BarChart3 size={14} className="text-violet-600" />
-                Compare Yield
-              </button>
-            )}
-            <button
-              onClick={() => console.log('Add note for field:', field.id)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors"
-            >
-              + Add Note
+            <button onClick={() => navigate(`/wiki/search?q=${encodeURIComponent(field.name)}`)} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-stone-200 text-xs font-medium text-stone-700 hover:bg-stone-50 transition-colors">
+              <BookOpen size={14} className="text-blue-600" /> View in Wiki
             </button>
           </div>
         </div>
@@ -365,11 +240,366 @@ function PanelContent({
   );
 }
 
+// ─── Overview Tab ─────────────────────────────────────────────────────────────
+
+function OverviewTab({
+  field, statusClass, showChart, chartData, chartRef, costData,
+}: {
+  field: Field; statusClass: string; showChart: boolean;
+  chartData: ChartRow[]; chartRef: React.RefObject<HTMLDivElement | null>;
+  costData: FieldCostOfProduction | null;
+}) {
+  const summary = costData?.summary;
+
+  return (
+    <>
+      {/* Info Grid */}
+      <div className="p-4 grid grid-cols-2 gap-3">
+        <InfoCell label="Farm" value={field.farm_name ?? '—'} />
+        <InfoCell label="Code" value={field.code ?? '—'} />
+        <InfoCell label="Area" value={`${field.area_ha.toFixed(1)} ha`} />
+        <InfoCell label="Planted" value={field.planted_year ?? '—'} />
+        <div>
+          <p className="text-xs text-stone-500 mb-0.5">Status</p>
+          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium capitalize ${statusClass}`}>
+            {field.status}
+          </span>
+        </div>
+        <InfoCell label="Irrigation" value={field.irrigation_type ?? 'Dryland'} />
+      </div>
+
+      {/* Cost Summary Cards */}
+      {summary && summary.total_cost > 0 && (
+        <div className="px-4 pb-3">
+          <div className="grid grid-cols-3 gap-2">
+            <SummaryCard label="Total Cost" value={formatZAR(summary.total_cost)} icon={<DollarSign size={12} />} color="text-red-600" />
+            <SummaryCard label="Cost/ha" value={formatZAR(summary.cost_per_ha)} icon={<Layers size={12} />} color="text-amber-600" />
+            <SummaryCard
+              label="Cost/kg"
+              value={summary.cost_per_kg ? formatZAR(summary.cost_per_kg) : '—'}
+              icon={<BarChart3 size={12} />}
+              color="text-emerald-600"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Production Chart */}
+      {showChart && (
+        <div ref={chartRef} className="px-4 pb-4">
+          <h3 className="text-sm font-semibold text-stone-700 mb-3">Production History (kg)</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
+              <XAxis dataKey="year" tick={{ fontSize: 10, fill: '#78716c' }} tickFormatter={(val: number) => (val % 5 === 0 ? String(val) : '')} interval={0} />
+              <YAxis tick={{ fontSize: 10, fill: '#78716c' }} width={40} />
+              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e7e5e4' }} formatter={(value, name) => [`${Number(value).toLocaleString()} kg`, String(name)]} labelFormatter={label => `Year: ${label}`} cursor={{ fill: 'rgba(5, 150, 105, 0.08)' }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="Estimated" fill="#d6d3d1" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="Actual" fill="#059669" radius={[2, 2, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Notes */}
+      <div className="px-4 pb-4">
+        <h3 className="text-sm font-semibold text-stone-700 mb-3">
+          Notes{field.field_notes && field.field_notes.length > 0 ? ` (${field.field_notes.length})` : ''}
+        </h3>
+        {field.field_notes && field.field_notes.length > 0 ? (
+          <ul className="space-y-2">
+            {field.field_notes.map(note => (
+              <li key={note.id} className="rounded-lg p-3 bg-stone-50">
+                {note.title && <p className="text-sm font-medium text-stone-800 mb-0.5">{note.title}</p>}
+                {note.body && <p className="text-xs text-stone-600 line-clamp-2">{note.body}</p>}
+                <p className="text-xs text-stone-400 mt-1">{formatDate(note.created_at)}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-stone-400">No notes yet.</p>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── Inputs Tab ───────────────────────────────────────────────────────────────
+
+function InputsTab({
+  inputs, taskInputs, loading,
+}: {
+  inputs: FieldInputTransaction[]; taskInputs: FieldTaskInput[]; loading: boolean;
+}) {
+  if (loading) return <LoadingState />;
+
+  const hasData = inputs.length > 0 || taskInputs.length > 0;
+
+  if (!hasData) {
+    return <EmptyState icon={<Droplets size={24} />} message="No inputs recorded for this field" />;
+  }
+
+  return (
+    <div className="p-4 space-y-4">
+      {/* Inventory transactions (actual products applied) */}
+      {inputs.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-stone-700 mb-2">Products Applied</h3>
+          <div className="space-y-2">
+            {inputs.map(input => (
+              <div key={input.id} className="rounded-lg border border-stone-100 p-3 bg-white">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-stone-800">{input.product_name}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${CATEGORY_COLORS[input.category] ?? 'bg-stone-100 text-stone-600'}`}>
+                    {input.category}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-stone-500">
+                  <span>{input.quantity} {input.unit_of_measure}</span>
+                  {input.total_cost != null && <span className="text-red-600 font-medium">{formatZAR(input.total_cost)}</span>}
+                  <span className="ml-auto">{formatDate(input.date)}</span>
+                </div>
+                {input.notes && <p className="text-xs text-stone-400 mt-1">{input.notes}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Task-linked inputs */}
+      {taskInputs.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-stone-700 mb-2">Task Inputs</h3>
+          <div className="space-y-2">
+            {taskInputs.map(ti => (
+              <div key={ti.id} className="rounded-lg border border-stone-100 p-3 bg-white">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-stone-800">{ti.product_name}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${ti.task_status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {ti.task_status}
+                  </span>
+                </div>
+                <p className="text-xs text-stone-500 mb-1">{ti.task_title}</p>
+                <div className="flex items-center gap-3 text-xs text-stone-500">
+                  {ti.rate && <span>{ti.rate} {ti.rate_unit}</span>}
+                  {ti.total_applied && <span>→ {ti.total_applied} {ti.total_unit}</span>}
+                  {ti.total_cost != null && <span className="text-red-600 font-medium">{formatZAR(ti.total_cost)}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Labour Tab ───────────────────────────────────────────────────────────────
+
+function LabourTab({ labour, loading }: { labour: FieldLabourEntry[]; loading: boolean }) {
+  if (loading) return <LoadingState />;
+
+  if (labour.length === 0) {
+    return <EmptyState icon={<Clock size={24} />} message="No labour entries for this field" />;
+  }
+
+  // Group by employee
+  const byEmployee = labour.reduce<Record<string, { name: string; role: string; entries: FieldLabourEntry[]; totalHours: number }>>((acc, entry) => {
+    if (!acc[entry.employee_id]) {
+      acc[entry.employee_id] = { name: entry.employee_name, role: entry.employee_role, entries: [], totalHours: 0 };
+    }
+    acc[entry.employee_id].entries.push(entry);
+    acc[entry.employee_id].totalHours += entry.hours_worked || 0;
+    return acc;
+  }, {});
+
+  const totalHours = labour.reduce((sum, e) => sum + (e.hours_worked || 0), 0);
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-stone-700">Labour Summary</h3>
+        <span className="text-sm font-bold text-stone-900">{totalHours.toFixed(1)} hrs total</span>
+      </div>
+
+      {Object.values(byEmployee).map(emp => (
+        <div key={emp.name} className="rounded-lg border border-stone-100 p-3">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="text-sm font-medium text-stone-800">{emp.name}</p>
+              <p className="text-xs text-stone-500">{emp.role}</p>
+            </div>
+            <span className="text-sm font-bold text-emerald-700">{emp.totalHours.toFixed(1)} hrs</span>
+          </div>
+          <div className="space-y-1">
+            {emp.entries.slice(0, 5).map(entry => (
+              <div key={entry.id} className="flex items-center justify-between text-xs text-stone-500">
+                <span>{entry.activity_type?.replace('_', ' ')}</span>
+                <span>{entry.hours_worked}h · {formatDate(entry.date)}</span>
+              </div>
+            ))}
+            {emp.entries.length > 5 && (
+              <p className="text-xs text-stone-400">+{emp.entries.length - 5} more entries</p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Costs Tab ────────────────────────────────────────────────────────────────
+
+function CostsTab({
+  summary, production, field, loading,
+}: {
+  summary: FieldCostSummary | null; production: FieldProduction[];
+  field: Field; loading: boolean;
+}) {
+  if (loading) return <LoadingState />;
+
+  if (!summary || summary.total_cost === 0) {
+    return <EmptyState icon={<DollarSign size={24} />} message="No cost data available for this field" />;
+  }
+
+  const areaHa = field.area_ha || 1;
+
+  // Build cost breakdown for chart
+  const costBreakdown = [
+    { name: 'Inputs', value: summary.total_input_cost, color: '#059669' },
+    { name: 'Task Inputs', value: summary.total_task_input_cost, color: '#0d9488' },
+    { name: 'Labour', value: summary.total_labour_cost, color: '#d97706' },
+  ].filter(c => c.value > 0);
+
+  // Per-year production with cost overlay
+  const yearlyData = production
+    .filter(p => p.actual_yield_kg != null && p.actual_yield_kg > 0)
+    .sort((a, b) => a.year - b.year)
+    .slice(-5)
+    .map(p => ({
+      year: p.year,
+      yield_kg: p.actual_yield_kg ?? 0,
+      yield_per_ha: Math.round((p.actual_yield_kg ?? 0) / areaHa),
+    }));
+
+  return (
+    <div className="p-4 space-y-4">
+      {/* Key Metrics */}
+      <div>
+        <h3 className="text-sm font-semibold text-stone-700 mb-3">Cost of Production</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <MetricCard label="Total Cost" value={formatZAR(summary.total_cost)} sub="all inputs + labour" />
+          <MetricCard label="Cost / ha" value={formatZAR(summary.cost_per_ha)} sub={`${areaHa.toFixed(1)} ha`} />
+          <MetricCard label="Cost / kg" value={summary.cost_per_kg ? formatZAR(summary.cost_per_kg) : '—'} sub="variable cost" />
+          <MetricCard label="Total Yield" value={`${summary.total_yield_kg.toLocaleString()} kg`} sub={`${summary.yield_per_ha.toFixed(0)} kg/ha`} />
+        </div>
+      </div>
+
+      {/* Cost Breakdown */}
+      <div>
+        <h3 className="text-sm font-semibold text-stone-700 mb-3">Cost Breakdown</h3>
+        <div className="space-y-2">
+          {costBreakdown.map(item => {
+            const pct = summary.total_cost > 0 ? (item.value / summary.total_cost) * 100 : 0;
+            return (
+              <div key={item.name}>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="text-stone-600">{item.name}</span>
+                  <span className="font-medium text-stone-800">{formatZAR(item.value)} ({pct.toFixed(0)}%)</span>
+                </div>
+                <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: item.color }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Labour Detail */}
+      <div className="rounded-lg bg-stone-50 p-3">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-stone-600">Total Labour Hours</span>
+          <span className="font-bold text-stone-800">{summary.total_labour_hours.toFixed(1)} hrs</span>
+        </div>
+        <div className="flex items-center justify-between text-xs mt-1">
+          <span className="text-stone-600">Labour Cost</span>
+          <span className="font-bold text-amber-700">{formatZAR(summary.total_labour_cost)}</span>
+        </div>
+        <div className="flex items-center justify-between text-xs mt-1">
+          <span className="text-stone-600">Labour / ha</span>
+          <span className="font-medium text-stone-700">{formatZAR(Math.round(summary.total_labour_cost / areaHa))}</span>
+        </div>
+      </div>
+
+      {/* Yield per Ha (last 5 years) */}
+      {yearlyData.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-stone-700 mb-3">Yield / ha (last 5 years)</h3>
+          <ResponsiveContainer width="100%" height={150}>
+            <BarChart data={yearlyData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
+              <XAxis dataKey="year" tick={{ fontSize: 10, fill: '#78716c' }} />
+              <YAxis tick={{ fontSize: 10, fill: '#78716c' }} width={35} />
+              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(value) => [`${Number(value).toLocaleString()} kg/ha`, 'Yield']} />
+              <Bar dataKey="yield_per_ha" fill="#059669" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Shared Components ────────────────────────────────────────────────────────
+
 function InfoCell({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-xs text-stone-500 mb-0.5">{label}</p>
       <p className="text-sm text-stone-800 font-medium">{value}</p>
+    </div>
+  );
+}
+
+function SummaryCard({ label, value, icon, color }: { label: string; value: string; icon: React.ReactNode; color: string }) {
+  return (
+    <div className="rounded-lg bg-stone-50 p-2.5">
+      <div className="flex items-center gap-1 mb-1">
+        <span className={color}>{icon}</span>
+        <p className="text-[10px] text-stone-500 uppercase tracking-wider">{label}</p>
+      </div>
+      <p className={`text-sm font-bold ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function MetricCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="rounded-lg border border-stone-100 p-3 bg-white">
+      <p className="text-[10px] text-stone-500 uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-lg font-bold text-stone-900">{value}</p>
+      <p className="text-[10px] text-stone-400 mt-0.5">{sub}</p>
+    </div>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="p-4 space-y-3">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="h-12 bg-stone-100 rounded-lg animate-pulse" />
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ icon, message }: { icon: React.ReactNode; message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-stone-400">
+      {icon}
+      <p className="text-sm mt-2">{message}</p>
     </div>
   );
 }

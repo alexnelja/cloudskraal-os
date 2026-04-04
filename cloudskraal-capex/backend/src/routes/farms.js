@@ -126,6 +126,135 @@ router.patch('/fields/:id', (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// FIELD COST OF PRODUCTION
+// ---------------------------------------------------------------------------
+
+// GET /api/fields/:id/cost-of-production — full input/output/labour cost view
+router.get('/fields/:id/cost-of-production', (req, res) => {
+  const db = getDb();
+  const { year } = req.query; // optional year filter
+
+  const field = db.prepare(`
+    SELECT fi.*, f.name AS farm_name
+    FROM fields fi
+    JOIN farms f ON f.id = fi.farm_id
+    WHERE fi.id = ?
+  `).get(req.params.id);
+
+  if (!field) return res.status(404).json({ error: 'Field not found' });
+
+  // --- Production (yields) ---
+  let productionSql = 'SELECT * FROM field_production WHERE field_id = ?';
+  const productionParams = [req.params.id];
+  if (year) {
+    productionSql += ' AND year = ?';
+    productionParams.push(year);
+  }
+  productionSql += ' ORDER BY year';
+  const production = db.prepare(productionSql).all(...productionParams);
+
+  // --- Inputs applied (inventory transactions to this field) ---
+  let inputsSql = `
+    SELECT t.*, p.name AS product_name, p.category, p.unit_of_measure
+    FROM inventory_transactions t
+    JOIN input_products p ON p.id = t.product_id
+    WHERE t.field_id = ? AND t.type = 'usage'
+  `;
+  const inputsParams = [req.params.id];
+  if (year) {
+    inputsSql += " AND t.date >= ? AND t.date < ?";
+    inputsParams.push(`${year}-01-01`, `${Number(year) + 1}-01-01`);
+  }
+  inputsSql += ' ORDER BY t.date DESC';
+  const inputs = db.prepare(inputsSql).all(...inputsParams);
+
+  // --- Task inputs (products applied via tasks linked to this field) ---
+  let taskInputsSql = `
+    SELECT ti.*, t.title AS task_title, t.due_date, t.completed_date, t.status AS task_status
+    FROM task_inputs ti
+    JOIN tasks t ON t.id = ti.task_id
+    WHERE t.field_id = ?
+  `;
+  const taskInputsParams = [req.params.id];
+  if (year) {
+    taskInputsSql += " AND (t.due_date >= ? AND t.due_date < ?)";
+    taskInputsParams.push(`${year}-01-01`, `${Number(year) + 1}-01-01`);
+  }
+  taskInputsSql += ' ORDER BY t.due_date DESC';
+  const taskInputs = db.prepare(taskInputsSql).all(...taskInputsParams);
+
+  // --- Labour (time entries on this field) ---
+  let labourSql = `
+    SELECT te.*, e.name AS employee_name, e.role AS employee_role,
+           e.hourly_rate, e.monthly_salary
+    FROM time_entries te
+    JOIN employees e ON e.id = te.employee_id
+    WHERE te.field_id = ?
+  `;
+  const labourParams = [req.params.id];
+  if (year) {
+    labourSql += " AND te.date >= ? AND te.date < ?";
+    labourParams.push(`${year}-01-01`, `${Number(year) + 1}-01-01`);
+  }
+  labourSql += ' ORDER BY te.date DESC';
+  const labour = db.prepare(labourSql).all(...labourParams);
+
+  // --- Tasks linked to this field ---
+  let tasksSql = `
+    SELECT id, title, status, priority, due_date, completed_date, enterprise
+    FROM tasks WHERE field_id = ?
+  `;
+  const tasksParams = [req.params.id];
+  if (year) {
+    tasksSql += " AND (due_date >= ? AND due_date < ?)";
+    tasksParams.push(`${year}-01-01`, `${Number(year) + 1}-01-01`);
+  }
+  tasksSql += ' ORDER BY due_date DESC';
+  const tasks = db.prepare(tasksSql).all(...tasksParams);
+
+  // --- Compute cost summary ---
+  const inputCostTotal = inputs.reduce((sum, i) => sum + (i.total_cost || 0), 0);
+  const taskInputCostTotal = taskInputs.reduce((sum, i) => sum + (i.total_cost || 0), 0);
+
+  // Labour cost: use hourly_rate if available, else prorate monthly_salary
+  const labourCostTotal = labour.reduce((sum, te) => {
+    if (te.hourly_rate) return sum + (te.hours_worked || 0) * te.hourly_rate;
+    if (te.monthly_salary) return sum + (te.hours_worked || 0) * (te.monthly_salary / 176); // ~22 days × 8hrs
+    return sum;
+  }, 0);
+
+  const totalHours = labour.reduce((sum, te) => sum + (te.hours_worked || 0), 0);
+
+  // Revenue from production (use latest rooibos price ~R55/kg as default)
+  const totalActualYield = production.reduce((sum, p) => sum + (p.actual_yield_kg || 0), 0);
+
+  const totalCost = inputCostTotal + taskInputCostTotal + labourCostTotal;
+  const areaHa = field.area_ha || 1;
+
+  const summary = {
+    total_input_cost: Math.round(inputCostTotal * 100) / 100,
+    total_task_input_cost: Math.round(taskInputCostTotal * 100) / 100,
+    total_labour_cost: Math.round(labourCostTotal * 100) / 100,
+    total_labour_hours: Math.round(totalHours * 10) / 10,
+    total_cost: Math.round(totalCost * 100) / 100,
+    cost_per_ha: Math.round((totalCost / areaHa) * 100) / 100,
+    total_yield_kg: Math.round(totalActualYield * 100) / 100,
+    yield_per_ha: Math.round((totalActualYield / areaHa) * 100) / 100,
+    cost_per_kg: totalActualYield > 0 ? Math.round((totalCost / totalActualYield) * 100) / 100 : null,
+  };
+
+  res.json({
+    field,
+    production,
+    inputs,
+    taskInputs,
+    labour,
+    tasks,
+    summary,
+  });
+});
+
+// ---------------------------------------------------------------------------
 // FIELD PRODUCTION
 // ---------------------------------------------------------------------------
 
