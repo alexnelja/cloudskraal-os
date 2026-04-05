@@ -2,14 +2,16 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   X, ClipboardList, BookOpen, BarChart3, Droplets, Clock, DollarSign, Layers,
+  AlertTriangle, CheckCircle, Sprout,
 } from 'lucide-react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  BarChart, Bar, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { getField, getFieldCostOfProduction } from '../../api/farms';
 import type {
-  Field, FieldProduction, FieldCostOfProduction,
+  Field, FieldProduction, FieldCostOfProduction as FieldCostOfProductionType,
   FieldInputTransaction, FieldTaskInput, FieldLabourEntry, FieldCostSummary,
+  FieldRotation,
 } from '../../types/farm';
 import { ENTERPRISE_COLORS, ENTERPRISE_LABELS } from '../../types/farm';
 
@@ -52,7 +54,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function FieldPanel({ fieldId, onClose }: FieldPanelProps) {
   const [field, setField] = useState<Field | null>(null);
-  const [costData, setCostData] = useState<FieldCostOfProduction | null>(null);
+  const [costData, setCostData] = useState<FieldCostOfProductionType | null>(null);
   const [loading, setLoading] = useState(false);
   const [costLoading, setCostLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,7 +124,7 @@ interface PanelContentProps {
   onClose: () => void;
   showDragHandle: boolean;
   fieldId: string | null;
-  costData: FieldCostOfProduction | null;
+  costData: FieldCostOfProductionType | null;
   costLoading: boolean;
   activeTab: Tab;
   setActiveTab: (tab: Tab) => void;
@@ -201,7 +203,7 @@ function PanelContent({
               <OverviewTab
                 field={field} statusClass={statusClass} showChart={showChart}
                 chartData={chartData} chartRef={chartRef}
-                costData={costData}
+                costData={costData} rotation={costData?.rotation ?? null}
               />
             )}
             {activeTab === 'Inputs' && (
@@ -243,16 +245,77 @@ function PanelContent({
 // ─── Overview Tab ─────────────────────────────────────────────────────────────
 
 function OverviewTab({
-  field, statusClass, showChart, chartData, chartRef, costData,
+  field, statusClass, showChart, chartData, chartRef, costData, rotation,
 }: {
   field: Field; statusClass: string; showChart: boolean;
   chartData: ChartRow[]; chartRef: React.RefObject<HTMLDivElement | null>;
-  costData: FieldCostOfProduction | null;
+  costData: FieldCostOfProductionType | null; rotation: FieldRotation | null;
 }) {
   const summary = costData?.summary;
 
+  // Build combined chart data with stand % overlay
+  const combinedChartData = chartData.map(row => {
+    const prod = costData?.production?.find(p => p.year === row.year);
+    return { ...row, Stand: prod?.stand_pct ?? null };
+  });
+  const hasStandData = combinedChartData.some(d => d.Stand !== null);
+
+  const PHASE_LABELS: Record<string, string> = {
+    establishment: 'Establishment',
+    topping: 'Topping',
+    production: 'Production',
+    end_of_life: 'End of Life',
+  };
+
+  const PHASE_COLORS: Record<string, string> = {
+    establishment: 'bg-blue-100 text-blue-700',
+    topping: 'bg-violet-100 text-violet-700',
+    production: 'bg-emerald-100 text-emerald-700',
+    end_of_life: 'bg-red-100 text-red-700',
+  };
+
+  const REPLANT_COLORS: Record<string, string> = {
+    ok: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+    can_delay: 'bg-blue-50 border-blue-200 text-blue-800',
+    warning: 'bg-amber-50 border-amber-200 text-amber-800',
+    must_replant: 'bg-red-50 border-red-200 text-red-800',
+  };
+
   return (
     <>
+      {/* Rotation & Stand % Banner (rooibos only) */}
+      {rotation && (
+        <div className="px-4 pt-4 pb-2 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2 py-1 rounded-md bg-stone-100 text-xs font-bold text-stone-700">
+              Year {rotation.rotation_year}
+            </span>
+            <span className={`px-2 py-1 rounded-md text-xs font-medium ${PHASE_COLORS[rotation.phase] ?? 'bg-stone-100 text-stone-600'}`}>
+              {PHASE_LABELS[rotation.phase] ?? rotation.phase}
+            </span>
+            {rotation.current_stand_pct !== null && (
+              <span className={`px-2 py-1 rounded-md text-xs font-bold ${rotation.current_stand_pct >= 70 ? 'bg-emerald-100 text-emerald-700' : rotation.current_stand_pct >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                <Sprout size={10} className="inline mr-1" />
+                Stand {rotation.current_stand_pct}%
+              </span>
+            )}
+          </div>
+
+          {rotation.replant_message && (
+            <div className={`flex items-start gap-2 p-2.5 rounded-lg border text-xs ${REPLANT_COLORS[rotation.replant_status] ?? ''}`}>
+              {rotation.replant_status === 'must_replant' ? (
+                <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
+              ) : rotation.replant_status === 'can_delay' ? (
+                <CheckCircle size={14} className="flex-shrink-0 mt-0.5" />
+              ) : (
+                <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
+              )}
+              <span>{rotation.replant_message}</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Info Grid */}
       <div className="p-4 grid grid-cols-2 gap-3">
         <InfoCell label="Farm" value={field.farm_name ?? '—'} />
@@ -284,20 +347,34 @@ function OverviewTab({
         </div>
       )}
 
-      {/* Production Chart */}
+      {/* Production Chart with Stand % overlay */}
       {showChart && (
         <div ref={chartRef} className="px-4 pb-4">
-          <h3 className="text-sm font-semibold text-stone-700 mb-3">Production History (kg)</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+          <h3 className="text-sm font-semibold text-stone-700 mb-3">Production History</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart data={combinedChartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
               <XAxis dataKey="year" tick={{ fontSize: 10, fill: '#78716c' }} tickFormatter={(val: number) => (val % 5 === 0 ? String(val) : '')} interval={0} />
-              <YAxis tick={{ fontSize: 10, fill: '#78716c' }} width={40} />
-              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e7e5e4' }} formatter={(value, name) => [`${Number(value).toLocaleString()} kg`, String(name)]} labelFormatter={label => `Year: ${label}`} cursor={{ fill: 'rgba(5, 150, 105, 0.08)' }} />
+              <YAxis yAxisId="yield" tick={{ fontSize: 10, fill: '#78716c' }} width={40} />
+              {hasStandData && (
+                <YAxis yAxisId="stand" orientation="right" domain={[0, 100]} tick={{ fontSize: 10, fill: '#d97706' }} width={30} tickFormatter={(v: number) => `${v}%`} />
+              )}
+              <Tooltip
+                contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e7e5e4' }}
+                formatter={(value, name) => {
+                  if (name === 'Stand') return value != null ? [`${value}%`, 'Stand %'] : ['—', 'Stand %'];
+                  return [`${Number(value).toLocaleString()} kg`, String(name)];
+                }}
+                labelFormatter={label => `Year: ${label}`}
+                cursor={{ fill: 'rgba(5, 150, 105, 0.08)' }}
+              />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="Estimated" fill="#d6d3d1" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="Actual" fill="#059669" radius={[2, 2, 0, 0]} />
-            </BarChart>
+              <Bar yAxisId="yield" dataKey="Estimated" fill="#d6d3d1" radius={[2, 2, 0, 0]} />
+              <Bar yAxisId="yield" dataKey="Actual" fill="#059669" radius={[2, 2, 0, 0]} />
+              {hasStandData && (
+                <Line yAxisId="stand" type="monotone" dataKey="Stand" stroke="#d97706" strokeWidth={2} dot={{ r: 3, fill: '#d97706' }} connectNulls />
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       )}

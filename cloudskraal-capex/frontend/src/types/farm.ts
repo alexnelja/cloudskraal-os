@@ -35,6 +35,7 @@ export interface FieldProduction {
   year: number;
   estimated_yield_kg: number | null;
   actual_yield_kg: number | null;
+  stand_pct: number | null;
 }
 
 export interface FieldNote {
@@ -144,6 +145,21 @@ export interface FieldCostSummary {
   cost_per_kg: number | null;
 }
 
+export interface StandTrendPoint {
+  year: number;
+  stand_pct: number;
+}
+
+export interface FieldRotation {
+  planted_year: number;
+  rotation_year: number;
+  phase: 'establishment' | 'topping' | 'production' | 'end_of_life';
+  current_stand_pct: number | null;
+  stand_trend: StandTrendPoint[];
+  replant_status: 'ok' | 'can_delay' | 'must_replant' | 'warning';
+  replant_message: string | null;
+}
+
 export interface FieldCostOfProduction {
   field: Field;
   production: FieldProduction[];
@@ -152,6 +168,7 @@ export interface FieldCostOfProduction {
   labour: FieldLabourEntry[];
   tasks: FieldTask[];
   summary: FieldCostSummary;
+  rotation: FieldRotation | null;
 }
 
 export const ENTERPRISE_LABELS: Record<string, string> = {

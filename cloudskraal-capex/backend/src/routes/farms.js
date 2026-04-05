@@ -243,6 +243,61 @@ router.get('/fields/:id/cost-of-production', (req, res) => {
     cost_per_kg: totalActualYield > 0 ? Math.round((totalCost / totalActualYield) * 100) / 100 : null,
   };
 
+  // --- Rotation & Stand % (rooibos fields only) ---
+  let rotation = null;
+  if (field.enterprise === 'rooibos' && field.planted_year) {
+    const plantedYear = parseInt(field.planted_year);
+    const currentYear = new Date().getFullYear();
+    const rotationYear = currentYear - plantedYear;
+
+    // Get latest stand % from production data
+    const latestStand = db.prepare(
+      'SELECT stand_pct, year FROM field_production WHERE field_id = ? AND stand_pct IS NOT NULL ORDER BY year DESC LIMIT 1'
+    ).get(req.params.id);
+
+    // Get stand % trend (last 5 years with data)
+    const standTrend = db.prepare(
+      'SELECT year, stand_pct FROM field_production WHERE field_id = ? AND stand_pct IS NOT NULL ORDER BY year DESC LIMIT 5'
+    ).all(req.params.id).reverse();
+
+    const currentStand = latestStand ? latestStand.stand_pct : null;
+
+    // Replant recommendation logic
+    let replant_status = 'ok'; // ok, can_delay, must_replant
+    let replant_message = null;
+    if (currentStand !== null) {
+      if (currentStand < 50) {
+        replant_status = 'must_replant';
+        replant_message = `Stand at ${currentStand}% — below 50%, must replant`;
+      } else if (rotationYear >= 5 && currentStand > 70) {
+        replant_status = 'can_delay';
+        replant_message = `Year ${rotationYear}, stand still ${currentStand}% — can delay replant 1 year`;
+      } else if (rotationYear >= 5) {
+        replant_status = 'must_replant';
+        replant_message = `Year ${rotationYear}, stand at ${currentStand}% — schedule replant`;
+      } else if (currentStand < 60) {
+        replant_status = 'warning';
+        replant_message = `Stand declining to ${currentStand}% at year ${rotationYear}`;
+      }
+    }
+
+    // Determine rotation phase
+    let phase = 'production';
+    if (rotationYear === 0) phase = 'establishment';
+    else if (rotationYear === 1) phase = 'topping';
+    else if (rotationYear >= 5 && replant_status === 'must_replant') phase = 'end_of_life';
+
+    rotation = {
+      planted_year: plantedYear,
+      rotation_year: rotationYear,
+      phase,
+      current_stand_pct: currentStand,
+      stand_trend: standTrend,
+      replant_status,
+      replant_message,
+    };
+  }
+
   res.json({
     field,
     production,
@@ -251,6 +306,7 @@ router.get('/fields/:id/cost-of-production', (req, res) => {
     labour,
     tasks,
     summary,
+    rotation,
   });
 });
 

@@ -39,6 +39,7 @@ function initFarmSchema(db) {
       year INTEGER NOT NULL,
       estimated_yield_kg REAL,
       actual_yield_kg REAL,
+      stand_pct REAL,
       notes TEXT,
       UNIQUE(field_id, year)
     );
@@ -67,6 +68,14 @@ function initFarmSchema(db) {
       z_index INTEGER DEFAULT 0
     );
   `);
+
+  // Migration: add stand_pct column if it doesn't exist
+  try {
+    db.prepare('SELECT stand_pct FROM field_production LIMIT 1').get();
+  } catch (e) {
+    db.exec('ALTER TABLE field_production ADD COLUMN stand_pct REAL');
+    console.log('  Migrated: added stand_pct to field_production');
+  }
 }
 
 module.exports = { initFarmSchema };

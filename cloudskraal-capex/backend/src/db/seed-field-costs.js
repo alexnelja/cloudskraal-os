@@ -248,4 +248,89 @@ function seedFieldCosts(db) {
   console.log('Field cost seed complete.');
 }
 
-module.exports = { seedFieldCosts };
+/**
+ * Backfill stand_pct on field_production records for rooibos fields.
+ * Stand % is derived from planted_year:
+ *   - Year 1: ~80% (post-planting survival)
+ *   - Declines ~6-8% per year with random variation
+ *   - By year 5: ~50%
+ *   - If still >70% at year 5, field can delay replant
+ */
+function seedStandPercent(db) {
+  try {
+    // Check if already backfilled
+    const filled = db.prepare(
+      "SELECT COUNT(*) as c FROM field_production WHERE stand_pct IS NOT NULL"
+    ).get().c;
+    if (filled > 0) {
+      console.log('Stand % already seeded, skipping.');
+      return;
+    }
+  } catch (e) {
+    console.log('stand_pct column not ready, skipping.');
+    return;
+  }
+
+  console.log('Seeding stand % data for rooibos fields...');
+
+  // Get all rooibos fields with planted_year
+  const rooibosFields = db.prepare(`
+    SELECT f.id, f.planted_year, f.code, f.area_ha
+    FROM fields f
+    WHERE f.enterprise = 'rooibos' AND f.planted_year IS NOT NULL
+  `).all();
+
+  const updateStand = db.prepare(
+    'UPDATE field_production SET stand_pct = ? WHERE field_id = ? AND year = ?'
+  );
+
+  const seedAll = db.transaction(() => {
+    let updated = 0;
+
+    for (const field of rooibosFields) {
+      const plantedYear = parseInt(field.planted_year);
+      if (isNaN(plantedYear)) continue;
+
+      // Get all production records for this field
+      const productions = db.prepare(
+        'SELECT id, year FROM field_production WHERE field_id = ? ORDER BY year'
+      ).all(field.id);
+
+      // Each field gets a slightly different decline rate (soil, disease variation)
+      // Base: starts 78-82%, drops 5-9% per year
+      const startStand = 78 + Math.random() * 4; // 78-82%
+      const annualDecline = 5 + Math.random() * 4; // 5-9% per year
+
+      for (const prod of productions) {
+        const rotationYear = prod.year - plantedYear;
+
+        if (rotationYear < 0) continue; // before planting
+        if (rotationYear === 0) {
+          // Planting year — no stand yet (seedlings)
+          updateStand.run(null, field.id, prod.year);
+          continue;
+        }
+
+        // Stand % with some year-to-year noise
+        const noise = (Math.random() - 0.5) * 4; // ±2%
+        let stand = startStand - (annualDecline * (rotationYear - 1)) + noise;
+
+        // Clamp to realistic range
+        stand = Math.max(20, Math.min(95, stand));
+
+        // After typical cycle length, stand would be very low or field replanted
+        if (rotationYear > 6) stand = Math.max(20, stand - 10);
+
+        updateStand.run(Math.round(stand * 10) / 10, field.id, prod.year);
+        updated++;
+      }
+    }
+
+    console.log(`  Updated stand % for ${updated} production records across ${rooibosFields.length} fields`);
+  });
+
+  seedAll();
+  console.log('Stand % seed complete.');
+}
+
+module.exports = { seedFieldCosts, seedStandPercent };
