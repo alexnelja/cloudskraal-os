@@ -208,7 +208,10 @@ function seedFarms(db) {
   const now = new Date().toISOString();
 
   // ── Read data files ──
-  const geoPath = path.join(__dirname, '..', '..', '..', 'data', 'Cloudskraal .geojson');
+  // Use updated geojson if available, fallback to original
+  const updatedGeoPath = path.join(__dirname, '..', '..', '..', 'data', 'Cloudskraal  (1).geojson');
+  const originalGeoPath = path.join(__dirname, '..', '..', '..', 'data', 'Cloudskraal .geojson');
+  const geoPath = fs.existsSync(updatedGeoPath) ? updatedGeoPath : originalGeoPath;
   const xlsxPath = path.join(__dirname, '..', '..', '..', 'data', 'Johan Brand - Rooibos Oeskatting.xlsx');
 
   const geojson = JSON.parse(fs.readFileSync(geoPath, 'utf8'));
