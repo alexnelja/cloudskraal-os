@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, AlertTriangle, Wrench, Plus, X } from 'lucide-react';
+import PageHeader from '../components/layout/PageHeader';
 import { getEquipment, getEquipmentById, getEquipmentSummary, getEquipmentAlerts, addMaintenanceLog, updateEquipment } from '../api/equipment';
 import { getFarms } from '../api/farms';
 import type { Equipment, EquipmentSummary } from '../types/phase2';
@@ -107,58 +108,51 @@ export default function EquipmentPage() {
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Wrench size={20} className="text-emerald-700" />
-            <h1 className="text-lg font-bold text-stone-900">Equipment Register</h1>
-          </div>
-          <div className="flex-1" />
-          {summary && (
-            <div className="flex items-center gap-4 text-xs">
-              <div className="text-center">
-                <p className="text-stone-400">Total Items</p>
-                <p className="text-lg font-bold text-stone-800">{summary.total}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-stone-400">Total Value</p>
-                <p className="text-lg font-bold text-stone-800">{formatCurrency(summary.totalValue)}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-stone-400">Overdue Service</p>
-                <p className={`text-lg font-bold ${summary.overdueService > 0 ? 'text-red-600' : 'text-stone-800'}`}>
-                  {summary.overdueService}
-                </p>
-              </div>
+      <PageHeader icon={Wrench} title="Equipment">
+        {summary && (
+          <div className="flex items-center gap-4 text-xs">
+            <div className="text-center">
+              <p className="text-stone-400">Total Items</p>
+              <p className="text-lg font-bold text-stone-800">{summary.total}</p>
             </div>
-          )}
-        </div>
-
-        {/* Type filter pills */}
-        {typeKeys.length > 0 && (
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <button
-              onClick={() => setTypeFilter(null)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                typeFilter === null ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-              }`}
-            >
-              All
-            </button>
-            {typeKeys.map((t) => (
-              <button
-                key={t}
-                onClick={() => setTypeFilter(typeFilter === t ? null : t)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  typeFilter === t ? 'bg-emerald-700 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                }`}
-              >
-                {EQUIPMENT_TYPE_ICONS[t] ?? ''} {t.charAt(0).toUpperCase() + t.slice(1)} ({summary!.byType[t]})
-              </button>
-            ))}
+            <div className="text-center">
+              <p className="text-stone-400">Total Value</p>
+              <p className="text-lg font-bold text-stone-800">{formatCurrency(summary.totalValue)}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-stone-400">Overdue Service</p>
+              <p className={`text-lg font-bold ${summary.overdueService > 0 ? 'text-red-600' : 'text-stone-800'}`}>
+                {summary.overdueService}
+              </p>
+            </div>
           </div>
         )}
-      </div>
+      </PageHeader>
+
+      {/* Type filter pills */}
+      {typeKeys.length > 0 && (
+        <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 flex-wrap bg-white border-b border-[#f3f4f3]">
+          <button
+            onClick={() => setTypeFilter(null)}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              typeFilter === null ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+            }`}
+          >
+            All
+          </button>
+          {typeKeys.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTypeFilter(typeFilter === t ? null : t)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                typeFilter === t ? 'bg-emerald-700 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              {EQUIPMENT_TYPE_ICONS[t] ?? ''} {t.charAt(0).toUpperCase() + t.slice(1)} ({summary!.byType[t]})
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Overdue service alert banner */}
       {alerts.length > 0 && (
@@ -173,7 +167,7 @@ export default function EquipmentPage() {
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden page-fade-in">
         {/* Table */}
         <div className="flex-1 overflow-auto bg-white">
           {loading ? (

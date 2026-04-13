@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { Map as MapIcon } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
+import PageHeader from '../components/layout/PageHeader';
 import FarmMap from '../components/map/FarmMap';
 import FieldPanel from '../components/map/FieldPanel';
 import MapControls from '../components/map/MapControls';
@@ -151,8 +153,12 @@ export default function FarmMapPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-5rem)] md:h-screen relative overflow-hidden">
-      {/* Map fills the full container */}
+    <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
+      {/* Header */}
+      <PageHeader icon={MapIcon} title="Farm Map" />
+
+      {/* Map fills the remaining space */}
+      <div className="flex-1 relative overflow-hidden page-fade-in">
       {loading ? (
         <div className="w-full h-full bg-stone-200 flex items-center justify-center">
           <p className="text-stone-500 text-sm">Loading map...</p>
@@ -277,6 +283,7 @@ export default function FarmMapPage() {
         fieldId={selectedFieldId}
         onClose={() => setSelectedFieldId(null)}
       />
+      </div>
     </div>
   );
 }

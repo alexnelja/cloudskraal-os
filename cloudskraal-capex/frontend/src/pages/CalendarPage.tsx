@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { CalendarDays, Plus } from 'lucide-react';
+import PageHeader from '../components/layout/PageHeader';
 import MonthView from '../components/calendar/MonthView';
 import TaskList from '../components/calendar/TaskList';
 import TaskDetail from '../components/calendar/TaskDetail';
@@ -142,9 +143,9 @@ export default function CalendarPage() {
 
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
-      {/* Top bar: enterprise filters + action buttons */}
-      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 flex items-center gap-3 flex-wrap bg-white">
-        <div className="flex items-center gap-2 flex-wrap flex-1">
+      {/* Header */}
+      <PageHeader icon={CalendarDays} title="Calendar">
+        <div className="flex items-center gap-2 flex-wrap">
           {FILTER_ENTERPRISES.map((ent) => {
             const active = enterpriseFilter.has(ent);
             return (
@@ -171,8 +172,6 @@ export default function CalendarPage() {
               Clear
             </button>
           )}
-        </div>
-        <div className="flex items-center gap-2">
           <button
             onClick={() => { setEditingTask(undefined); setShowTaskEditor(true); }}
             className="flex items-center gap-1 px-3 py-1.5 bg-emerald-700 text-white text-xs font-medium rounded-lg hover:bg-emerald-800 transition-colors"
@@ -188,10 +187,10 @@ export default function CalendarPage() {
             New Event
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden page-fade-in">
         {/* Month view */}
         <div className="flex-1 md:flex-[3] overflow-hidden flex flex-col bg-white">
           {loading ? (
