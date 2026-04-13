@@ -46,7 +46,7 @@ export async function createWikiPage(data: {
 
 export async function updateWikiPage(
   slug: string,
-  data: { title?: string; body?: string; category?: string; enterprise?: string; tags?: string[] },
+  data: { title?: string; body?: string; category?: string; enterprise?: string; tags?: string[]; aliases?: string[]; pinned?: boolean },
 ): Promise<WikiPage> {
   return request<WikiPage>(`/wiki/${slug}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
@@ -61,6 +61,28 @@ export async function getWikiGraph(): Promise<WikiGraphData> {
 
 export async function searchWiki(q: string): Promise<WikiPageSummary[]> {
   return request<WikiPageSummary[]>(`/wiki?search=${encodeURIComponent(q)}`);
+}
+
+export interface WikiRevision {
+  id: string;
+  title: string;
+  body: string;
+  created_at: string;
+}
+
+export async function getWikiHistory(slug: string): Promise<WikiRevision[]> {
+  return request<WikiRevision[]>(`/wiki/${slug}/history`);
+}
+
+export async function getDailyNote(date: string): Promise<WikiPage> {
+  return request<WikiPage>(`/wiki/daily/${date}`);
+}
+
+export async function reorderWikiPages(items: { slug: string; sort_order: number }[]): Promise<void> {
+  await request<{ ok: boolean }>('/wiki-reorder', {
+    method: 'PATCH',
+    body: JSON.stringify({ items }),
+  });
 }
 
 export async function getWikiTags(): Promise<{ tag: string; count: number }[]> {

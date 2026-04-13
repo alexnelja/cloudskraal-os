@@ -8,6 +8,19 @@ interface WikiSearchProps {
   onSelect: (slug: string) => void;
 }
 
+function highlightTerm(text: string, term: string): React.ReactNode {
+  if (!term) return text;
+  const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  return parts.map((part, i) =>
+    regex.test(part) ? (
+      <mark key={i} className="bg-yellow-200 rounded px-0.5">{part}</mark>
+    ) : (
+      part
+    )
+  );
+}
+
 export default function WikiSearch({ onSelect }: WikiSearchProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<WikiPageSummary[]>([]);
@@ -83,31 +96,36 @@ export default function WikiSearch({ onSelect }: WikiSearchProps) {
       </div>
 
       {open && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto wiki-scale-in">
           {results.map((page) => {
             const cat = page.category ? WIKI_CATEGORIES[page.category] : null;
             return (
               <button
                 key={page.id}
                 onClick={() => handleSelect(page.slug)}
-                className="w-full text-left px-3 py-2.5 hover:bg-stone-50 flex items-center gap-2 border-b border-stone-100 last:border-b-0 transition-colors"
+                className="w-full text-left px-3 py-2.5 hover:bg-stone-50 flex flex-col gap-1 border-b border-stone-100 last:border-b-0 transition-colors"
               >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-stone-800 truncate">{page.title}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {cat && (
-                      <span
-                        className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium text-white"
-                        style={{ backgroundColor: cat.color }}
-                      >
-                        {cat.label}
-                      </span>
-                    )}
-                    {page.enterprise && (
-                      <span className="text-[10px] text-stone-500 capitalize">{page.enterprise}</span>
-                    )}
-                  </div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-stone-800 truncate flex-1">
+                    {page.snippet_term ? highlightTerm(page.title, page.snippet_term) : page.title}
+                  </p>
+                  {cat && (
+                    <span
+                      className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium text-white flex-shrink-0"
+                      style={{ backgroundColor: cat.color }}
+                    >
+                      {cat.label}
+                    </span>
+                  )}
+                  {page.enterprise && (
+                    <span className="text-[10px] text-stone-500 capitalize flex-shrink-0">{page.enterprise}</span>
+                  )}
                 </div>
+                {page.snippet && (
+                  <p className="text-xs text-stone-500 leading-relaxed line-clamp-2">
+                    {highlightTerm(page.snippet, page.snippet_term ?? '')}
+                  </p>
+                )}
               </button>
             );
           })}
