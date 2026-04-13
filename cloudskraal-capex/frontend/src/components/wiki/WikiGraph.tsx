@@ -17,6 +17,9 @@ interface WikiGraphProps {
   onNodePreview?: (slug: string, position: { x: number; y: number }) => void;
   highlightSlug?: string | null;
   theme?: ThemeMode;
+  forceStrength?: number;
+  linkDistance?: number;
+  nodeScale?: number;
 }
 
 interface GraphNode extends SimulationNodeDatum {
@@ -61,7 +64,7 @@ function useSystemDark(): boolean {
   return dark;
 }
 
-export default function WikiGraph({ onPageSelect, onNodePreview, highlightSlug, theme = 'system' }: WikiGraphProps) {
+export default function WikiGraph({ onPageSelect, onNodePreview, highlightSlug, theme = 'system', forceStrength = 300, linkDistance = 80, nodeScale = 1 }: WikiGraphProps) {
   const systemDark = useSystemDark();
   const isDark = theme === 'dark' || (theme === 'system' && systemDark);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -109,7 +112,7 @@ export default function WikiGraph({ onPageSelect, onNodePreview, highlightSlug, 
       .then((data) => {
         const nodes: GraphNode[] = data.nodes.map((n) => ({
           ...n,
-          radius: nodeRadius(n.linkCount),
+          radius: nodeRadius(n.linkCount) * nodeScale,
         }));
         const edges: GraphEdge[] = data.edges.map((e) => ({ ...e }));
 
@@ -121,9 +124,9 @@ export default function WikiGraph({ onPageSelect, onNodePreview, highlightSlug, 
             'link',
             forceLink<GraphNode, GraphEdge>(edges)
               .id((d) => d.id)
-              .distance(90),
+              .distance(linkDistance),
           )
-          .force('charge', forceManyBody<GraphNode>().strength(-180))
+          .force('charge', forceManyBody<GraphNode>().strength(-forceStrength))
           .force('center', forceCenter(dimensions.width / 2, dimensions.height / 2))
           .force('collide', forceCollide<GraphNode>().radius((d) => d.radius + 6));
 

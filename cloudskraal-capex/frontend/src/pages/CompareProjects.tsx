@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, X } from 'lucide-react';
+import { ChevronDown, X, GitCompare } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -18,6 +18,8 @@ import {
 import type { ProjectSummary, Project, Scenario } from '../types';
 import { getProjects, getProject } from '../api/client';
 import { formatZAR, formatPercent, formatYears, formatCompactZAR } from '../utils/format';
+import PageShell from '../components/layout/PageShell';
+import PageHeader from '../components/layout/PageHeader';
 import FactSheetButton from '../components/FactSheetButton';
 
 interface Selection {
@@ -129,14 +131,10 @@ export default function CompareProjects() {
   });
 
   return (
-    <div>
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-stone-800">Compare Projects</h1>
-        <p className="text-sm text-stone-500">
-          Select 2-4 projects and scenarios to compare side by side
-        </p>
-      </div>
+    <PageShell>
+      <PageHeader icon={GitCompare} title="Compare Projects" />
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 page-fade-in">
+        <div className="max-w-7xl mx-auto">
 
       {/* Selection area */}
       <div className="bg-white rounded-2xl p-5 mb-6">
@@ -389,6 +387,8 @@ export default function CompareProjects() {
           </button>
         </div>
       )}
-    </div>
+        </div>
+      </div>
+    </PageShell>
   );
 }

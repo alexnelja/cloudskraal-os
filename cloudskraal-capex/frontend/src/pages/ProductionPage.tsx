@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Factory, X, ArrowLeft, CheckCircle2, Circle, Clock } from 'lucide-react';
+import PageHeader from '../components/layout/PageHeader';
 import { getBatches, getBatch, getProductionDashboard, updateBatch } from '../api/production';
 import type { ProductionBatch, ProductionDashboard, QualityTest, Sale } from '../types/phase2';
 import { BATCH_STATUS_COLORS } from '../types/phase2';
@@ -83,34 +84,27 @@ export default function ProductionPage() {
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Factory size={20} className="text-emerald-700" />
-            <h1 className="text-lg font-bold text-stone-900">Production Pipeline</h1>
-          </div>
-          <div className="flex-1" />
-          {dashboard && (
-            <div className="flex items-center gap-4 text-xs">
-              <div className="text-center">
-                <p className="text-stone-400">In Pipeline</p>
-                <p className="text-lg font-bold text-stone-800">{dashboard.totalKgInPipeline.toLocaleString()} kg</p>
-              </div>
-              <div className="text-center">
-                <p className="text-stone-400">Batches</p>
-                <p className="text-lg font-bold text-stone-800">{batches.length}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-stone-400">Revenue</p>
-                <p className="text-lg font-bold text-emerald-700">{formatCurrency(dashboard.totalRevenue)}</p>
-              </div>
+      <PageHeader icon={Factory} title="Production">
+        {dashboard && (
+          <div className="flex items-center gap-4 text-xs">
+            <div className="text-center">
+              <p className="text-stone-400">In Pipeline</p>
+              <p className="text-lg font-bold text-stone-800">{dashboard.totalKgInPipeline.toLocaleString()} kg</p>
             </div>
-          )}
-        </div>
-      </div>
+            <div className="text-center">
+              <p className="text-stone-400">Batches</p>
+              <p className="text-lg font-bold text-stone-800">{batches.length}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-stone-400">Revenue</p>
+              <p className="text-lg font-bold text-emerald-700">{formatCurrency(dashboard.totalRevenue)}</p>
+            </div>
+          </div>
+        )}
+      </PageHeader>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden page-fade-in">
         {/* Kanban board */}
         <div className="flex-1 overflow-x-auto overflow-y-auto bg-stone-50 p-4">
           {loading ? (

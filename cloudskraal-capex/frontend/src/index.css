@@ -1,5 +1,6 @@
 @import 'maplibre-gl/dist/maplibre-gl.css';
 @import "tailwindcss";
+@import "./wiki.css";
 
 /* Material Design 3 inspired tokens */
 :root {
@@ -19,7 +20,7 @@
   --outline-variant: #bdc9c1;
 }
 
-/* Refined card styling — no-line rule: tonal contrast, no borders */
+/* Refined card styling */
 .card {
   background: var(--surface-container-lowest);
   border-radius: 1rem;
@@ -54,7 +55,7 @@
   backdrop-filter: blur(20px);
 }
 
-/* Secondary button — no border */
+/* Secondary button */
 .btn-secondary {
   background: #e2e2e2;
   color: #1a1c1c;
@@ -66,7 +67,7 @@
   cursor: pointer;
 }
 
-/* Input — no border, tonal bg, focus bottom line */
+/* Input — tonal bg, focus bottom line */
 input:not([type="checkbox"]):not([type="radio"]),
 textarea,
 select {
@@ -89,58 +90,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Wiki content styles */
-.wiki-content .wiki-link {
-  color: #047857;
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 2px;
-  cursor: pointer;
-}
-.wiki-content .wiki-link:hover {
-  text-decoration-style: solid;
-  color: #065f46;
-}
-.wiki-content h1 { font-size: 1.5rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: #1c1917; }
-.wiki-content h2 { font-size: 1.25rem; font-weight: 600; margin: 1.25rem 0 0.5rem; color: #292524; }
-.wiki-content h3 { font-size: 1.1rem; font-weight: 600; margin: 1rem 0 0.5rem; color: #44403c; }
-.wiki-content p { margin: 0.5rem 0; line-height: 1.6; color: #44403c; }
-.wiki-content ul, .wiki-content ol { margin: 0.5rem 0; padding-left: 1.5rem; }
-.wiki-content ul { list-style-type: disc; }
-.wiki-content ol { list-style-type: decimal; }
-.wiki-content li { margin: 0.25rem 0; color: #44403c; }
-.wiki-content strong { font-weight: 600; }
-.wiki-content a:not(.wiki-link) { color: #0369a1; text-decoration: underline; }
-.wiki-content code { background: #f5f5f4; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.875rem; }
-.wiki-content pre { background: #f5f5f4; padding: 0.75rem 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.75rem 0; }
-.wiki-content pre code { background: none; padding: 0; }
-.wiki-content table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.875rem; }
-.wiki-content th, .wiki-content td { border: 1px solid #e7e5e4; padding: 0.375rem 0.75rem; text-align: left; }
-.wiki-content th { background: #fafaf9; font-weight: 600; }
-.wiki-content blockquote { border-left: 3px solid #d6d3d1; margin: 0.75rem 0; padding: 0.25rem 1rem; color: #78716c; }
-.wiki-content hr { border: none; border-top: 1px solid #e7e5e4; margin: 1.5rem 0; }
-
-/* Wiki callout styles */
-.wiki-content .callout {
-  border-left: 4px solid;
-  border-radius: 0.5rem;
-  padding: 0.75rem 1rem;
-  margin: 1rem 0;
-}
-.wiki-content .callout-title { font-weight: 600; margin-bottom: 0.25rem; font-size: 0.875rem; }
-.wiki-content .callout-content { font-size: 0.875rem; }
-.wiki-content .callout-note { border-color: #2563eb; background: #eff6ff; }
-.wiki-content .callout-warning { border-color: #d97706; background: #fffbeb; }
-.wiki-content .callout-tip { border-color: #047857; background: #ecfdf5; }
-.wiki-content .callout-danger { border-color: #dc2626; background: #fef2f2; }
-.wiki-content .callout-example { border-color: #7c3aed; background: #f5f3ff; }
-.wiki-content .callout-todo { border-color: #6b7280; background: #f9fafb; }
-.wiki-content .callout-info { border-color: #0ea5e9; background: #f0f9ff; }
-.wiki-content .callout-success { border-color: #16a34a; background: #f0fdf4; }
-.wiki-content .callout-question { border-color: #eab308; background: #fefce8; }
-.wiki-content .callout-bug { border-color: #dc2626; background: #fef2f2; }
-.wiki-content .callout-quote { border-color: #6b7280; background: #f9fafb; font-style: italic; }
-
 /* MD3 Design Tokens */
 :root {
   --md-primary: #005d42;
@@ -155,3 +104,11 @@ body {
   --md-outline: #6e7a73;
   --md-outline-variant: #bdc9c1;
 }
+
+/* Page transitions */
+@keyframes page-fade-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes page-scale-in { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+@keyframes page-slide-in { from { opacity: 0; transform: translateX(4px); } to { opacity: 1; transform: translateX(0); } }
+.page-fade-in { animation: page-fade-in 0.1s ease-out; }
+.page-scale-in { animation: page-scale-in 0.1s ease-out; }
+.page-slide-in { animation: page-slide-in 0.12s ease-out; }

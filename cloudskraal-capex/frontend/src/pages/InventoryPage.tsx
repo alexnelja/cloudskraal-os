@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Package, ArrowLeft, X, AlertTriangle, Plus } from 'lucide-react';
+import PageHeader from '../components/layout/PageHeader';
 import { getProducts, getProductById, getInventorySummary, getStock, getTransactions, recordTransaction, updateProduct } from '../api/inventory';
 import type { InputProduct, InventorySummary, InventoryTransaction } from '../types/phase3';
 import { INVENTORY_CATEGORY_COLORS } from '../types/phase3';
@@ -116,61 +117,54 @@ export default function InventoryPage() {
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Package size={20} className="text-emerald-700" />
-            <h1 className="text-lg font-bold text-stone-900">Inventory</h1>
-          </div>
-          <div className="flex-1" />
-          {summary && (
-            <div className="flex items-center gap-4 text-xs">
-              <div className="text-center">
-                <p className="text-stone-400">Products</p>
-                <p className="text-lg font-bold text-stone-800">{summary.totalProducts}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-stone-400">Stock Value</p>
-                <p className="text-lg font-bold text-stone-800">{formatCurrency(summary.totalValue)}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-stone-400">Low Stock</p>
-                <p className={`text-lg font-bold ${summary.lowStockCount > 0 ? 'text-amber-600' : 'text-stone-800'}`}>
-                  {summary.lowStockCount}
-                </p>
-              </div>
+      <PageHeader icon={Package} title="Inventory">
+        {summary && (
+          <div className="flex items-center gap-4 text-xs">
+            <div className="text-center">
+              <p className="text-stone-400">Products</p>
+              <p className="text-lg font-bold text-stone-800">{summary.totalProducts}</p>
             </div>
-          )}
-        </div>
-
-        {/* Category filter pills */}
-        {categoryKeys.length > 0 && (
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <button
-              onClick={() => setCategoryFilter(null)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                categoryFilter === null ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-              }`}
-            >
-              All
-            </button>
-            {categoryKeys.map((c) => (
-              <button
-                key={c}
-                onClick={() => setCategoryFilter(categoryFilter === c ? null : c)}
-                className="px-3 py-1 rounded-full text-xs font-medium transition-all"
-                style={
-                  categoryFilter === c
-                    ? { backgroundColor: INVENTORY_CATEGORY_COLORS[c] ?? '#6b7280', color: '#fff' }
-                    : undefined
-                }
-              >
-                {c.charAt(0).toUpperCase() + c.slice(1)} ({(summary!.byCategory as unknown as Record<string, {products: number; value: number}>)[c]?.products ?? 0})
-              </button>
-            ))}
+            <div className="text-center">
+              <p className="text-stone-400">Stock Value</p>
+              <p className="text-lg font-bold text-stone-800">{formatCurrency(summary.totalValue)}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-stone-400">Low Stock</p>
+              <p className={`text-lg font-bold ${summary.lowStockCount > 0 ? 'text-amber-600' : 'text-stone-800'}`}>
+                {summary.lowStockCount}
+              </p>
+            </div>
           </div>
         )}
-      </div>
+      </PageHeader>
+
+      {/* Category filter pills */}
+      {categoryKeys.length > 0 && (
+        <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 flex-wrap bg-white border-b border-[#f3f4f3]">
+          <button
+            onClick={() => setCategoryFilter(null)}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              categoryFilter === null ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+            }`}
+          >
+            All
+          </button>
+          {categoryKeys.map((c) => (
+            <button
+              key={c}
+              onClick={() => setCategoryFilter(categoryFilter === c ? null : c)}
+              className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+              style={
+                categoryFilter === c
+                  ? { backgroundColor: INVENTORY_CATEGORY_COLORS[c] ?? '#6b7280', color: '#fff' }
+                  : undefined
+              }
+            >
+              {c.charAt(0).toUpperCase() + c.slice(1)} ({(summary!.byCategory as unknown as Record<string, {products: number; value: number}>)[c]?.products ?? 0})
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Low stock alert */}
       {lowStockProducts.length > 0 && (
@@ -185,7 +179,7 @@ export default function InventoryPage() {
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden page-fade-in">
         {/* Table */}
         <div className="flex-1 overflow-auto bg-white">
           {loading ? (

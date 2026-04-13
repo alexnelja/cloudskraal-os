@@ -8,12 +8,17 @@ export interface WikiPageSummary {
   pinned: boolean;
   created_at: string;
   updated_at: string;
+  snippet?: string;
+  snippet_term?: string;
+  aliases?: string[];
 }
 
 export interface WikiPage extends WikiPageSummary {
   body: string;
   outgoing_links: { slug: string; title: string }[];
-  backlinks: { slug: string; title: string }[];
+  backlinks: { slug: string; title: string; context?: string }[];
+  broken_links: { slug: string; title: string }[];
+  unlinked_mentions: { slug: string; title: string; count: number }[];
 }
 
 export interface WikiGraphData {
