@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Pencil, Check, X } from 'lucide-react';
+import { ArrowLeft, Pencil, Check, X, FolderOpen } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -20,6 +20,8 @@ import {
   deleteScenario,
 } from '../api/client';
 import { formatZAR, formatPercent, formatYears, formatCompactZAR } from '../utils/format';
+import PageShell from '../components/layout/PageShell';
+import PageHeader from '../components/layout/PageHeader';
 import ZARInput from '../components/ZARInput';
 import CashFlowEditor from '../components/CashFlowEditor';
 import ScenarioEditor from '../components/ScenarioEditor';
@@ -142,21 +144,31 @@ export default function ProjectDetail() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="h-8 bg-stone-200 rounded w-48 animate-pulse" />
-        <div className="h-48 bg-stone-100 rounded-xl animate-pulse" />
-      </div>
+      <PageShell>
+        <PageHeader icon={FolderOpen} title="Loading..." />
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 page-fade-in">
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div className="h-8 bg-stone-200 rounded w-48 animate-pulse" />
+            <div className="h-48 bg-stone-100 rounded-xl animate-pulse" />
+          </div>
+        </div>
+      </PageShell>
     );
   }
 
   if (!project) {
     return (
-      <div className="text-center py-16">
-        <p className="text-stone-500">Project not found</p>
-        <Link to="/projects" className="text-sm text-emerald-700 hover:underline mt-2 inline-block">
-          Back to projects
-        </Link>
-      </div>
+      <PageShell>
+        <PageHeader icon={FolderOpen} title="Project Not Found" />
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 page-fade-in">
+          <div className="max-w-7xl mx-auto text-center py-16">
+            <p className="text-stone-500">Project not found</p>
+            <Link to="/projects" className="text-sm text-emerald-700 hover:underline mt-2 inline-block">
+              Back to projects
+            </Link>
+          </div>
+        </div>
+      </PageShell>
     );
   }
 
@@ -183,18 +195,21 @@ export default function ProjectDetail() {
   ];
 
   return (
-    <div>
-      {/* Breadcrumb & header */}
-      <div className="mb-6">
+    <PageShell>
+      <PageHeader icon={FolderOpen} title={project.name}>
         <Link
           to="/projects"
-          className="inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 mb-2"
+          className="inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700"
         >
           <ArrowLeft size={14} />
           Projects
         </Link>
+      </PageHeader>
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 page-fade-in">
+        <div className="max-w-7xl mx-auto">
+      {/* Status & type summary */}
+      <div className="mb-6">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-stone-800">{project.name}</h1>
           <span
             className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full ${
               statusColors[project.status] || 'bg-stone-100 text-stone-600'
@@ -474,6 +489,8 @@ export default function ProjectDetail() {
           onRefresh={fetchProject}
         />
       )}
-    </div>
+        </div>
+      </div>
+    </PageShell>
   );
 }

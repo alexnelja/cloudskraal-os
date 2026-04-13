@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Filter, ArrowUpDown, FolderOpen } from 'lucide-react';
+import PageShell from '../components/layout/PageShell';
+import PageHeader from '../components/layout/PageHeader';
 import ProjectModal from '../components/ProjectModal';
 import { getProjects, createProject } from '../api/client';
 import type { ProjectSummary, ProjectType, ProjectStatus, PriorityTier, CreateProjectPayload } from '../types';
@@ -138,13 +140,8 @@ export default function ProjectsList() {
   );
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-stone-800">Projects</h1>
-          <p className="text-sm text-stone-500">Manage your capital expenditure projects</p>
-        </div>
+    <PageShell>
+      <PageHeader icon={FolderOpen} title="CapEx Projects">
         <button
           onClick={() => setShowModal(true)}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-700 text-white text-sm font-medium rounded-lg hover:bg-emerald-800 transition-colors"
@@ -152,156 +149,159 @@ export default function ProjectsList() {
           <Plus size={18} />
           New Project
         </button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex items-center gap-3 mb-4">
-        <Filter size={16} className="text-stone-400" />
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          className="border border-stone-300 rounded-lg px-3 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        >
-          <option value="all">All Types</option>
-          {ALL_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </option>
-          ))}
-        </select>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="border border-stone-300 rounded-lg px-3 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        >
-          <option value="all">All Statuses</option>
-          {ALL_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </option>
-          ))}
-        </select>
-        <select
-          value={filterPriority}
-          onChange={(e) => setFilterPriority(e.target.value)}
-          className="border border-stone-300 rounded-lg px-3 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        >
-          <option value="all">All Priorities</option>
-          {ALL_PRIORITIES.map((p) => (
-            <option key={p} value={p}>
-              {PRIORITY_LABELS[p]}
-            </option>
-          ))}
-        </select>
-        <span className="text-xs text-stone-400 ml-auto">
-          {filtered.length} project{filtered.length !== 1 ? 's' : ''}
-        </span>
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-2xl overflow-hidden">
-        {loading ? (
-          <div className="p-8 space-y-3">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-12 bg-stone-100 rounded animate-pulse" />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="p-12 text-center">
-            <FolderOpen size={40} className="mx-auto text-stone-300 mb-3" />
-            <p className="text-sm text-stone-400 mb-3">No projects found</p>
-            <button
-              onClick={() => setShowModal(true)}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:text-emerald-800"
+      </PageHeader>
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 page-fade-in">
+        <div className="max-w-7xl mx-auto">
+          {/* Filters */}
+          <div className="flex items-center gap-3 mb-4">
+            <Filter size={16} className="text-stone-400" />
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="border border-stone-300 rounded-lg px-3 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
-              <Plus size={16} />
-              Create a project
-            </button>
+              <option value="all">All Types</option>
+              {ALL_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="border border-stone-300 rounded-lg px-3 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="all">All Statuses</option>
+              {ALL_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filterPriority}
+              onChange={(e) => setFilterPriority(e.target.value)}
+              className="border border-stone-300 rounded-lg px-3 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="all">All Priorities</option>
+              {ALL_PRIORITIES.map((p) => (
+                <option key={p} value={p}>
+                  {PRIORITY_LABELS[p]}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-stone-400 ml-auto">
+              {filtered.length} project{filtered.length !== 1 ? 's' : ''}
+            </span>
           </div>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="bg-[#f3f4f3] border-b border-[#f3f4f3]">
-                <SortHeader field="name">Name</SortHeader>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <SortHeader field="initialOutlay" align="right">
-                  Initial Outlay
-                </SortHeader>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <SortHeader field="bestNpv" align="right">
-                  Best NPV
-                </SortHeader>
-                <SortHeader field="bestIrr" align="right">
-                  Best IRR
-                </SortHeader>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {filtered.map((project) => (
-                <tr key={project.id} className="hover:bg-stone-50/50 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        to={`/projects/${project.id}`}
-                        className="text-sm font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
-                      >
-                        {project.name}
-                      </Link>
-                      {project.priority && (
+
+          {/* Table */}
+          <div className="bg-white rounded-2xl overflow-hidden">
+            {loading ? (
+              <div className="p-8 space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="h-12 bg-stone-100 rounded animate-pulse" />
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="p-12 text-center">
+                <FolderOpen size={40} className="mx-auto text-stone-300 mb-3" />
+                <p className="text-sm text-stone-400 mb-3">No projects found</p>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:text-emerald-800"
+                >
+                  <Plus size={16} />
+                  Create a project
+                </button>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-[#f3f4f3] border-b border-[#f3f4f3]">
+                    <SortHeader field="name">Name</SortHeader>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <SortHeader field="initialOutlay" align="right">
+                      Initial Outlay
+                    </SortHeader>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <SortHeader field="bestNpv" align="right">
+                      Best NPV
+                    </SortHeader>
+                    <SortHeader field="bestIrr" align="right">
+                      Best IRR
+                    </SortHeader>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {filtered.map((project) => (
+                    <tr key={project.id} className="hover:bg-stone-50/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to={`/projects/${project.id}`}
+                            className="text-sm font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
+                          >
+                            {project.name}
+                          </Link>
+                          {project.priority && (
+                            <span
+                              className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
+                                PRIORITY_COLORS[project.priority] || 'bg-stone-100 text-stone-600'
+                              }`}
+                            >
+                              {PRIORITY_LABELS[project.priority] || project.priority}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-medium text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">
+                          {project.type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm text-stone-700">
+                        {formatZAR(project.initialOutlay)}
+                      </td>
+                      <td className="px-4 py-3">
                         <span
-                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
-                            PRIORITY_COLORS[project.priority] || 'bg-stone-100 text-stone-600'
+                          className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                            statusColors[project.status] || 'bg-stone-100 text-stone-600'
                           }`}
                         >
-                          {PRIORITY_LABELS[project.priority] || project.priority}
+                          {project.status}
                         </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs font-medium text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">
-                      {project.type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm text-stone-700">
-                    {formatZAR(project.initialOutlay)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                        statusColors[project.status] || 'bg-stone-100 text-stone-600'
-                      }`}
-                    >
-                      {project.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm font-medium">
-                    {project.bestNpv != null ? (
-                      <span className={project.bestNpv >= 0 ? 'text-emerald-700' : 'text-red-600'}>
-                        {formatCompactZAR(project.bestNpv)}
-                      </span>
-                    ) : (
-                      <span className="text-stone-400">--</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm font-medium">
-                    {project.bestIrr != null ? (
-                      <span className={project.bestIrr >= 0.10 ? 'text-emerald-700' : 'text-amber-600'}>
-                        {formatPercent(project.bestIrr)}
-                      </span>
-                    ) : (
-                      <span className="text-stone-400">--</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-medium">
+                        {project.bestNpv != null ? (
+                          <span className={project.bestNpv >= 0 ? 'text-emerald-700' : 'text-red-600'}>
+                            {formatCompactZAR(project.bestNpv)}
+                          </span>
+                        ) : (
+                          <span className="text-stone-400">--</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-medium">
+                        {project.bestIrr != null ? (
+                          <span className={project.bestIrr >= 0.10 ? 'text-emerald-700' : 'text-amber-600'}>
+                            {formatPercent(project.bestIrr)}
+                          </span>
+                        ) : (
+                          <span className="text-stone-400">--</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
       </div>
 
       <ProjectModal
@@ -309,6 +309,6 @@ export default function ProjectsList() {
         onClose={() => setShowModal(false)}
         onSubmit={handleCreate}
       />
-    </div>
+    </PageShell>
   );
 }
