@@ -9,3 +9,4 @@ gen-lang-client*.json
 dist/
 .worktrees/
 vault/
+.worktrees/
