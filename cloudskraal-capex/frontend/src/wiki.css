@@ -77,9 +77,6 @@
 .wiki-cm-editor .cm-scroller { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 
 /* --- Transitions --- */
-@keyframes wiki-fade-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes wiki-scale-in { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
-@keyframes wiki-slide-in { from { opacity: 0; transform: translateX(4px); } to { opacity: 1; transform: translateX(0); } }
-.wiki-fade-in { animation: wiki-fade-in 0.1s ease-out; }
-.wiki-scale-in { animation: wiki-scale-in 0.1s ease-out; }
-.wiki-slide-in { animation: wiki-slide-in 0.12s ease-out; }
+.wiki-fade-in { animation: page-fade-in 0.1s ease-out; }
+.wiki-scale-in { animation: page-scale-in 0.1s ease-out; }
+.wiki-slide-in { animation: page-slide-in 0.12s ease-out; }
