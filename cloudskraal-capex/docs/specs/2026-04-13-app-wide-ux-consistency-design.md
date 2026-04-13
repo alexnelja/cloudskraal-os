@@ -32,16 +32,21 @@ Every page gets the same structural wrapper, replacing the current `PageWrapper`
 ```
 
 **CSS pattern:**
-- Container: `h-[calc(100vh-5rem)] flex flex-col overflow-hidden`
+- Container: `h-[calc(100vh-5rem)] flex flex-col overflow-hidden` (desktop uses `md:h-screen`)
 - Header: `flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white`
 - Content: `flex-1 overflow-hidden`
-- Entry animation: `wiki-fade-in` (0.1s translateY ease-out) on content mount
+- Entry animation: `page-fade-in` (0.1s translateY ease-out) on content mount
+
+> **Note (mobile):** The mobile height calc `100vh-5rem` is approximate — the mobile top bar is `h-14` (3.5rem), not 5rem. This is existing debt across all pages. Desktop-first for now; reconcile when tablet/mobile work begins.
 
 ### Global Nav Bar Addition
 
-Pin to the existing top nav bar:
-- Weather icon + current temperature (right side, before user menu)
-- Cash balance with delta arrow (right side)
+**Desktop:** Add `NavWeatherCash` to the `Sidebar` component's header area (top of sidebar, below logo).
+**Mobile:** Add `NavWeatherCash` to the existing `header` element in `AppShell.tsx` (right side, before avatar).
+
+Content:
+- Weather icon + current temperature
+- Cash balance with delta arrow
 - Data: mock/placeholder, structured for real API later
 
 ### Pages Affected
@@ -53,12 +58,12 @@ Pin to the existing top nav bar:
 | Equipment | Full-height master-detail | Standardize header only |
 | Inventory | Full-height master-detail | Standardize header only |
 | Production | Full-height master-detail (Kanban) | Standardize header only |
-| Financials | PageWrapper | Switch to PageShell |
-| Employees | PageWrapper | Switch to PageShell |
-| ProjectsList | PageWrapper | Switch to PageShell |
-| ProjectDetail | PageWrapper | Switch to PageShell |
-| CompareProjects | PageWrapper | Switch to PageShell |
-| Calendar | PageWrapper | Switch to PageShell |
+| Financials | Full-height (own shell) | Standardize header only |
+| Employees | Full-height (own shell) | Standardize header only |
+| ProjectsList | PageWrapper (padding + max-width) | Switch to PageShell |
+| ProjectDetail | PageWrapper (padding + max-width) | Switch to PageShell |
+| CompareProjects | PageWrapper (padding + max-width) | Switch to PageShell |
+| Calendar | Full-height (own shell) | Standardize header only |
 | FarmMap | Full-height (map) | Standardize header only |
 
 ---
@@ -75,6 +80,7 @@ Full-height shell, no sidebar. Scrollable single-column with dense, scannable se
 
 **3.1 Enterprise Filter Row**
 - Pill toggles: All | Livestock | Rooibos | Wine | Crops/Rotation
+- Hard-coded labels mapping to enterprise names in the database (verify against `enterprises` table during implementation; adjust labels if names differ)
 - Filters all sections below
 - Sticky below page header
 
@@ -158,7 +164,7 @@ Matches Equipment/Inventory detail panel pattern: `md:w-[420px] md:flex-shrink-0
 
 | Tab | Content |
 |-----|---------|
-| Overview | Group stats, breeding pipeline visualization (existing), condition summary |
+| Overview | Group stats, condition summary. Breeding pipeline stays in the left panel as a global view (it shows cross-group seasonal data, not per-group). |
 | Animals | Searchable/filterable table of individual sheep: tag, breed, age, weight, condition score, status |
 | Shearing | Shearing records table (existing), next scheduled date |
 | Health | Vaccination records, treatments, mortality log |
@@ -211,25 +217,30 @@ Patterns incorporated from Farming Simulator, Farmbrite, Agrivi, and Bushel Farm
 | `DashboardFillLevels.tsx` | Fill-level bars section | ~50 |
 | `DashboardTasks.tsx` | Task list section | ~60 |
 | `DashboardActivity.tsx` | Activity feed section | ~60 |
-| `LivestockDetail.tsx` | Right panel with tabs | ~120 |
+| `LivestockDetail.tsx` | Right panel with tab switcher | ~80 |
+| `LivestockOverview.tsx` | Overview tab (group stats, condition) | ~60 |
 | `LivestockAnimals.tsx` | Per-animal table tab | ~80 |
+| `LivestockShearing.tsx` | Shearing records tab | ~60 |
 | `LivestockHealth.tsx` | Health/vaccination tab | ~60 |
 
 ---
 
 ## 7. Files Modified
 
-- `App.tsx` — Add NavWeatherCash to nav bar
+- `App.tsx` — Add NavWeatherCash to Sidebar/AppShell; remove `PageWrapper` function; unwrap Dashboard, ProjectsList, ProjectDetail, CompareProjects routes
+- `AppShell.tsx` — Add NavWeatherCash to mobile header
+- `Sidebar.tsx` (or equivalent) — Add NavWeatherCash to desktop sidebar header
 - `Dashboard.tsx` — Rewrite as thin layout importing sub-components
 - `LivestockPage.tsx` — Rewrite as master-detail with tabs
-- `FinancialsPage.tsx` — Replace PageWrapper with PageShell
-- `EmployeesPage.tsx` — Replace PageWrapper with PageShell
 - `ProjectsList.tsx` — Replace PageWrapper with PageShell
 - `ProjectDetail.tsx` — Replace PageWrapper with PageShell
 - `CompareProjects.tsx` — Replace PageWrapper with PageShell
-- `CalendarPage.tsx` — Replace PageWrapper with PageShell
 - `EquipmentPage.tsx` — Standardize header to PageHeader
 - `InventoryPage.tsx` — Standardize header to PageHeader
 - `ProductionPage.tsx` — Standardize header to PageHeader
+- `FinancialsPage.tsx` — Standardize header to PageHeader
+- `EmployeesPage.tsx` — Standardize header to PageHeader
+- `CalendarPage.tsx` — Standardize header to PageHeader
 - `FarmMapPage.tsx` — Standardize header to PageHeader
-- `index.css` — Add wiki-fade-in if not already global
+- `index.css` — Move `wiki-fade-in` keyframes from `wiki.css`, rename to `page-fade-in`
+- `wiki.css` — Remove `wiki-fade-in` (replaced by global `page-fade-in`); update wiki references
