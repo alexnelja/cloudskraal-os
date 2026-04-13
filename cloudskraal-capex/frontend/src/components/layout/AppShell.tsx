@@ -4,6 +4,7 @@ import Sidebar from '../Sidebar';
 import BottomNav from './BottomNav';
 import CommandPalette from '../CommandPalette';
 import QuickAddFAB from '../QuickAddFAB';
+import NavWeatherCash from './NavWeatherCash';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -27,6 +28,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <Wheat size={20} />
           <span className="text-base font-semibold tracking-tight">Cloudskraal</span>
         </div>
+        <NavWeatherCash variant="mobile" />
         <div className="h-8 w-8 rounded-full bg-[#047857]/10 flex items-center justify-center text-[#047857] text-xs font-bold">
           AN
         </div>

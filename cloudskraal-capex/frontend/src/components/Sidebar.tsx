@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import NavWeatherCash from './layout/NavWeatherCash';
 import {
   LayoutDashboard,
   FolderOpen,
@@ -66,6 +67,8 @@ export default function Sidebar() {
           </div>
         )}
       </div>
+
+      {!collapsed && <NavWeatherCash variant="sidebar" />}
 
       {/* Navigation */}
       <nav className="flex-1 py-4">
