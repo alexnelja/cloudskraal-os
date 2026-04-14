@@ -1,30 +1,52 @@
 # Roadmap
 
-## Near term
+## Shipped
 
-- [ ] Integrate feed calculator v2 (`data/Cloudskraal_Feed_Calculator_v2.xlsx`) into backend + UI
-- [ ] Wire sheep assessment (`data/cloudskraal-feed-sheep-assessment.md`) into enterprise module
-- [ ] Ingest Oct-2025 master workbook into SQLite; reconcile against existing land use
-- [ ] Render GeoJSON/KML field boundaries on MapLibre map view
-- [ ] Rooibos price forecast curve in UI (R40 → R46 → R55 → R45 → R39, 2026–2030)
-- [ ] Sync new `data/Wiki/` markdown into vault + wiki DB
+- **[Spec #1] field_usage_period** — interval-based usage history (`fd360d5 → 61aaf97`)
+- **[Spec 2a] Field-variable COP + cost tagging** (`cf5878c → 5213f30`)
+- **[Spec 2b] Denominators & shrinkage** (`425604c → 1ae6339`)
+- **[Wiki] Obsidian tier 1** — CodeMirror 6 editor, 40+ features
+- **[QoL] Rooibos price forecast curve, FieldPanel refactor, relative-year display** (`225eddf, 98401d9, c0c7f27`)
+- **[Workbook] Oct-2025 master workbook ingest** — every non-empty sheet covered (`9a995e9` audit)
 
-## Medium term
+## Queued — benched specs (`docs/specs/benched-*.md`)
 
-- [ ] Reverse-waterfall simulator: target NPV/IRR in → required CapEx/yield/price out
-- [ ] Breeding calendar integration with task triggers (Dohne Merino lifecycle)
-- [ ] Meulsteenvlei acquisition financing model linked to CapEx scenarios
-- [ ] Section 42 / tax-restructure scenarios surfaced in financial engine
-- [ ] Per-enterprise P&L rollups (sheep, rooibos, wine, lupines/oats)
+- **Spec 1b** — Wind rows & field orientation (unblocked once spec 5a + 5h ship)
+- **Specs 2c + 2d** — Long-horizon costs (amortization + overhead)
+- **Spec 2e** — Rooibos processing centre
+- **Spec 2f** — Livestock COP
+- **Spec 2g** — Wine COP
+- **Spec 2h** — Reporting UI
+- **Spec 3** — Map → task trigger
+- **Spec 4** — Task lifecycle
+- **Spec 5 family (5a–5j)** — GIS tools (measurement, layers, satellite, polygon edit)
+- **Spec 6** — Technical calculators (sprayer, pest dose, lime, electrical, fluid, fertilizer)
+- **Spec 7 family** — Live position tracking (employees + vehicles) — POPIA-gated
+- **Spec 8 family (8a–8g)** — Weather & climate (ingest, overlays, correlation, forecasts, alerts, station)
 
-## Long term
+## Backlog (ideas, not yet spec'd)
 
-- [ ] Monte Carlo on price + yield distributions per enterprise
-- [ ] Multi-farm portfolio view (Cloudskraal + Meulsteenvlei)
-- [ ] Mobile offline-first wiki (field data capture)
-- [ ] TBD: climate / rainfall scenario overlays on CapEx IRR
+- Reverse-waterfall simulator: target NPV/IRR in → required CapEx/yield/price out
+- Breeding calendar integration with task triggers (Dohne Merino lifecycle)
+- Meulsteenvlei acquisition financing model linked to CapEx scenarios
+- Section 42 / tax-restructure scenarios surfaced in financial engine
+- Per-enterprise P&L rollups (sheep, rooibos, wine, lupines/oats)
+- Monte Carlo on price + yield distributions per enterprise
+- Multi-farm portfolio view (Cloudskraal + Meulsteenvlei)
+- Mobile offline-first wiki (field data capture)
+- Climate / rainfall scenario overlays on CapEx IRR
+- Sync new `data/Wiki/` markdown into vault + wiki DB
 
-## Specs
+## Dropped from roadmap (done or absorbed)
 
-- [Wiki multiplatform](docs/specs/2026-04-13-cloudskraal-wiki-multiplatform.md)
-- [Wiki Obsidian tier 1](docs/plans/2026-04-12-wiki-obsidian-tier1.md)
+- ~~Render GeoJSON/KML field boundaries on MapLibre~~ — already done in seed-farms
+- ~~Rooibos price forecast curve in UI~~ — done (`225eddf`)
+- ~~Integrate feed calculator v2~~ — absorbed into bench spec 6 (technical calculators)
+- ~~Wire sheep assessment into enterprise module~~ — absorbed into bench spec 2f (livestock COP)
+- ~~Ingest Oct-2025 master workbook~~ — audit complete (`9a995e9`); no further import needed
+
+## Specs index
+
+- All shipped specs and benched specs live under `docs/specs/` (`2026-MM-DD-*.md` for shipped, `benched-*.md` for queued)
+- Plans live under `docs/plans/`
+- Session handoffs live under `docs/handoffs/`
