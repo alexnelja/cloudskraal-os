@@ -1,4 +1,11 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import Database from 'better-sqlite3';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DB_PATH = path.join(__dirname, '..', 'data', 'capex.db');
 
 const BASE = 'http://localhost:3001/api';
 
@@ -20,6 +27,14 @@ beforeAll(async () => {
   // Pick an annual-crop field so 2030 POSTs don't collide with perennial open-ended seeds.
   const annual = data.find(f => ['lupines_fourrages', 'oats', 'fallow', 'lupines'].includes(f.enterprise));
   fieldId = (annual ?? data[0]).id;
+});
+
+afterAll(() => {
+  // Hard-delete test-injected rows (start_date 2030+ used only by tests).
+  // Keeps integration tests idempotent across repeated runs.
+  const db = new Database(DB_PATH);
+  db.prepare(`DELETE FROM field_usage_period WHERE start_date >= '2030-01-01'`).run();
+  db.close();
 });
 
 describe('usage-periods CRUD', () => {
