@@ -37,6 +37,11 @@ CREATE TABLE conversion_factors (
 
 CREATE INDEX idx_factors_lookup
   ON conversion_factors(from_uom, to_uom, context, effective_from);
+
+-- Prevent ties at identical effective_from. POST returns 409 on duplicate;
+-- future factor updates use a later effective_from.
+CREATE UNIQUE INDEX idx_factors_unique
+  ON conversion_factors(from_uom, to_uom, context, effective_from);
 ```
 
 ### Seed rows (effective_from = `2022-01-01`)
@@ -69,6 +74,11 @@ Wine and sheep UOM chains exist conceptually (see `memory/domain_cloudskraal_ter
 Maps a user-supplied value to a target UOM.
 
 ```javascript
+// TIER_MAPS is hardcoded here for now. Specs 2f (sheep) and 2g (wine) extend it.
+// If a fourth crop type lands (almonds, olives, buchu) reconsider moving this
+// to a DB table so new tiers don't require a service-code change + deploy.
+// Spec 2h (reporting UI) will probably want GET /api/tier-vocabularies to
+// list available tiers per usage without hardcoding in the frontend.
 const TIER_MAPS = {
   rooibos: {
     harvest: 'harvest_wet_kg',
@@ -105,11 +115,16 @@ Context resolution: the `context` parameter is the usage name (e.g. `'rooibos'`)
 New optional `opts.denominator` (string, tier or explicit UOM). When set:
 
 1. For each `CopLine`, call `resolveDenominator(line.usage, opts.denominator)` → target UOM.
-2. Call `factorChain(db, 'harvest_wet_kg', target, line.usage, asOf)` where `asOf = ${year}-12-31` (use end-of-year to pick up factors that became effective mid-year).
-3. If `factor_missing`, the entire response is 400 with the error bubbled up — do NOT produce a partial report with mixed denominators.
-4. Otherwise: `converted_actual = actual_yield_kg * factor`, same for estimated. Recompute `cost_per_kg` and `yield_per_ha` against the converted yield. Raw `*_yield_kg` fields keep their original harvest-wet values; a new `yield_in_denominator_kg` on each line holds the converted number.
-5. `coverage.denominator` = resolved target UOM.
-6. `coverage.factors_used` = array `[{from, to, factor, context}]` from the path, deduplicated across lines.
+2. **Non-productive usage short-circuit:** if `line.usage ∈ {fallow, grazing, fallow_greening}`, skip factor resolution for this line. `cost_per_kg` stays null (yield is 0 anyway), and this line does not contribute to the all-or-nothing 400 in step 3.
+3. Call `factorChain(db, 'harvest_wet_kg', target, line.usage, asOf)` where `asOf = ${year}-12-31` — end-of-year anchor.
+4. If `factor_missing` on any productive line, the entire response is 400 with the error bubbled up — do NOT produce a partial report with mixed denominators. Rationale: returning "rooibos line shows cost-per-netto-dry-kg, lupines line shows cost-per-wet-kg" in the same response would silently mislead. Document as a known limitation in `coverage.notes` if it becomes painful (could add `?strict=false` in a later spec).
+5. Otherwise: `converted_actual = round2(actual_yield_kg * factor)`, same for estimated. Raw `*_yield_kg` fields keep their original harvest-wet values; new `yield_in_denominator_kg` on each line holds the converted number. `cost_per_kg` and `yield_per_ha` are recomputed against the converted yield.
+6. `coverage.denominator` = resolved target UOM.
+7. `coverage.factors_used` = array `[{from, to, factor, context}]` from the path, **deduplicated by the tuple `(from_uom, to_uom, context, factor)`** so the same edge consumed by multiple lines appears once.
+
+**`asOf = year-12-31` rationale.** End-of-year is chosen over start-of-year so that a factor refined mid-year (e.g. operator measured real shrinkage in July) retroactively applies to the whole year's report. Alex's farm operation treats the annual COP report as "what we know now about last year", not "what we thought at the start of the year". Trade-off: a report run mid-year uses factors in force at year-end, which for the *current* year means the latest row. Documented so no one is surprised.
+
+**Rounding.** All converted yields and derived numbers (`cost_per_kg`, `yield_per_ha`, `cost_per_ha`) are rounded to 2 decimals via `Math.round(x * 100) / 100`. Matches spec 2a's convention.
 
 When `opts.denominator` is absent, behaviour is exactly as spec 2a — no factor lookup, `coverage.denominator = 'raw_harvest_kg'`, no `factors_used` field.
 
@@ -149,8 +164,11 @@ POST /api/conversion-factors
 | `denominator` provided but resolves to nothing known | 400 | `{error: 'invalid_denominator', value}` |
 | Factor chain has a missing edge | 400 | `{error: 'factor_missing', missing_edge: 'X → Y', context}` |
 | POST factor with `factor <= 0` | 400 | `{error: 'invalid_factor'}` |
-| POST factor with invalid `effective_from` | 400 | `{error: 'invalid_date'}` |
+| POST factor with invalid `effective_from` (not parseable ISO date) | 400 | `{error: 'invalid_date'}` |
 | POST factor missing required field | 400 | `{error: 'missing_field', field}` |
+| POST factor duplicating an existing `(from, to, context, effective_from)` row | 409 | `{error: 'duplicate_factor', hint: 'use a later effective_from'}` |
+
+**Security note.** Cloudskraal is a single-tenant, local-network app; the backend runs on localhost. POST `/api/conversion-factors` has no auth — consistent with every other POST in the codebase. If the deployment surface ever broadens, this endpoint (along with everything else) needs an auth layer; spec 2b does not introduce one.
 
 Factor chains are per-line, but the response is all-or-nothing. If any line's chain is broken the whole endpoint 400s. Rationale: mixing lines against different denominators would mislead the operator.
 
@@ -202,8 +220,8 @@ Factor chains are per-line, but the response is all-or-nothing. If any line's ch
 
 ## Migration & backward compatibility
 
-- `conversion_factors` is a new table. Fresh DB creation runs via `initConversionFactorsSchema(db)` wired into `schema.js`.
-- Seeds run on fresh DB only (idempotency check: `SELECT COUNT(*) FROM conversion_factors`).
+- `conversion_factors` is a new table. Fresh DB creation runs via `initConversionFactorsSchema(db)` wired into `schema.js`. The `CREATE TABLE IF NOT EXISTS` form is natively idempotent on repeated boots.
+- Seed idempotency: `seedConversionFactors(db)` checks `SELECT COUNT(*) FROM conversion_factors WHERE context='rooibos' AND effective_from='2022-01-01'`. If the canonical rooibos seed rows exist, skip. Running the seed twice on the same DB is a no-op. Adding new factors (via POST) does not trigger re-seeding.
 - Existing callers (spec 2a field panel) continue working because `denominator` is optional; omitting it preserves spec 2a behaviour exactly.
 - `coverage.denominator` changes from a static `'raw_harvest_kg'` string to the resolved UOM — already a string, no type change.
 
