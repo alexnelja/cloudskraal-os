@@ -26,6 +26,7 @@ const inventoryRoutes = require('./routes/inventory');
 const financialRoutes = require('./routes/financials');
 const supplyChainRoutes = require('./routes/supply-chain');
 const usageRoutes = require('./routes/usage');
+const conversionFactorsRoutes = require('./routes/conversion-factors');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -59,6 +60,7 @@ app.use('/api', inventoryRoutes);
 app.use('/api', financialRoutes);
 app.use('/api', supplyChainRoutes);
 app.use('/api', usageRoutes);
+app.use('/api', conversionFactorsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
