@@ -271,3 +271,62 @@ function resolveDenominator(usage, denominator) {
 
 module.exports.resolveDenominator = resolveDenominator;
 module.exports.TIER_MAPS = TIER_MAPS;
+
+function factorChain(db, fromUom, toUom, context, asOf) {
+  if (fromUom === toUom) return { factor: 1, path: [] };
+
+  // For each (from, to) in this context with effective_from <= asOf, pick the
+  // row with the latest effective_from (MAX).
+  const edges = db.prepare(`
+    SELECT from_uom, to_uom, context,
+           (SELECT factor FROM conversion_factors c2
+             WHERE c2.from_uom = c1.from_uom AND c2.to_uom = c1.to_uom
+               AND c2.context = c1.context AND c2.effective_from <= ?
+             ORDER BY c2.effective_from DESC LIMIT 1) AS factor
+      FROM conversion_factors c1
+     WHERE c1.context = ? AND c1.effective_from <= ?
+     GROUP BY from_uom, to_uom, context
+  `).all(asOf, context, asOf);
+
+  // Build adjacency
+  const adj = new Map();
+  for (const e of edges) {
+    if (e.factor == null) continue;
+    if (!adj.has(e.from_uom)) adj.set(e.from_uom, []);
+    adj.get(e.from_uom).push(e);
+  }
+
+  // BFS
+  const visited = new Set([fromUom]);
+  const parents = new Map();
+  const queue = [fromUom];
+  let found = false;
+  while (queue.length) {
+    const node = queue.shift();
+    if (node === toUom) { found = true; break; }
+    for (const edge of adj.get(node) ?? []) {
+      if (!visited.has(edge.to_uom)) {
+        visited.add(edge.to_uom);
+        parents.set(edge.to_uom, edge);
+        queue.push(edge.to_uom);
+      }
+    }
+  }
+
+  if (!found) {
+    return { error: 'factor_missing', missing_edge: `${fromUom} → ${toUom}`, context };
+  }
+
+  const path = [];
+  let node = toUom;
+  while (node !== fromUom) {
+    const edge = parents.get(node);
+    path.unshift({ from_uom: edge.from_uom, to_uom: edge.to_uom, factor: edge.factor, context: edge.context });
+    node = edge.from_uom;
+  }
+
+  const factor = path.reduce((acc, e) => acc * e.factor, 1);
+  return { factor, path };
+}
+
+module.exports.factorChain = factorChain;

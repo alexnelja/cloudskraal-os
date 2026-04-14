@@ -442,3 +442,76 @@ describe('resolveDenominator', () => {
     expect(resolveDenominator('lupines_fourrages', 'netto_dry')).toBe('netto_dry');
   });
 });
+
+import { factorChain } from '../src/services/cop.js';
+
+function seedFactors(db) {
+  const now = new Date().toISOString();
+  const ins = db.prepare(`INSERT INTO conversion_factors
+    (id, from_uom, to_uom, context, factor, effective_from, notes, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  ins.run('f1','harvest_wet_kg','dried_kg','rooibos',0.45,'2022-01-01',null,now,now);
+  ins.run('f2','dried_kg','sifted_netto_dry_kg','rooibos',0.87,'2022-01-01',null,now,now);
+}
+
+describe('factorChain', () => {
+  function setup() {
+    const db = new Database(':memory:');
+    initConversionFactorsSchema(db);
+    seedFactors(db);
+    return db;
+  }
+
+  it('returns 1.0 when from === to', () => {
+    const db = setup();
+    expect(factorChain(db, 'harvest_wet_kg', 'harvest_wet_kg', 'rooibos', '2026-12-31'))
+      .toEqual({ factor: 1, path: [] });
+    db.close();
+  });
+
+  it('single-hop', () => {
+    const db = setup();
+    const r = factorChain(db, 'harvest_wet_kg', 'dried_kg', 'rooibos', '2026-12-31');
+    expect(r.factor).toBeCloseTo(0.45, 10);
+    expect(r.path).toHaveLength(1);
+    expect(r.path[0]).toEqual({ from_uom: 'harvest_wet_kg', to_uom: 'dried_kg', factor: 0.45, context: 'rooibos' });
+    db.close();
+  });
+
+  it('multi-hop product', () => {
+    const db = setup();
+    const r = factorChain(db, 'harvest_wet_kg', 'sifted_netto_dry_kg', 'rooibos', '2026-12-31');
+    expect(r.factor).toBeCloseTo(0.45 * 0.87, 10);
+    expect(r.path).toHaveLength(2);
+    db.close();
+  });
+
+  it('missing edge returns error', () => {
+    const db = setup();
+    const r = factorChain(db, 'harvest_wet_kg', 'nonsense_uom', 'rooibos', '2026-12-31');
+    expect(r.error).toBe('factor_missing');
+    expect(r.missing_edge).toBeTruthy();
+    db.close();
+  });
+
+  it('asOf before effective_from returns error', () => {
+    const db = setup();
+    const r = factorChain(db, 'harvest_wet_kg', 'dried_kg', 'rooibos', '2020-01-01');
+    expect(r.error).toBe('factor_missing');
+    db.close();
+  });
+
+  it('picks most recent effective_from row for a given edge', () => {
+    const db = setup();
+    const now = new Date().toISOString();
+    db.prepare(`INSERT INTO conversion_factors
+      (id, from_uom, to_uom, context, factor, effective_from, notes, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run('f3','harvest_wet_kg','dried_kg','rooibos',0.46,'2026-07-01',null,now,now);
+    const r2025 = factorChain(db, 'harvest_wet_kg', 'dried_kg', 'rooibos', '2025-12-31');
+    const r2026 = factorChain(db, 'harvest_wet_kg', 'dried_kg', 'rooibos', '2026-12-31');
+    expect(r2025.factor).toBeCloseTo(0.45, 10);
+    expect(r2026.factor).toBeCloseTo(0.46, 10);
+    db.close();
+  });
+});
