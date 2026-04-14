@@ -56,6 +56,25 @@ function rotationYearEffective(period, asOf) {
   return null;
 }
 
+function refreshFieldCurrent(db, fieldId, asOf) {
+  const row = db.prepare(`
+    SELECT usage, planted_date
+      FROM field_usage_period
+     WHERE field_id = ?
+       AND deleted_at IS NULL
+       AND start_date <= ?
+       AND (end_date IS NULL OR end_date >= ?)
+     ORDER BY start_date DESC
+     LIMIT 1
+  `).get(fieldId, asOf, asOf);
+
+  if (!row) return;
+
+  const plantedYear = row.planted_date ? row.planted_date.slice(0, 4) : null;
+  db.prepare(`UPDATE fields SET enterprise=?, crop_type=?, planted_year=?, updated_at=? WHERE id=?`)
+    .run(row.usage, row.usage, plantedYear, new Date().toISOString(), fieldId);
+}
+
 module.exports = {
   USAGE_TYPES,
   PERENNIAL_USAGES,
@@ -64,4 +83,5 @@ module.exports = {
   assertNoOverlap,
   yearsSincePlanted,
   rotationYearEffective,
+  refreshFieldCurrent,
 };

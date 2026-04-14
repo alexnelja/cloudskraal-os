@@ -45,7 +45,9 @@ import {
   USAGE_TYPES, PERENNIAL_USAGES,
   isValidUsage, isPerennial,
   assertNoOverlap, yearsSincePlanted, rotationYearEffective,
+  refreshFieldCurrent,
 } from '../src/services/usage.js';
+import { initFarmSchema } from '../src/db/schema-farms.js';
 
 describe('usage service — enums', () => {
   it('USAGE_TYPES contains expected values', () => {
@@ -131,5 +133,69 @@ describe('usage service — derivations', () => {
 
   it('rotationYearEffective is null for non-perennial without stored value', () => {
     expect(rotationYearEffective({ usage: 'oats', rotation_year: null, planted_date: null }, '2026-04-14')).toBeNull();
+  });
+});
+
+describe('refreshFieldCurrent', () => {
+  function setup() {
+    const db = new Database(':memory:');
+    db.pragma('foreign_keys = ON');
+    initFarmSchema(db);
+    initUsagePeriodsSchema(db);
+    const now = new Date().toISOString();
+    db.prepare(`INSERT INTO farms (id, name, code, type, created_at, updated_at) VALUES (?,?,?,?,?,?)`)
+      .run('farm1', 'Test', 'test', 'owned', now, now);
+    db.prepare(`INSERT INTO fields (id, farm_id, name, enterprise, geometry, created_at, updated_at)
+                VALUES (?,?,?,?,?,?,?)`)
+      .run('fld1', 'farm1', 'F1', 'unclassified', '{}', now, now);
+    return db;
+  }
+
+  it('sets enterprise/crop_type/planted_year from active period', () => {
+    const db = setup();
+    const now = new Date().toISOString();
+    db.prepare(`INSERT INTO field_usage_period (id, field_id, usage, start_date, end_date,
+                planted_date, source, created_at, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?)`)
+      .run('p1', 'fld1', 'rooibos', '2022-07-01', null, '2022-07-01', 'seed-rooibos-backfill', now, now);
+    refreshFieldCurrent(db, 'fld1', '2026-04-14');
+    const f = db.prepare('SELECT enterprise, crop_type, planted_year FROM fields WHERE id=?').get('fld1');
+    expect(f.enterprise).toBe('rooibos');
+    expect(f.crop_type).toBe('rooibos');
+    expect(f.planted_year).toBe('2022');
+  });
+
+  it('picks most recent start_date when multiple active', () => {
+    const db = setup();
+    const now = new Date().toISOString();
+    const ins = db.prepare(`INSERT INTO field_usage_period (id, field_id, usage, start_date, end_date,
+                planted_date, source, created_at, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?)`);
+    ins.run('p1', 'fld1', 'rooibos', '2022-01-01', '2026-03-31', '2022-01-01', 'seed', now, now);
+    ins.run('p2', 'fld1', 'lupines_fourrages', '2026-05-01', null, '2026-05-01', 'seed', now, now);
+    refreshFieldCurrent(db, 'fld1', '2026-06-01');
+    const f = db.prepare('SELECT enterprise FROM fields WHERE id=?').get('fld1');
+    expect(f.enterprise).toBe('lupines_fourrages');
+  });
+
+  it('leaves cache untouched when no active period', () => {
+    const db = setup();
+    db.prepare(`UPDATE fields SET enterprise=? WHERE id=?`).run('rooibos', 'fld1');
+    refreshFieldCurrent(db, 'fld1', '2026-04-14');
+    const f = db.prepare('SELECT enterprise FROM fields WHERE id=?').get('fld1');
+    expect(f.enterprise).toBe('rooibos');
+  });
+
+  it('excludes soft-deleted periods', () => {
+    const db = setup();
+    const now = new Date().toISOString();
+    db.prepare(`INSERT INTO field_usage_period (id, field_id, usage, start_date, end_date,
+                planted_date, source, deleted_at, created_at, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?)`)
+      .run('p1', 'fld1', 'rooibos', '2022-07-01', null, '2022-07-01', 'seed', now, now, now);
+    db.prepare(`UPDATE fields SET enterprise='original' WHERE id=?`).run('fld1');
+    refreshFieldCurrent(db, 'fld1', '2026-04-14');
+    const f = db.prepare('SELECT enterprise FROM fields WHERE id=?').get('fld1');
+    expect(f.enterprise).toBe('original');
   });
 });
