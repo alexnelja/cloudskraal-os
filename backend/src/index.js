@@ -27,6 +27,8 @@ const financialRoutes = require('./routes/financials');
 const supplyChainRoutes = require('./routes/supply-chain');
 const usageRoutes = require('./routes/usage');
 const conversionFactorsRoutes = require('./routes/conversion-factors');
+const enterprisePricesRoutes = require('./routes/enterprise-prices');
+const { seedEnterprisePrices } = require('./db/seed-enterprise-prices');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -61,6 +63,7 @@ app.use('/api', financialRoutes);
 app.use('/api', supplyChainRoutes);
 app.use('/api', usageRoutes);
 app.use('/api', conversionFactorsRoutes);
+app.use('/api', enterprisePricesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -87,6 +90,7 @@ seedUsagePeriods(db);
 seedFieldCosts(db);
 seedStandPercent(db);
 seedConversionFactors(db);
+seedEnterprisePrices(db);
 
 app.listen(PORT, () => {
   console.log(`Cloudskraal CapEx API running on http://localhost:${PORT}`);

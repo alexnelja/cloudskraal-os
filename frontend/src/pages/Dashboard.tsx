@@ -26,6 +26,7 @@ import {
   Cell,
 } from 'recharts';
 import MetricCard from '../components/MetricCard';
+import EnterprisePriceCurve from '../components/EnterprisePriceCurve';
 import ProjectModal from '../components/ProjectModal';
 import { StatusCycle } from '../components/EditableCell';
 import { getProjects, getDashboardStats, createProject, updateProject } from '../api/client';
@@ -281,9 +282,10 @@ export default function Dashboard() {
 
       {/* Tier Budget Summary */}
       {!loading && projects.length > 0 && (() => {
+        const thisYear = new Date().getUTCFullYear();
         const TIER_CONFIG = {
-          tier1: { label: 'Must-do 2026', borderColor: 'border-red-500', textColor: 'text-red-600', icon: ShieldAlert },
-          tier2: { label: 'Should-do 2026-27', borderColor: 'border-violet-500', textColor: 'text-violet-600', icon: Sparkles },
+          tier1: { label: `Must-do ${thisYear}`, borderColor: 'border-red-500', textColor: 'text-red-600', icon: ShieldAlert },
+          tier2: { label: `Should-do ${thisYear}-${String(thisYear + 1).slice(-2)}`, borderColor: 'border-violet-500', textColor: 'text-violet-600', icon: Sparkles },
           tier3: { label: 'Nice-to-have', borderColor: 'border-stone-400', textColor: 'text-stone-500', icon: CircleDot },
         } as const;
         const tiers = (['tier1', 'tier2', 'tier3'] as const).map(tier => {
@@ -335,6 +337,11 @@ export default function Dashboard() {
           </div>
         );
       })()}
+
+      {/* Price forecasts */}
+      <div className="mb-6">
+        <EnterprisePriceCurve enterprise="rooibos" />
+      </div>
 
       {/* Tasks Section */}
       {(upcomingTasks.length > 0 || overdueTasks.length > 0) && (() => {

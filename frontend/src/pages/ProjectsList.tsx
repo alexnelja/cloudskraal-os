@@ -23,7 +23,7 @@ const ALL_STATUSES: ProjectStatus[] = ['draft', 'evaluating', 'approved', 'rejec
 const ALL_PRIORITIES: PriorityTier[] = ['tier1', 'tier2', 'tier3'];
 
 const PRIORITY_LABELS: Record<PriorityTier, string> = {
-  tier1: 'Must-do 2026',
+  tier1: `Must-do ${new Date().getUTCFullYear()}`,
   tier2: 'Should-do',
   tier3: 'Nice-to-have',
 };
