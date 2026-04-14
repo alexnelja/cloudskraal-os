@@ -1,73 +1,83 @@
-# React + TypeScript + Vite
+# Cloudskraal OS — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Vite + React 19 + TypeScript frontend for Cloudskraal OS, a full farm management system for the Cloudskraal enterprises (Dohne Merino, wine, rooibos, lupines/oats rotation). Deployed to Vercel; talks to the Render-hosted API at `cloudskraal-api.onrender.com`. Styled with Tailwind CSS v4. Includes map (MapLibre GL), charts (Recharts), tables (TanStack Table), an Obsidian-style wiki, a three-statement financial model, and Notion-style inline editing across modules.
 
-Currently, two official plugins are available:
+## Status
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Deployed to Vercel. Active development. Routes (from `src/App.tsx`):
 
-## React Compiler
+- `/` — Dashboard (clickable charts, project popups)
+- `/map`, `/map/:fieldId` — Farm map with field panels and layer controls
+- `/calendar`, `/calendar/tasks`, `/calendar/tasks/:taskId` — Task + event calendar
+- `/wiki`, `/wiki/graph`, `/wiki/:slug` — Wiki editor, renderer, graph view, search
+- `/projects`, `/projects/:id`, `/compare` — Projects list, detail, comparison
+- `/equipment`, `/livestock`, `/production`, `/employees`, `/inventory` — Operational modules with inline-editable tables
+- `/financials` — Three-statement financial model (6-yr audited data, ratios, enterprise breakdown)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Shared UI: `AppShell`, `Sidebar`, `BottomNav`, `CommandPalette`, `QuickAddFAB`, `ZARInput`, `EditableCell`, `FactSheetButton`, `MetricCard`, `ProjectModal`, `ScenarioEditor`, `CashFlowEditor`.
 
-## Expanding the ESLint configuration
+## Setup & Run
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev       # vite dev server
+npm run build     # tsc -b && vite build (strict)
+npm run preview   # preview built bundle
+npm run lint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Env vars (`.env` / Vercel project settings):
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- `VITE_API_URL` — API base URL. Production default: `https://cloudskraal-api.onrender.com/api`.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+`vercel.json` rewrites all paths to `/index.html` for SPA routing.
+
+## Architecture
+
 ```
+src/
+  App.tsx             React Router routes
+  main.tsx            Entry
+  api/                Typed API clients (client, config, farms, livestock,
+                      equipment, employees, inventory, production, financials,
+                      calendar, wiki)
+  components/
+    layout/           AppShell, BottomNav
+    calendar/         MonthView, TaskList, TaskEditor, TaskDetail, EventEditor
+    financials/       ThreeStatementModel
+    map/              FarmMap (MapLibre), FieldPanel, LayerControl, MapControls
+    wiki/             WikiEditor, WikiRenderer, WikiInlineEditor, WikiGraph
+                      (d3-force), WikiSearch, SlashCommandMenu
+    (root)            Sidebar, CommandPalette, QuickAddFAB, MetricCard,
+                      ProjectModal, ScenarioEditor, CashFlowEditor,
+                      EditableCell, ZARInput, FactSheetButton
+  pages/              One file per route
+  types/              farm, calendar, phase2, phase3, index
+  utils/format.ts     Formatters (ZAR, etc.)
+  assets/             hero.png, logos
+public/               favicon.svg, icons.svg
+stich_design/         stitch.zip — original Stitch AI design import (reference
+                      only; not bundled)
+```
+
+Stack: React 19, React Router 7, Tailwind v4 (via `@tailwindcss/vite`), MapLibre GL, Recharts, TanStack Table, d3-force, markdown-it, lucide-react.
+
+## Roadmap
+
+Derived from recent commits and module gaps. Recently shipped: Notion-style inline editing, three-statement financial model, clickable dashboard charts, Quick Add FAB, inline-editable tables, field panel actions.
+
+- [ ] Wire remaining modules to real API endpoints (several `src/api/*.ts` clients exist; verify full CRUD coverage end-to-end)
+- [ ] Wiki graph polish (d3-force layout tuning, keyboard nav)
+- [ ] Calendar recurring tasks + reminders
+- [ ] Map: additional layers (soil, yield, rainfall), measurement tools
+- [ ] Reverse-waterfall pricing/breakeven view for enterprise planning (per Alex's UX preference)
+- [ ] Scenario comparison export (PDF/XLSX)
+- [ ] Offline cache / optimistic updates for inline edits
+- [ ] Auth + user roles
+- [ ] Phase 2/3 types (`types/phase2.ts`, `types/phase3.ts`) — confirm wired into UI
+
+## Known Bugs
+
+- None identified in source (no `TODO`/`FIXME`/`HACK` markers in `src/`). Two recent commits fixed TypeScript strict-mode build errors for Vercel; watch for regressions on new strict flags.
+
+See `BUGS.md` and `ROADMAP.md` for ongoing tracking.
