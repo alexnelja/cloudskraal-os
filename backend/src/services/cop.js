@@ -29,6 +29,7 @@ function periodsOverlappingYear(db, fieldId, year) {
 module.exports = { usageOnDate, periodsOverlappingYear };
 
 const UNCAT = 'uncategorized';
+const NON_PRODUCTIVE = new Set(['fallow', 'grazing', 'fallow_greening']);
 
 const COVERAGE = {
   excludes: ['overhead', 'capital_amortization', 'processing', 'wet_to_dry_shrinkage'],
@@ -61,7 +62,7 @@ function emptyLine(usage, area_ha) {
 
 function round2(n) { return Math.round(n * 100) / 100; }
 
-function computeFieldCop(db, fieldId, year) {
+function computeFieldCop(db, fieldId, year, opts = {}) {
   const yearStart = `${year}-01-01`;
   const yearEnd = `${year}-12-31`;
   const field = db.prepare(`
@@ -73,6 +74,10 @@ function computeFieldCop(db, fieldId, year) {
   if (!field) return null;
 
   const area_ha = field.area_ha || 1;
+
+  const denominatorOpt = opts.denominator;
+  const asOf = `${year}-12-31`;
+  const factorsUsed = [];
 
   const periods = periodsOverlappingYear(db, fieldId, year);
   const linesByUsage = new Map();
@@ -172,6 +177,19 @@ function computeFieldCop(db, fieldId, year) {
 
   const lines = [];
   for (const line of linesByUsage.values()) {
+    let denomFactor = 1;
+    if (denominatorOpt && !NON_PRODUCTIVE.has(line.usage)) {
+      const denomTarget = resolveDenominator(line.usage, denominatorOpt);
+      if (denomTarget && denomTarget !== 'harvest_wet_kg') {
+        const chain = factorChain(db, 'harvest_wet_kg', denomTarget, line.usage, asOf);
+        if (chain.error) {
+          return { error: chain.error, missing_edge: chain.missing_edge, context: line.usage };
+        }
+        denomFactor = chain.factor;
+        for (const edge of chain.path) factorsUsed.push(edge);
+      }
+    }
+
     line.total_cost = round2(line.total_input_cost + line.total_task_input_cost + line.total_labour_cost);
     line.total_input_cost = round2(line.total_input_cost);
     line.total_task_input_cost = round2(line.total_task_input_cost);
@@ -182,6 +200,12 @@ function computeFieldCop(db, fieldId, year) {
     line.cost_per_kg = line.actual_yield_kg > 0 ? round2(line.total_cost / line.actual_yield_kg) : null;
     line.estimated_yield_kg = round2(line.estimated_yield_kg);
     line.actual_yield_kg = round2(line.actual_yield_kg);
+    line.yield_in_denominator_kg = round2(line.actual_yield_kg * denomFactor);
+    if (denomFactor !== 1) {
+      line.cost_per_kg = line.yield_in_denominator_kg > 0
+        ? round2(line.total_cost / line.yield_in_denominator_kg) : null;
+      line.yield_per_ha = round2(line.yield_in_denominator_kg / area_ha);
+    }
     if (line.usage === UNCAT && line.total_cost === 0
         && line.estimated_yield_kg === 0 && line.actual_yield_kg === 0) continue;
     lines.push(line);
@@ -197,7 +221,24 @@ function computeFieldCop(db, fieldId, year) {
 
   const rotation = computeFieldRotation(db, field);
 
-  return { field_id: fieldId, year, field, lines, totals, rotation, coverage: COVERAGE };
+  const coverage = { ...COVERAGE };
+  if (denominatorOpt) {
+    const seen = new Set();
+    coverage.factors_used = [];
+    for (const e of factorsUsed) {
+      const key = `${e.from_uom}|${e.to_uom}|${e.context}|${e.factor}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      coverage.factors_used.push(e);
+    }
+    const targets = new Set(
+      lines.filter(l => !NON_PRODUCTIVE.has(l.usage))
+           .map(l => resolveDenominator(l.usage, denominatorOpt) || 'harvest_wet_kg')
+    );
+    coverage.denominator = targets.size === 1 ? [...targets][0] : 'mixed';
+  }
+
+  return { field_id: fieldId, year, field, lines, totals, rotation, coverage };
 }
 
 function computeFieldRotation(db, field) {

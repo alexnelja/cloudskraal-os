@@ -515,3 +515,94 @@ describe('factorChain', () => {
     db.close();
   });
 });
+
+describe('computeFieldCop with denominator', () => {
+  function setup() {
+    const db = setupDb();
+    initUsagePeriodsSchema(db);
+    initConversionFactorsSchema(db);
+    seedFactors(db);
+    seedField(db);
+    db.prepare(`UPDATE fields SET area_ha=10, enterprise='rooibos' WHERE id='fld1'`).run();
+    return db;
+  }
+
+  it('applies harvest→dried factor and reports factors_used', () => {
+    const db = setup();
+    seedPeriod(db, { id:'p1', field_id:'fld1', usage:'rooibos',
+      start_date:'2022-01-01', end_date:null, planted_date:'2022-01-01' });
+    seedInput(db, { id:'i1', product_id:'prod1', field_id:'fld1',
+      date:'2026-05-01', total_cost:100 });
+    seedProduction(db, { id:'y1', field_id:'fld1', year:2026,
+      actual:1000, harvest_date:'2026-02-15' });
+
+    const r = computeFieldCop(db, 'fld1', 2026, { denominator: 'dried' });
+    expect(r.coverage.denominator).toBe('dried_kg');
+    const line = r.lines.find(l => l.usage === 'rooibos');
+    expect(line.yield_in_denominator_kg).toBeCloseTo(450, 1);
+    expect(line.cost_per_kg).toBeCloseTo(100 / 450, 2);
+    expect(r.coverage.factors_used).toContainEqual(
+      { from_uom: 'harvest_wet_kg', to_uom: 'dried_kg', factor: 0.45, context: 'rooibos' }
+    );
+    db.close();
+  });
+
+  it('applies full chain to netto_dry', () => {
+    const db = setup();
+    seedPeriod(db, { id:'p1', field_id:'fld1', usage:'rooibos',
+      start_date:'2022-01-01', end_date:null });
+    seedProduction(db, { id:'y1', field_id:'fld1', year:2026, actual:1000, harvest_date:'2026-02-15' });
+
+    const r = computeFieldCop(db, 'fld1', 2026, { denominator: 'netto_dry' });
+    expect(r.coverage.denominator).toBe('sifted_netto_dry_kg');
+    const line = r.lines[0];
+    expect(line.yield_in_denominator_kg).toBeCloseTo(1000 * 0.45 * 0.87, 1);
+    expect(r.coverage.factors_used).toHaveLength(2);
+    db.close();
+  });
+
+  it('non-productive usage (fallow) is not blocked by missing factor', () => {
+    const db = setup();
+    seedPeriod(db, { id:'p1', field_id:'fld1', usage:'fallow',
+      start_date:'2022-01-01', end_date:null });
+    const r = computeFieldCop(db, 'fld1', 2026, { denominator: 'netto_dry' });
+    expect(r.lines[0].usage).toBe('fallow');
+    expect(r.lines[0].cost_per_kg).toBeNull();
+    db.close();
+  });
+
+  it('missing edge on productive line returns error shape', () => {
+    const db = setup();
+    seedPeriod(db, { id:'p1', field_id:'fld1', usage:'lupines_fourrages',
+      start_date:'2022-01-01', end_date:null });
+    seedInput(db, { id:'i1', product_id:'prod1', field_id:'fld1',
+      date:'2026-05-01', total_cost:50 });
+    const r = computeFieldCop(db, 'fld1', 2026, { denominator: 'netto_dry' });
+    expect(r.error).toBe('factor_missing');
+    expect(r.context).toBe('lupines_fourrages');
+    db.close();
+  });
+
+  it('no denominator opt → spec 2a behaviour unchanged', () => {
+    const db = setup();
+    seedPeriod(db, { id:'p1', field_id:'fld1', usage:'rooibos',
+      start_date:'2022-01-01', end_date:null });
+    seedProduction(db, { id:'y1', field_id:'fld1', year:2026, actual:1000, harvest_date:'2026-02-15' });
+    const r = computeFieldCop(db, 'fld1', 2026);
+    expect(r.coverage.denominator).toBe('raw_harvest_kg');
+    expect(r.coverage.factors_used).toBeUndefined();
+    db.close();
+  });
+
+  it('factors_used deduplicates across lines', () => {
+    const db = setup();
+    seedPeriod(db, { id:'p1', field_id:'fld1', usage:'rooibos',
+      start_date:'2022-01-01', end_date:'2026-06-30' });
+    seedPeriod(db, { id:'p2', field_id:'fld1', usage:'rooibos',
+      start_date:'2026-07-01', end_date:null });
+    seedProduction(db, { id:'y1', field_id:'fld1', year:2026, actual:1000, harvest_date:'2026-02-15' });
+    const r = computeFieldCop(db, 'fld1', 2026, { denominator: 'dried' });
+    expect(r.coverage.factors_used).toHaveLength(1);
+    db.close();
+  });
+});
