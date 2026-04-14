@@ -44,6 +44,8 @@ CREATE INDEX idx_fup_active ON field_usage_period(field_id) WHERE end_date IS NU
 
 **Invariant:** no two periods for the same field overlap. Enforced at the service layer (`assertNoOverlap`), not by schema — SQLite has no range-exclusion constraint. Adjacent periods (`a.end_date = b.start_date`) are allowed.
 
+**Concurrency requirement:** every write that calls `assertNoOverlap` must wrap the check + insert/update in a single `db.transaction(...)` block so they execute atomically. Without this, WAL-mode concurrent writers could both pass the check and both insert.
+
 ### `USAGE_TYPES` — crop-level enum
 
 Source of truth: `backend/src/services/usage.js`.
@@ -63,11 +65,19 @@ Initial values (expand as the farm plants new crops):
 
 ### `fields` columns become a current-state cache
 
-`fields.enterprise`, `fields.crop_type`, `fields.planted_year` are retained for backward compatibility but become **refresh-on-write caches of the current active period**, not authoritative. No new code writes them directly. `refreshFieldCurrent(field_id)` picks the period satisfying `start_date <= today AND (end_date IS NULL OR end_date >= today)` and, if multiple, the one with the most recent `start_date`.
+`fields.enterprise`, `fields.crop_type`, `fields.planted_year` are retained for backward compatibility but become **refresh-on-read-and-write caches of the current active period**, not authoritative. No new code writes them directly. `refreshFieldCurrent(field_id)` picks the period satisfying `start_date <= today AND (end_date IS NULL OR end_date >= today)` and, if multiple, the one with the most recent `start_date`.
 
-### `field_production.stand_pct` removed
+**Refresh timing:**
+- On every write (POST/PUT/DELETE) to `field_usage_period` for that field.
+- On every read through `GET /api/fields/:id` and `GET /api/fields` (lazy refresh — else a period ending without a write leaves the cache stale on 2026-07-01 even though the period closed 2026-06-30).
 
-Cover ratio is a state attribute of the standing crop, not of the yield event. It moves to `field_usage_period.stand_pct`. Migration step copies values by matching `(field_id, year)` to the period active at `year-06-30`.
+### `field_production.stand_pct` — new writes go to period, existing column left alone
+
+Cover ratio is a state attribute of the standing crop, not of the yield event, so `field_usage_period` has a `stand_pct` column that new writes use. However, existing `field_production.stand_pct` values are **not** migrated here — the mapping from `(field, year)` to a period-within-year depends on when stand was actually measured, which isn't recorded. Picking an arbitrary date (e.g. June 30) risks copying a mid-rotation reading that doesn't match the harvest-season value. Spec #2 (COP) will decide the final home for legacy stand data once measurement context is available. Until then:
+
+- `field_production.stand_pct` column stays.
+- Any new stand measurement writes to `field_usage_period.stand_pct`.
+- `refreshFieldCurrent` does not touch either.
 
 ## API
 
@@ -135,8 +145,8 @@ writes ─► field_usage_period ─► refreshFieldCurrent() ─► fields.ente
    - Rooibos 2022/2023/2024/2025 fields that remain rooibos in 2026 → single period `start_date=Y-01-01`, `end_date=NULL`, `planted_date=Y-01-01`.
    - Rooibos fields that were ripped and replanted (different `planted` than 2026 record) → closed prior period + new 2026 period.
    - `source='seed-rooibos-backfill'` for rows that pre-date 2026.
-4. **Migrate `stand_pct`.** For each row in `field_production` with non-null `stand_pct`, find the period active at `year-06-30` and copy the value. Then `ALTER TABLE field_production DROP COLUMN stand_pct`.
-5. **Idempotency.** Each seed checks an existing row with matching `(field_id, start_date, source)` before insert. Re-running `npm start` is a no-op.
+   - **Known limitation:** the continuous-vs-replanted check compares `planted` by year only. Intra-year rip-and-replant (e.g. Feb 2026 rip, Jul 2026 replant) cannot be detected from current seed data and will be treated as continuous. Revisit when seed data carries planting months.
+4. **Idempotency.** Each seed checks an existing row with matching `(field_id, start_date, source)` before insert. Re-running `npm start` is a no-op.
 
 ## Testing (tests-first)
 
@@ -160,7 +170,9 @@ Both test files are written failing before implementation.
 - `GET /api/usage-history?as_of=2026-04-14` returns exactly one row per field with an active period, joined with geometry.
 - `GET /api/usage-history?as_of=2023-01-01` returns only fields whose rooibos backfill covers that date.
 - Seed idempotency: run seed twice, period count unchanged.
-- `field_production.stand_pct` column absent after migration; value preserved on the corresponding period.
+- POST a period for field X, then `GET /api/fields/:id` → `enterprise` reflects the newly posted usage (cache refresh on write).
+- A field whose only period has `end_date` in the past → `GET /api/fields/:id` returns a null/stale-cleared enterprise (cache refresh on read).
+- Overlap rejection remains atomic under simulated concurrent POSTs (two inserts fired in quick succession — only one succeeds).
 
 ### Seed verification (manual, part of done)
 - Count of periods active on `today` = count of fields with non-fallow enterprise in the 2026 reconciliation (+ fallow fields have explicit fallow periods too).
@@ -172,6 +184,8 @@ Both test files are written failing before implementation.
 - **Season-level granularity** (summer vs winter lupines on the same year) — the interval model can already express this via adjacent periods; no new schema required.
 - **Cycle definition** (what makes a "3-year oats/lupines/fallow" cycle) — `rotation_year` is a free integer for now. A later spec may introduce `rotation_plan` entities.
 - **Historical backfill for non-rooibos** — not available in DB, Excel, or wiki. Manual entries via the API as Alex remembers them, tracked by `source='manual'`.
+- **Range-query endpoint** — spec #2 will add `GET /api/fields/:id/usage-periods?start_date=&end_date=` to support per-year COP attribution. Not needed for spec #1's map overlay.
+- **Stand_pct migration** — existing `field_production.stand_pct` values stay put; spec #2 decides final home based on measurement context.
 
 ## Files touched
 
@@ -185,6 +199,5 @@ New:
 
 Modified:
 - `backend/src/db/schema.js` (wire new module)
-- `backend/src/db/schema-farms.js` (drop `stand_pct` from `field_production` in a migration step)
 - `backend/src/index.js` (mount new router, call new seed)
-- `backend/src/routes/farms.js` (helper import for `refreshFieldCurrent` only, no route changes)
+- `backend/src/routes/farms.js` (call `refreshFieldCurrent` from GET /api/fields and GET /api/fields/:id for lazy cache refresh)
