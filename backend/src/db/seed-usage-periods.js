@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const { isValidUsage } = require('../services/usage');
+const { isValidUsage, isPerennial } = require('../services/usage');
 
 function canonicalUsage(enterprise, crop_type) {
   if (enterprise === 'rooibos') return 'rooibos';
@@ -71,8 +71,9 @@ function seedUsagePeriods(db) {
         continue;
       }
 
+      const endDate = isPerennial(usage) ? null : '2026-12-31';
       insert.run(
-        uuidv4(), f.id, usage, startDate, null, plantedDate, null,
+        uuidv4(), f.id, usage, startDate, endDate, plantedDate, null,
         source, null, now, now
       );
       inserted++;
