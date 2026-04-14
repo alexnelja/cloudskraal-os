@@ -7,6 +7,7 @@ const { initPhase2Schema } = require('./schema-phase2');
 const { initPhase3Schema } = require('./schema-phase3');
 const { initUsagePeriodsSchema } = require('./schema-usage-periods');
 const { migrateFieldCop } = require('./migrate-field-cop');
+const { initConversionFactorsSchema } = require('./schema-conversion-factors');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -25,6 +26,7 @@ function getDb() {
     initPhase3Schema(db);
     initUsagePeriodsSchema(db);
     migrateFieldCop(db);
+    initConversionFactorsSchema(db);
   }
   return db;
 }

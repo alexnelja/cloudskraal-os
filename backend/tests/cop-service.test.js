@@ -367,3 +367,54 @@ describe('computeFieldCop', () => {
     db.close();
   });
 });
+
+import { initConversionFactorsSchema } from '../src/db/schema-conversion-factors.js';
+import { seedConversionFactors } from '../src/db/seed-conversion-factors.js';
+
+describe('conversion_factors schema', () => {
+  it('creates the table with expected columns', () => {
+    const db = new Database(':memory:');
+    initConversionFactorsSchema(db);
+    const cols = db.prepare('PRAGMA table_info(conversion_factors)').all()
+      .map(c => c.name).sort();
+    expect(cols).toEqual([
+      'context','created_at','effective_from','factor','from_uom',
+      'id','notes','to_uom','updated_at'
+    ]);
+    db.close();
+  });
+
+  it('has a unique index on (from_uom, to_uom, context, effective_from)', () => {
+    const db = new Database(':memory:');
+    initConversionFactorsSchema(db);
+    const idx = db.prepare(
+      "SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='conversion_factors'"
+    ).all();
+    expect(idx.some(r => r.name === 'idx_factors_unique' && /UNIQUE/.test(r.sql))).toBe(true);
+    db.close();
+  });
+
+  it('seeds the rooibos factors', () => {
+    const db = new Database(':memory:');
+    initConversionFactorsSchema(db);
+    seedConversionFactors(db);
+    const rows = db.prepare(
+      "SELECT from_uom, to_uom, factor FROM conversion_factors WHERE context='rooibos' ORDER BY from_uom"
+    ).all();
+    expect(rows).toEqual([
+      { from_uom: 'dried_kg', to_uom: 'sifted_netto_dry_kg', factor: 0.87 },
+      { from_uom: 'harvest_wet_kg', to_uom: 'dried_kg', factor: 0.45 },
+    ]);
+    db.close();
+  });
+
+  it('seed is idempotent', () => {
+    const db = new Database(':memory:');
+    initConversionFactorsSchema(db);
+    seedConversionFactors(db);
+    seedConversionFactors(db);
+    const n = db.prepare("SELECT COUNT(*) as c FROM conversion_factors").get().c;
+    expect(n).toBe(2);
+    db.close();
+  });
+});

@@ -12,6 +12,7 @@ const { seedFieldCosts, seedStandPercent } = require('./db/seed-field-costs');
 const { seedExcelImport } = require('./db/seed-excel-import');
 const { seedLandUse2026 } = require('./db/seed-land-use-2026');
 const { seedUsagePeriods } = require('./db/seed-usage-periods');
+const { seedConversionFactors } = require('./db/seed-conversion-factors');
 const dashboardRoutes = require('./routes/dashboard');
 const projectRoutes = require('./routes/projects');
 const farmRoutes = require('./routes/farms');
@@ -83,6 +84,7 @@ seedLandUse2026(db);
 seedUsagePeriods(db);
 seedFieldCosts(db);
 seedStandPercent(db);
+seedConversionFactors(db);
 
 app.listen(PORT, () => {
   console.log(`Cloudskraal CapEx API running on http://localhost:${PORT}`);
