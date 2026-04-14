@@ -167,8 +167,11 @@ router.get('/fields/:id/cost-of-production', (req, res) => {
   }
   const year = Number(yearStr);
   const { computeFieldCop } = require('../services/cop');
-  const report = computeFieldCop(db, req.params.id, year);
+  const report = computeFieldCop(db, req.params.id, year, {
+    denominator: req.query.denominator,
+  });
   if (!report) return res.status(404).json({ error: 'Field not found' });
+  if (report.error) return res.status(400).json(report);
   res.json(report);
 });
 

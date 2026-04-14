@@ -71,3 +71,26 @@ describe('cost-of-production API', () => {
     expect(data.totals.total_cost).toBe(0);
   });
 });
+
+describe('cost-of-production denominator', () => {
+  it('?denominator=dried returns cost-per-dried-kg with factors_used', async () => {
+    const { status, data } = await api(`/fields/${rooibosFieldId}/cost-of-production?year=2026&denominator=dried`);
+    expect(status).toBe(200);
+    expect(data.coverage.denominator).toBe('dried_kg');
+    expect(Array.isArray(data.coverage.factors_used)).toBe(true);
+    expect(data.coverage.factors_used.some(f => f.factor === 0.45)).toBe(true);
+  });
+
+  it('?denominator=netto_dry uses full two-hop chain', async () => {
+    const { status, data } = await api(`/fields/${rooibosFieldId}/cost-of-production?year=2026&denominator=netto_dry`);
+    expect(status).toBe(200);
+    expect(data.coverage.denominator).toBe('sifted_netto_dry_kg');
+    expect(data.coverage.factors_used).toHaveLength(2);
+  });
+
+  it('unreachable denominator returns 400 factor_missing', async () => {
+    const { status, data } = await api(`/fields/${rooibosFieldId}/cost-of-production?year=2026&denominator=bogus_uom`);
+    expect(status).toBe(400);
+    expect(data.error).toBe('factor_missing');
+  });
+});
