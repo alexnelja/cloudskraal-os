@@ -5,6 +5,7 @@ const { initCalendarSchema } = require('./schema-calendar');
 const { initWikiSchema } = require('./schema-wiki');
 const { initPhase2Schema } = require('./schema-phase2');
 const { initPhase3Schema } = require('./schema-phase3');
+const { initUsagePeriodsSchema } = require('./schema-usage-periods');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -21,6 +22,7 @@ function getDb() {
     initWikiSchema(db);
     initPhase2Schema(db);
     initPhase3Schema(db);
+    initUsagePeriodsSchema(db);
   }
   return db;
 }
