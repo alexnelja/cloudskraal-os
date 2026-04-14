@@ -87,6 +87,15 @@ type CopLine = {
   period_ids: string[],        // field_usage_period IDs for this usage that overlap the year
                                // on any day — included even if no transactions landed in them,
                                // so the operator sees the field *was* that usage at some point
+
+  // Detail arrays preserve the current UI's ability to list individual transactions per usage.
+  // Shape matches the existing types (FieldInputTransaction, FieldTaskInput, FieldLabourEntry,
+  // FieldProduction) so the frontend just re-keys them under a usage instead of flat.
+  inputs: FieldInputTransaction[],
+  task_inputs: FieldTaskInput[],
+  labour: FieldLabourEntry[],
+  production: FieldProduction[],  // yield rows whose harvest_date (or fallback) maps to this usage
+
   total_input_cost: number,    // sum of direct_variable inventory_transactions (type='usage')
   total_task_input_cost: number,
   total_labour_cost: number,   // hourly_rate × hours, or monthly_salary/176 × hours
@@ -104,13 +113,19 @@ type CopLine = {
 type CopReport = {
   field_id: string,
   year: number,
-  lines: CopLine[],            // one per distinct usage with non-zero activity
-                               // 'uncategorized' appears only if non-zero
+  field: Field,                // re-exposed for the UI panel (same shape as GET /fields/:id)
+  lines: CopLine[],            // one per distinct usage with non-zero activity OR with an
+                               // overlapping period. 'uncategorized' only if non-zero.
   totals: {
     total_cost: number,        // sum of lines[*].total_cost
     total_yield_kg: number,    // sum of lines[*].actual_yield_kg
     uncategorized_cost: number,
   },
+  rotation: FieldRotation | null,  // rooibos replant recommendation block — unchanged output
+                                   // from the existing logic at routes/farms.js:246-298,
+                                   // preserved at the top level (it's a field-level concept,
+                                   // not per-usage). Computed by an unchanged helper; service
+                                   // just calls it and attaches.
   coverage: {
     excludes: ['overhead', 'capital_amortization', 'processing', 'wet_to_dry_shrinkage'],
     denominator: 'raw_harvest_kg',
