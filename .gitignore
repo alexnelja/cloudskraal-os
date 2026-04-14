@@ -9,3 +9,11 @@ gen-lang-client*.json
 dist/
 .worktrees/
 vault/
+.env.local
+build/
+.vscode/
+.claude/
+*.log
+__pycache__/
+.venv/
+.pytest_cache/
