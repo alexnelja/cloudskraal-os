@@ -11,6 +11,7 @@ const { seedPhase3 } = require('./db/seed-phase3');
 const { seedFieldCosts, seedStandPercent } = require('./db/seed-field-costs');
 const { seedExcelImport } = require('./db/seed-excel-import');
 const { seedLandUse2026 } = require('./db/seed-land-use-2026');
+const { seedUsagePeriods } = require('./db/seed-usage-periods');
 const dashboardRoutes = require('./routes/dashboard');
 const projectRoutes = require('./routes/projects');
 const farmRoutes = require('./routes/farms');
@@ -77,6 +78,7 @@ seedPhase2(db);
 seedPhase3(db);
 seedExcelImport(db);
 seedLandUse2026(db);
+seedUsagePeriods(db);
 seedFieldCosts(db);
 seedStandPercent(db);
 
