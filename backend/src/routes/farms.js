@@ -1,6 +1,8 @@
 const { Router } = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/schema');
+const { refreshFieldCurrent } = require('../services/usage');
+const { todayUTC } = require('../utils/dates');
 
 const router = Router();
 
@@ -70,12 +72,29 @@ router.get('/fields', (req, res) => {
     ORDER BY f.name, fi.name
   `).all(...params);
 
+  const asOf = todayUTC();
+  for (const r of fields) refreshFieldCurrent(db, r.id, asOf);
+  const ids = fields.map(r => r.id);
+  if (ids.length > 0) {
+    const placeholders = ids.map(() => '?').join(',');
+    const fresh = db.prepare(
+      `SELECT id, enterprise, crop_type, planted_year FROM fields WHERE id IN (${placeholders})`
+    ).all(...ids);
+    const byId = new Map(fresh.map(f => [f.id, f]));
+    for (const r of fields) {
+      const f = byId.get(r.id);
+      if (f) { r.enterprise = f.enterprise; r.crop_type = f.crop_type; r.planted_year = f.planted_year; }
+    }
+  }
+
   res.json(fields);
 });
 
 // GET /api/fields/:id — single field with production and field_notes
 router.get('/fields/:id', (req, res) => {
   const db = getDb();
+
+  refreshFieldCurrent(db, req.params.id, todayUTC());
 
   const field = db.prepare(`
     SELECT fi.*, f.name AS farm_name
@@ -103,7 +122,17 @@ router.patch('/fields/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM fields WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Field not found' });
 
-  const allowed = ['enterprise', 'crop_type', 'status', 'planted_year', 'soil_type', 'irrigation_type', 'notes'];
+  const readOnly = ['enterprise', 'crop_type', 'planted_year'];
+  const blocked = Object.keys(req.body || {}).filter(k => readOnly.includes(k));
+  if (blocked.length > 0) {
+    return res.status(400).json({
+      error: 'read_only',
+      fields: blocked,
+      managed_by: 'field_usage_period',
+      use: 'POST /api/fields/:id/usage-periods',
+    });
+  }
+  const allowed = ['status', 'soil_type', 'irrigation_type', 'notes'];
   const updates = {};
   for (const key of allowed) {
     if (req.body[key] !== undefined) updates[key] = req.body[key];
