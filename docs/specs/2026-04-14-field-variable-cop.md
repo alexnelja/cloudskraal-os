@@ -40,6 +40,19 @@ ALTER TABLE inventory_transactions ADD COLUMN cost_category TEXT NOT NULL DEFAUL
 ALTER TABLE time_entries ADD COLUMN cost_category TEXT NOT NULL DEFAULT 'direct_variable';
 ```
 
+**Migration idempotency.** `ALTER TABLE ... ADD COLUMN` throws on second boot if the column exists. Each ALTER is wrapped in the same try-catch probe pattern used at `backend/src/db/schema-farms.js:73-78`:
+
+```javascript
+try {
+  db.prepare("SELECT cost_category FROM inventory_transactions LIMIT 1").get();
+} catch (e) {
+  db.exec("ALTER TABLE inventory_transactions ADD COLUMN cost_category TEXT NOT NULL DEFAULT 'direct_variable'");
+  console.log('  Migrated: added cost_category to inventory_transactions');
+}
+```
+
+Same for `time_entries.cost_category` and `field_production.harvest_date`. The index uses `CREATE INDEX IF NOT EXISTS` — natively idempotent.
+
 ### `cost_category` enum
 
 Source of truth: `backend/src/services/cop.js`.
@@ -71,7 +84,9 @@ computeFieldCop(db, fieldId, year) → CopReport
 ```typescript
 type CopLine = {
   usage: string,               // 'rooibos' | 'lupines_fourrages' | 'oats' | ... | 'uncategorized'
-  period_ids: string[],        // field_usage_period IDs active in this year for this usage
+  period_ids: string[],        // field_usage_period IDs for this usage that overlap the year
+                               // on any day — included even if no transactions landed in them,
+                               // so the operator sees the field *was* that usage at some point
   total_input_cost: number,    // sum of direct_variable inventory_transactions (type='usage')
   total_task_input_cost: number,
   total_labour_cost: number,   // hourly_rate × hours, or monthly_salary/176 × hours
@@ -107,8 +122,9 @@ type CopReport = {
 ### Attribution rules
 
 - **Period lookup:** for any date *d*, find the `field_usage_period` where `start_date <= d AND (end_date IS NULL OR end_date >= d) AND deleted_at IS NULL`. If multiple, pick most recent `start_date`. If none, the date is "in a gap".
+- **`period_ids` per line:** includes every period of that usage that overlaps `[year-01-01, year-12-31]` on any day, regardless of whether transactions landed in it. A period spanning two years appears in both years' reports. A line with zero transactions but an active period shows an empty costs block and the `period_ids` populated, so the operator can still tell "the field was lupines here but no costs were recorded".
 - **Inputs** (`inventory_transactions`): filter `field_id = ? AND type = 'usage' AND cost_category = 'direct_variable' AND date BETWEEN year-01-01 AND year-12-31`. Group by period → usage.
-- **Task inputs** (`task_inputs` joined via `tasks.field_id`): date = `tasks.completed_date ?? tasks.due_date`. Same filter + grouping.
+- **Task inputs** (`task_inputs` joined via `tasks.field_id`): date = `tasks.completed_date ?? tasks.due_date`. If neither is set (open task with no date), the task input is silently excluded from all reports — an open undated task has no time dimension to attribute cost to. This is a deliberate quiet exclusion; surfacing an `undated_tasks` tripwire is future work.
 - **Labour** (`time_entries`): filter `field_id = ? AND cost_category = 'direct_variable' AND date BETWEEN year-01-01 AND year-12-31`. Labour cost = `hourly_rate × hours_worked`, else `(monthly_salary / 176) × hours_worked`.
 - **Yields** (`field_production`): filter `field_id = ? AND year = ?`. Usage lookup uses `harvest_date` when present, else `${year}-06-30` (add warning `'harvest_date_missing_fallback_applied'` to the line).
 - **Gap dates** → usage `'uncategorized'`. Produces a line with `period_ids: []`.
@@ -190,4 +206,5 @@ New:
 Modified:
 - `backend/src/db/schema.js` — call the migration in `getDb`
 - `backend/src/routes/farms.js` — rewrite the `/api/fields/:id/cost-of-production` handler as a wrapper around `computeFieldCop`; remove the now-duplicated aggregation logic at lines ~180-273
-- Frontend consumer of the endpoint (field detail page) — update to read `lines[]` and render per-usage rows; show `totals` as the page banner and the `uncategorized` amount as a warning chip when non-zero
+- `frontend/src/types/farm.ts` — replace `FieldCostOfProduction` with the new `CopReport` shape (`field_id`, `year`, `lines[]`, `totals`, `coverage`)
+- `frontend/src/components/map/FieldPanel.tsx` (and any other consumer surfaced by grep) — render `lines[]` with a row per usage, `totals` as the page banner, and an `uncategorized` warning chip when `totals.uncategorized_cost > 0`. The implementation plan runs a grep for `cost-of-production` across `frontend/src/` and adds any additional files here before coding starts.
