@@ -191,6 +191,10 @@ router.get('/inventory/transactions', (req, res) => {
     sql += ' AND t.product_id = ?';
     params.push(req.query.product_id);
   }
+  if (req.query.field_id) {
+    sql += ' AND t.field_id = ?';
+    params.push(req.query.field_id);
+  }
   if (req.query.type) {
     sql += ' AND t.type = ?';
     params.push(req.query.type);

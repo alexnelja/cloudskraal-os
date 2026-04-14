@@ -102,6 +102,63 @@ function initPhase3Schema(db) {
       created_at TEXT NOT NULL
     );
 
+    -- SUPPLIERS
+    CREATE TABLE IF NOT EXISTS suppliers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      legal_entity TEXT,
+      vat_number TEXT,
+      bbbee_level TEXT,
+      registration_no TEXT,
+      primary_contact TEXT,
+      phone TEXT,
+      email TEXT,
+      website TEXT,
+      physical_address TEXT,
+      delivery_regions TEXT,
+      product_categories TEXT,
+      payment_terms TEXT,
+      preferred INTEGER DEFAULT 0,
+      incoterms TEXT,
+      min_order TEXT,
+      lead_time_days INTEGER,
+      lead_time_variability TEXT,
+      return_policy TEXT,
+      certifications TEXT,
+      notes TEXT,
+      reliability_score INTEGER,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    -- CUSTOMERS
+    CREATE TABLE IF NOT EXISTS customers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      business_type TEXT,
+      legal_entity TEXT,
+      vat_number TEXT,
+      registration_no TEXT,
+      primary_contact TEXT,
+      phone TEXT,
+      email TEXT,
+      website TEXT,
+      physical_address TEXT,
+      delivery_region TEXT,
+      preferred_products TEXT,
+      contract_type TEXT,
+      contract_volume TEXT,
+      contract_price REAL,
+      payment_terms TEXT,
+      payment_status TEXT,
+      logistics_terms TEXT,
+      certifications_required TEXT,
+      notes TEXT,
+      reliability_score INTEGER,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS budgets (
       id TEXT PRIMARY KEY,
       enterprise_id TEXT NOT NULL REFERENCES enterprises(id),

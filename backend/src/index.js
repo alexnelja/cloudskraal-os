@@ -8,6 +8,9 @@ const { seedCalendar } = require('./db/seed-calendar');
 const { seedWiki } = require('./db/seed-wiki');
 const { seedPhase2 } = require('./db/seed-phase2');
 const { seedPhase3 } = require('./db/seed-phase3');
+const { seedFieldCosts, seedStandPercent } = require('./db/seed-field-costs');
+const { seedExcelImport } = require('./db/seed-excel-import');
+const { seedLandUse2026 } = require('./db/seed-land-use-2026');
 const dashboardRoutes = require('./routes/dashboard');
 const projectRoutes = require('./routes/projects');
 const farmRoutes = require('./routes/farms');
@@ -19,6 +22,7 @@ const productionRoutes = require('./routes/production');
 const employeeRoutes = require('./routes/employees');
 const inventoryRoutes = require('./routes/inventory');
 const financialRoutes = require('./routes/financials');
+const supplyChainRoutes = require('./routes/supply-chain');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -50,6 +54,7 @@ app.use('/api', productionRoutes);
 app.use('/api', employeeRoutes);
 app.use('/api', inventoryRoutes);
 app.use('/api', financialRoutes);
+app.use('/api', supplyChainRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -70,6 +75,10 @@ seedCalendar(db);
 seedWiki(db);
 seedPhase2(db);
 seedPhase3(db);
+seedExcelImport(db);
+seedLandUse2026(db);
+seedFieldCosts(db);
+seedStandPercent(db);
 
 app.listen(PORT, () => {
   console.log(`Cloudskraal CapEx API running on http://localhost:${PORT}`);
