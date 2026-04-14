@@ -34,7 +34,6 @@ CREATE TABLE field_usage_period (
                                         -- for periods crossing a calendar year, the value
                                         -- refers to the start_date's calendar year
                                         -- (e.g. period 2026-05→2027-03 stores the 2026 cycle position)
-  stand_pct     REAL,                   -- cover ratio 0..100; latest known for this period
   source        TEXT NOT NULL,          -- seed-2026 | seed-rooibos-backfill |
                                         -- import-<file> | manual
   notes         TEXT,
@@ -83,13 +82,9 @@ All dates in `field_usage_period` are ISO `YYYY-MM-DD` strings in UTC. Compariso
 
 **PATCH contract change.** Today `PATCH /api/fields/:id` allows writes to `enterprise`, `crop_type`, `planted_year` (see `backend/src/routes/farms.js:106`). After this spec, those three keys are **rejected** with `400 {error: 'read_only', managed_by: 'field_usage_period', use: 'POST /api/fields/:id/usage-periods'}`. The `allowed` array drops them. This is the only breaking change to existing routes.
 
-### `field_production.stand_pct` — new writes go to period, existing column left alone
+### `stand_pct` — stays entirely in `field_production` for now
 
-Cover ratio is a state attribute of the standing crop, not of the yield event, so `field_usage_period` has a `stand_pct` column that new writes use. However, existing `field_production.stand_pct` values are **not** migrated here — the mapping from `(field, year)` to a period-within-year depends on when stand was actually measured, which isn't recorded. Picking an arbitrary date (e.g. June 30) risks copying a mid-rotation reading that doesn't match the harvest-season value. Spec #2 (COP) will decide the final home for legacy stand data once measurement context is available. Until then:
-
-- `field_production.stand_pct` column stays.
-- Any new stand measurement writes to `field_usage_period.stand_pct`.
-- `refreshFieldCurrent` does not touch either.
+Cover ratio continues to live on `field_production` exclusively. The new `field_usage_period` does **not** carry `stand_pct`. Rationale: the existing replant-recommendation logic (`routes/farms.js:246–298`) reads stand from `field_production`, and splitting the column across two tables would create a consistency hazard (new writes to one, old reads from the other). Spec #2 (COP) decides the final home once measurement context is clear. Until then, one home, one source of truth.
 
 ## API
 
@@ -100,11 +95,11 @@ All routes live in `backend/src/routes/farms.js` (extending the existing farms r
 ```
 GET    /api/fields/:id/usage-periods
        → [{id, usage, start_date, end_date, planted_date, rotation_year,
-           stand_pct, source, notes, created_at, updated_at}]
+           source, notes, created_at, updated_at}]
 
 POST   /api/fields/:id/usage-periods
        body: {usage, start_date, end_date?, planted_date?, rotation_year?,
-              stand_pct?, notes?, source?}
+              notes?, source?}
        source defaults to 'manual' if omitted
        → 201 with full row
 
@@ -119,7 +114,7 @@ DELETE /api/fields/:id/usage-periods/:periodId
 
 ```
 GET /api/usage-history?as_of=YYYY-MM-DD
-   → [{field_id, period_id, usage, rotation_year_effective, stand_pct,
+   → [{field_id, period_id, usage, rotation_year_effective,
        planted_date, geometry}]
 ```
 
@@ -198,7 +193,7 @@ Both test files are written failing before implementation.
 - **Cycle definition** (what makes a "3-year oats/lupines/fallow" cycle) — `rotation_year` is a free integer for now. A later spec may introduce `rotation_plan` entities.
 - **Historical backfill for non-rooibos** — not available in DB, Excel, or wiki. Manual entries via the API as Alex remembers them, tracked by `source='manual'`.
 - **Range-query endpoint** — spec #2 will add `GET /api/fields/:id/usage-periods?start_date=&end_date=` to support per-year COP attribution. Not needed for spec #1's map overlay.
-- **Stand_pct migration** — existing `field_production.stand_pct` values stay put; spec #2 decides final home based on measurement context.
+- **Stand_pct home** — `field_production` remains the only home; existing rooibos replant logic keeps working unmodified. Spec #2 revisits.
 
 ## Files touched
 
