@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
+import MeasureTool from './tools/MeasureTool';
 
 interface GisLayer {
   id: string;
@@ -168,6 +169,7 @@ export default function FarmMap({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const layersAddedRef = useRef(false);
   const mapLoadedRef = useRef(false);
+  const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
 
   const onFieldSelectRef = useRef(onFieldSelect);
   onFieldSelectRef.current = onFieldSelect;
@@ -207,6 +209,7 @@ export default function FarmMap({
     map.on('load', () => {
       mapRef.current = map;
       mapLoadedRef.current = true;
+      setMapInstance(map);
       onMapReadyRef.current?.(map);
 
       if (geojson) {
@@ -238,6 +241,7 @@ export default function FarmMap({
       mapRef.current = null;
       layersAddedRef.current = false;
       mapLoadedRef.current = false;
+      setMapInstance(null);
       map.remove();
     };
     // geojson is handled via the ref-based approach below for updates;
@@ -354,5 +358,9 @@ export default function FarmMap({
     }
   }, [gisLayers]);
 
-  return <div ref={mapContainerRef} className="w-full h-full" />;
+  return (
+    <div ref={mapContainerRef} className="w-full h-full">
+      <MeasureTool map={mapInstance} />
+    </div>
+  );
 }

@@ -12,7 +12,7 @@ Today the map only renders existing field polygons from the seed. No way to meas
 
 | Sub-spec | Scope | Library |
 |---|---|---|
-| **5a** | Distance + area measurement (click-to-add vertices, live readout) | terradraw |
+| ~~**5a**~~ | ~~Distance + area measurement~~ — **shipped** (see `2026-04-15-spec-5a-measurement.md`) | terradraw |
 | **5b** | Annotations (pinned text, photos, persisted to DB) | terradraw + new `annotations` table |
 | **5c** | Free drawing (points, lines, polygons that aren't fields) | terradraw |
 | **5d** | Import/export GeoJSON, KML, Shapefile zip | `@tmcw/togeojson`, `shp-write` |
