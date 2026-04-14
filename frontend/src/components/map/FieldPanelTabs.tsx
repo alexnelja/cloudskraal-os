@@ -14,6 +14,7 @@ import {
   InfoCell, SummaryCard, MetricCard, LoadingState, EmptyState,
   type ChartRow,
 } from './FieldPanelPrimitives';
+import EnterprisePriceCurve from '../EnterprisePriceCurve';
 
 // ─── Overview Tab ─────────────────────────────────────────────────────────────
 
@@ -459,6 +460,11 @@ export function CostsTab({
             </BarChart>
           </ResponsiveContainer>
         </div>
+      )}
+
+      {/* Market price forecast for this field's current enterprise */}
+      {field.enterprise && field.enterprise !== 'unclassified' && (
+        <EnterprisePriceCurve enterprise={field.enterprise} />
       )}
 
       <p className="text-[10px] text-stone-400 leading-relaxed">
