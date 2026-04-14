@@ -30,13 +30,17 @@ CREATE TABLE field_usage_period (
   planted_date  TEXT,                   -- often equals start_date, kept distinct
                                         -- (e.g., rooibos: planted long before topping)
   rotation_year INTEGER,                -- cycle position (1..N) for rotational;
-                                        -- NULL for perennials (derive via yearsSincePlanted)
+                                        -- NULL for perennials (derive via yearsSincePlanted);
+                                        -- for periods crossing a calendar year, the value
+                                        -- refers to the start_date's calendar year
+                                        -- (e.g. period 2026-05→2027-03 stores the 2026 cycle position)
   stand_pct     REAL,                   -- cover ratio 0..100; latest known for this period
   source        TEXT NOT NULL,          -- seed-2026 | seed-rooibos-backfill |
                                         -- import-<file> | manual
   notes         TEXT,
   created_at    TEXT NOT NULL,
-  updated_at    TEXT NOT NULL
+  updated_at    TEXT NOT NULL,
+  deleted_at    TEXT                    -- soft-delete timestamp (NULL = live row)
 );
 CREATE INDEX idx_fup_field_dates ON field_usage_period(field_id, start_date, end_date);
 CREATE INDEX idx_fup_active ON field_usage_period(field_id) WHERE end_date IS NULL;
@@ -63,6 +67,12 @@ Initial values (expand as the farm plants new crops):
 
 `PERENNIAL_USAGES = { rooibos, almond, vines }`. Perennials derive rotation year from `planted_date`; rotational crops store explicit `rotation_year`.
 
+### Date convention
+
+All dates in `field_usage_period` are ISO `YYYY-MM-DD` strings in UTC. Comparisons (`start_date <= today`) are lexicographic string comparisons, which is correct for zero-padded ISO dates.
+
+`todayUTC()` (new helper in `backend/src/utils/dates.js`) returns `new Date().toISOString().split('T')[0]`. Cloudskraal is in SA (UTC+2) but the server clock is UTC; using UTC dates end-to-end avoids off-by-one day errors across midnight SA local time. A constant `CLOUDSKRAAL_TIMEZONE = 'Africa/Johannesburg'` is exported from the same module for display-only use by the frontend.
+
 ### `fields` columns become a current-state cache
 
 `fields.enterprise`, `fields.crop_type`, `fields.planted_year` are retained for backward compatibility but become **refresh-on-read-and-write caches of the current active period**, not authoritative. No new code writes them directly. `refreshFieldCurrent(field_id)` picks the period satisfying `start_date <= today AND (end_date IS NULL OR end_date >= today)` and, if multiple, the one with the most recent `start_date`.
@@ -70,6 +80,8 @@ Initial values (expand as the farm plants new crops):
 **Refresh timing:**
 - On every write (POST/PUT/DELETE) to `field_usage_period` for that field.
 - On every read through `GET /api/fields/:id` and `GET /api/fields` (lazy refresh — else a period ending without a write leaves the cache stale on 2026-07-01 even though the period closed 2026-06-30).
+
+**PATCH contract change.** Today `PATCH /api/fields/:id` allows writes to `enterprise`, `crop_type`, `planted_year` (see `backend/src/routes/farms.js:106`). After this spec, those three keys are **rejected** with `400 {error: 'read_only', managed_by: 'field_usage_period', use: 'POST /api/fields/:id/usage-periods'}`. The `allowed` array drops them. This is the only breaking change to existing routes.
 
 ### `field_production.stand_pct` — new writes go to period, existing column left alone
 
@@ -100,21 +112,21 @@ PUT    /api/fields/:id/usage-periods/:periodId
        → 200 with updated row, or 404
 
 DELETE /api/fields/:id/usage-periods/:periodId
-       → 204
+       → 204 (soft delete: sets deleted_at, row remains; excluded from all normal reads)
 ```
 
 ### Map overlay feed
 
 ```
-GET /api/usage-history?as_of=YYYY-MM-DD[&usage=rooibos]
+GET /api/usage-history?as_of=YYYY-MM-DD
    → [{field_id, period_id, usage, rotation_year_effective, stand_pct,
        planted_date, geometry}]
 ```
 
-- `as_of` defaults to today.
+- `as_of` defaults to `todayUTC()`.
 - `rotation_year_effective` = stored `rotation_year` if present, else `yearsSincePlanted(planted_date, as_of)` for perennials, else `null`.
-- Fields with no period active at `as_of` are omitted.
-- Cacheable; cache key `(as_of, usage ?? '*')`.
+- Fields with no period active at `as_of` are omitted. Soft-deleted periods are excluded.
+- Cacheable; cache key is `as_of`. No usage-filter — YAGNI; the frontend colors the map by usage client-side from the full response.
 
 ### Error taxonomy
 
@@ -146,7 +158,7 @@ writes ─► field_usage_period ─► refreshFieldCurrent() ─► fields.ente
    - Rooibos fields that were ripped and replanted (different `planted` than 2026 record) → closed prior period + new 2026 period.
    - `source='seed-rooibos-backfill'` for rows that pre-date 2026.
    - **Known limitation:** the continuous-vs-replanted check compares `planted` by year only. Intra-year rip-and-replant (e.g. Feb 2026 rip, Jul 2026 replant) cannot be detected from current seed data and will be treated as continuous. Revisit when seed data carries planting months.
-4. **Idempotency.** Each seed checks an existing row with matching `(field_id, start_date, source)` before insert. Re-running `npm start` is a no-op.
+4. **Idempotency.** Each seed checks for an existing non-deleted row matching `(field_id, start_date)` before insert. Re-running `npm start` is a no-op. The check ignores `source` — a seed does not overwrite a manual entry and does not duplicate it. If a manual row exists at the same `(field_id, start_date)` when the seed first runs, the seed logs a skip and leaves the manual row intact.
 
 ## Testing (tests-first)
 
@@ -166,7 +178,8 @@ Both test files are written failing before implementation.
 - POST unknown usage → 400 with valid enum list.
 - POST perennial with `rotation_year` → 201 with warning.
 - PUT to shorten an active period (set `end_date`) → 200; new POST starting on that `end_date` → 201 (adjacency allowed).
-- DELETE → 204, subsequent GET → empty.
+- DELETE → 204; subsequent GET excludes the row but the row remains in the DB with `deleted_at` set (verify directly via SQL).
+- PATCH `/api/fields/:id` with `{enterprise: 'lupines'}` → 400 `read_only` (was previously allowed).
 - `GET /api/usage-history?as_of=2026-04-14` returns exactly one row per field with an active period, joined with geometry.
 - `GET /api/usage-history?as_of=2023-01-01` returns only fields whose rooibos backfill covers that date.
 - Seed idempotency: run seed twice, period count unchanged.
@@ -192,7 +205,8 @@ Both test files are written failing before implementation.
 New:
 - `backend/src/db/schema-usage-periods.js`
 - `backend/src/db/seed-usage-periods.js` (combines 2026 + rooibos backfill)
-- `backend/src/services/usage.js`
+- `backend/src/services/usage.js` (USAGE_TYPES, PERENNIAL_USAGES, `assertNoOverlap`, `refreshFieldCurrent`, `yearsSincePlanted`, `rotationYearEffective`)
+- `backend/src/utils/dates.js` (`todayUTC`, `CLOUDSKRAAL_TIMEZONE`)
 - `backend/src/routes/usage.js`
 - `backend/tests/usage-service.test.js`
 - `backend/tests/usage-history-api.test.js`
@@ -200,4 +214,6 @@ New:
 Modified:
 - `backend/src/db/schema.js` (wire new module)
 - `backend/src/index.js` (mount new router, call new seed)
-- `backend/src/routes/farms.js` (call `refreshFieldCurrent` from GET /api/fields and GET /api/fields/:id for lazy cache refresh)
+- `backend/src/routes/farms.js`:
+  - call `refreshFieldCurrent` from GET /api/fields and GET /api/fields/:id for lazy cache refresh
+  - drop `enterprise`, `crop_type`, `planted_year` from the PATCH `allowed` array; return 400 `read_only` if present in body
