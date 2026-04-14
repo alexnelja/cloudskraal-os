@@ -160,15 +160,45 @@ export interface FieldRotation {
   replant_message: string | null;
 }
 
-export interface FieldCostOfProduction {
-  field: Field;
-  production: FieldProduction[];
+export interface CopLine {
+  usage: string;
+  period_ids: string[];
   inputs: FieldInputTransaction[];
-  taskInputs: FieldTaskInput[];
+  task_inputs: FieldTaskInput[];
   labour: FieldLabourEntry[];
-  tasks: FieldTask[];
-  summary: FieldCostSummary;
+  production: FieldProduction[];
+  total_input_cost: number;
+  total_task_input_cost: number;
+  total_labour_cost: number;
+  total_labour_hours: number;
+  total_cost: number;
+  area_ha: number;
+  cost_per_ha: number;
+  estimated_yield_kg: number;
+  actual_yield_kg: number;
+  yield_per_ha: number;
+  cost_per_kg: number | null;
+  warnings: string[];
+}
+
+export interface CopCoverage {
+  excludes: string[];
+  denominator: string;
+  notes: string;
+}
+
+export interface FieldCostOfProduction {
+  field_id: string;
+  year: number;
+  field: Field;
+  lines: CopLine[];
+  totals: {
+    total_cost: number;
+    total_yield_kg: number;
+    uncategorized_cost: number;
+  };
   rotation: FieldRotation | null;
+  coverage: CopCoverage;
 }
 
 export const ENTERPRISE_LABELS: Record<string, string> = {
