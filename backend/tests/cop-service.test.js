@@ -127,3 +127,53 @@ describe('usageOnDate', () => {
     db.close();
   });
 });
+
+import { periodsOverlappingYear } from '../src/services/cop.js';
+
+describe('periodsOverlappingYear', () => {
+  it('returns periods that touch the year', () => {
+    const db = setupDb();
+    initUsagePeriodsSchema(db);
+    seedField(db);
+    seedPeriod(db, { id: 'p1', field_id: 'fld1', usage: 'rooibos',
+      start_date: '2022-01-01', end_date: null });
+    const rows = periodsOverlappingYear(db, 'fld1', 2026);
+    expect(rows.map(r => r.id)).toEqual(['p1']);
+    db.close();
+  });
+
+  it('includes periods that span two years', () => {
+    const db = setupDb();
+    initUsagePeriodsSchema(db);
+    seedField(db);
+    seedPeriod(db, { id: 'p1', field_id: 'fld1', usage: 'lupines_fourrages',
+      start_date: '2025-11-01', end_date: '2026-06-30' });
+    const in2025 = periodsOverlappingYear(db, 'fld1', 2025).map(r => r.id);
+    const in2026 = periodsOverlappingYear(db, 'fld1', 2026).map(r => r.id);
+    expect(in2025).toContain('p1');
+    expect(in2026).toContain('p1');
+    db.close();
+  });
+
+  it('excludes soft-deleted', () => {
+    const db = setupDb();
+    initUsagePeriodsSchema(db);
+    seedField(db);
+    seedPeriod(db, { id: 'p1', field_id: 'fld1', usage: 'rooibos',
+      start_date: '2022-01-01', end_date: null });
+    const now = new Date().toISOString();
+    db.prepare('UPDATE field_usage_period SET deleted_at=? WHERE id=?').run(now, 'p1');
+    expect(periodsOverlappingYear(db, 'fld1', 2026)).toEqual([]);
+    db.close();
+  });
+
+  it('excludes periods entirely before the year', () => {
+    const db = setupDb();
+    initUsagePeriodsSchema(db);
+    seedField(db);
+    seedPeriod(db, { id: 'p1', field_id: 'fld1', usage: 'rooibos',
+      start_date: '2020-01-01', end_date: '2021-12-31' });
+    expect(periodsOverlappingYear(db, 'fld1', 2026)).toEqual([]);
+    db.close();
+  });
+});
