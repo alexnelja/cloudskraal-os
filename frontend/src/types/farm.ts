@@ -133,17 +133,6 @@ export interface FieldTask {
   enterprise: string;
 }
 
-export interface FieldCostSummary {
-  total_input_cost: number;
-  total_task_input_cost: number;
-  total_labour_cost: number;
-  total_labour_hours: number;
-  total_cost: number;
-  cost_per_ha: number;
-  total_yield_kg: number;
-  yield_per_ha: number;
-  cost_per_kg: number | null;
-}
 
 export interface StandTrendPoint {
   year: number;

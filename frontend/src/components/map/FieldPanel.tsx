@@ -10,8 +10,8 @@ import {
 import { getField, getFieldCostOfProduction } from '../../api/farms';
 import type {
   Field, FieldProduction, FieldCostOfProduction as FieldCostOfProductionType,
-  FieldInputTransaction, FieldTaskInput, FieldLabourEntry, FieldCostSummary,
-  FieldRotation,
+  FieldInputTransaction, FieldTaskInput, FieldLabourEntry,
+  FieldRotation, CopLine,
 } from '../../types/farm';
 import { ENTERPRISE_COLORS, ENTERPRISE_LABELS } from '../../types/farm';
 
@@ -92,10 +92,16 @@ export default function FieldPanel({ fieldId, onClose }: FieldPanelProps) {
   const enterpriseLabel = field ? ENTERPRISE_LABELS[field.enterprise] ?? field.enterprise : '';
   const statusClass = STATUS_COLORS[field?.status ?? ''] ?? 'bg-stone-100 text-stone-700';
 
+  // Flatten lines into arrays for Inputs and Labour tabs
+  const allInputs: FieldInputTransaction[] = costData?.lines.flatMap(l => l.inputs) ?? [];
+  const allTaskInputs: FieldTaskInput[] = costData?.lines.flatMap(l => l.task_inputs) ?? [];
+  const allLabour: FieldLabourEntry[] = costData?.lines.flatMap(l => l.labour) ?? [];
+
   const panelProps = {
     field, loading, error, chartData, showChart: showChart ?? false,
     enterpriseColor, enterpriseLabel, statusClass, onClose, fieldId,
     costData, costLoading, activeTab, setActiveTab,
+    allInputs, allTaskInputs, allLabour,
   };
 
   return (
@@ -128,11 +134,15 @@ interface PanelContentProps {
   costLoading: boolean;
   activeTab: Tab;
   setActiveTab: (tab: Tab) => void;
+  allInputs: FieldInputTransaction[];
+  allTaskInputs: FieldTaskInput[];
+  allLabour: FieldLabourEntry[];
 }
 
 function PanelContent({
   field, loading, error, chartData, showChart, enterpriseColor, enterpriseLabel,
   statusClass, onClose, showDragHandle, fieldId, costData, costLoading, activeTab, setActiveTab,
+  allInputs, allTaskInputs, allLabour,
 }: PanelContentProps) {
   const navigate = useNavigate();
   const chartRef = useRef<HTMLDivElement>(null);
@@ -207,15 +217,14 @@ function PanelContent({
               />
             )}
             {activeTab === 'Inputs' && (
-              <InputsTab inputs={costData?.inputs ?? []} taskInputs={costData?.taskInputs ?? []} loading={costLoading} />
+              <InputsTab inputs={allInputs} taskInputs={allTaskInputs} loading={costLoading} />
             )}
             {activeTab === 'Labour' && (
-              <LabourTab labour={costData?.labour ?? []} loading={costLoading} />
+              <LabourTab labour={allLabour} loading={costLoading} />
             )}
             {activeTab === 'Costs' && (
               <CostsTab
-                summary={costData?.summary ?? null}
-                production={costData?.production ?? []}
+                costData={costData}
                 field={field}
                 loading={costLoading}
               />
@@ -251,11 +260,14 @@ function OverviewTab({
   chartData: ChartRow[]; chartRef: React.RefObject<HTMLDivElement | null>;
   costData: FieldCostOfProductionType | null; rotation: FieldRotation | null;
 }) {
-  const summary = costData?.summary;
+  const totals = costData?.totals;
+
+  // For the stand % overlay, pull production from all lines combined
+  const allProduction = costData?.lines.flatMap(l => l.production) ?? [];
 
   // Build combined chart data with stand % overlay
   const combinedChartData = chartData.map(row => {
-    const prod = costData?.production?.find(p => p.year === row.year);
+    const prod = allProduction.find(p => p.year === row.year);
     return { ...row, Stand: prod?.stand_pct ?? null };
   });
   const hasStandData = combinedChartData.some(d => d.Stand !== null);
@@ -332,18 +344,30 @@ function OverviewTab({
       </div>
 
       {/* Cost Summary Cards */}
-      {summary && summary.total_cost > 0 && (
+      {totals && totals.total_cost > 0 && (
         <div className="px-4 pb-3">
           <div className="grid grid-cols-3 gap-2">
-            <SummaryCard label="Total Cost" value={formatZAR(summary.total_cost)} icon={<DollarSign size={12} />} color="text-red-600" />
-            <SummaryCard label="Cost/ha" value={formatZAR(summary.cost_per_ha)} icon={<Layers size={12} />} color="text-amber-600" />
+            <SummaryCard label="Total Cost" value={formatZAR(totals.total_cost)} icon={<DollarSign size={12} />} color="text-red-600" />
+            <SummaryCard
+              label="Cost/ha"
+              value={field.area_ha > 0 ? formatZAR(Math.round(totals.total_cost / field.area_ha)) : '—'}
+              icon={<Layers size={12} />}
+              color="text-amber-600"
+            />
             <SummaryCard
               label="Cost/kg"
-              value={summary.cost_per_kg ? formatZAR(summary.cost_per_kg) : '—'}
+              value={totals.total_yield_kg > 0 ? formatZAR(totals.total_cost / totals.total_yield_kg) : '—'}
               icon={<BarChart3 size={12} />}
               color="text-emerald-600"
             />
           </div>
+          {/* Uncategorized warning chip */}
+          {totals.uncategorized_cost > 0 && (
+            <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+              <AlertTriangle size={12} className="flex-shrink-0" />
+              <span>Uncategorized: {formatZAR(totals.uncategorized_cost)} — transactions with no active usage period.</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -528,29 +552,99 @@ function LabourTab({ labour, loading }: { labour: FieldLabourEntry[]; loading: b
 
 // ─── Costs Tab ────────────────────────────────────────────────────────────────
 
+/** One section per CopLine — shows per-usage breakdown with its own metrics and sub-lists. */
+function CopLineSection({ line }: { line: CopLine }) {
+  const usageLabel = line.usage.charAt(0).toUpperCase() + line.usage.slice(1).replace(/_/g, ' ');
+
+  return (
+    <div className="rounded-lg border border-stone-100 bg-white p-3 space-y-3">
+      {/* Section header */}
+      <div className="flex items-center justify-between flex-wrap gap-1">
+        <span className="text-xs font-bold text-stone-700 uppercase tracking-wide">{usageLabel}</span>
+        <span className="text-xs text-stone-500">{line.area_ha.toFixed(1)} ha</span>
+      </div>
+
+      {/* Per-line metrics */}
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="rounded bg-stone-50 px-2 py-1.5">
+          <p className="text-stone-500 mb-0.5">Total Cost</p>
+          <p className="font-bold text-stone-900">{formatZAR(line.total_cost)}</p>
+        </div>
+        <div className="rounded bg-stone-50 px-2 py-1.5">
+          <p className="text-stone-500 mb-0.5">Cost / ha</p>
+          <p className="font-bold text-stone-900">{formatZAR(line.cost_per_ha)}</p>
+        </div>
+        {line.actual_yield_kg > 0 && (
+          <div className="rounded bg-stone-50 px-2 py-1.5">
+            <p className="text-stone-500 mb-0.5">Yield (actual)</p>
+            <p className="font-bold text-stone-900">{line.actual_yield_kg.toLocaleString()} kg</p>
+          </div>
+        )}
+        {line.cost_per_kg != null && (
+          <div className="rounded bg-stone-50 px-2 py-1.5">
+            <p className="text-stone-500 mb-0.5">Cost / kg</p>
+            <p className="font-bold text-stone-900">{formatZAR(line.cost_per_kg)}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Cost breakdown bar */}
+      {line.total_cost > 0 && (
+        <div className="space-y-1.5">
+          {[
+            { name: 'Inputs', value: line.total_input_cost, color: '#059669' },
+            { name: 'Task Inputs', value: line.total_task_input_cost, color: '#0d9488' },
+            { name: 'Labour', value: line.total_labour_cost, color: '#d97706' },
+          ].filter(c => c.value > 0).map(item => {
+            const pct = (item.value / line.total_cost) * 100;
+            return (
+              <div key={item.name}>
+                <div className="flex items-center justify-between text-xs mb-0.5">
+                  <span className="text-stone-500">{item.name}</span>
+                  <span className="text-stone-700 font-medium">{formatZAR(item.value)} ({pct.toFixed(0)}%)</span>
+                </div>
+                <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: item.color }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Line-level warnings */}
+      {line.warnings.length > 0 && (
+        <div className="space-y-1">
+          {line.warnings.map((w, i) => (
+            <div key={i} className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
+              <AlertTriangle size={10} className="flex-shrink-0" />
+              <span>{w}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CostsTab({
-  summary, production, field, loading,
+  costData, field, loading,
 }: {
-  summary: FieldCostSummary | null; production: FieldProduction[];
+  costData: FieldCostOfProductionType | null;
   field: Field; loading: boolean;
 }) {
   if (loading) return <LoadingState />;
 
-  if (!summary || summary.total_cost === 0) {
+  if (!costData || costData.totals.total_cost === 0) {
     return <EmptyState icon={<DollarSign size={24} />} message="No cost data available for this field" />;
   }
 
+  const { totals, lines, coverage } = costData;
   const areaHa = field.area_ha || 1;
 
-  // Build cost breakdown for chart
-  const costBreakdown = [
-    { name: 'Inputs', value: summary.total_input_cost, color: '#059669' },
-    { name: 'Task Inputs', value: summary.total_task_input_cost, color: '#0d9488' },
-    { name: 'Labour', value: summary.total_labour_cost, color: '#d97706' },
-  ].filter(c => c.value > 0);
-
-  // Per-year production with cost overlay
-  const yearlyData = production
+  // Per-year production aggregated across all lines for yield chart
+  const allProduction = lines.flatMap(l => l.production);
+  const yearlyData = allProduction
     .filter(p => p.actual_yield_kg != null && p.actual_yield_kg > 0)
     .sort((a, b) => a.year - b.year)
     .slice(-5)
@@ -562,53 +656,40 @@ function CostsTab({
 
   return (
     <div className="p-4 space-y-4">
-      {/* Key Metrics */}
+      {/* Top-level totals */}
       <div>
         <h3 className="text-sm font-semibold text-stone-700 mb-3">Cost of Production</h3>
         <div className="grid grid-cols-2 gap-2">
-          <MetricCard label="Total Cost" value={formatZAR(summary.total_cost)} sub="all inputs + labour" />
-          <MetricCard label="Cost / ha" value={formatZAR(summary.cost_per_ha)} sub={`${areaHa.toFixed(1)} ha`} />
-          <MetricCard label="Cost / kg" value={summary.cost_per_kg ? formatZAR(summary.cost_per_kg) : '—'} sub="variable cost" />
-          <MetricCard label="Total Yield" value={`${summary.total_yield_kg.toLocaleString()} kg`} sub={`${summary.yield_per_ha.toFixed(0)} kg/ha`} />
+          <MetricCard label="Total Cost" value={formatZAR(totals.total_cost)} sub="all usages combined" />
+          <MetricCard label="Cost / ha" value={formatZAR(Math.round(totals.total_cost / areaHa))} sub={`${areaHa.toFixed(1)} ha`} />
+          <MetricCard
+            label="Cost / kg"
+            value={totals.total_yield_kg > 0 ? formatZAR(totals.total_cost / totals.total_yield_kg) : '—'}
+            sub="variable cost"
+          />
+          <MetricCard label="Total Yield" value={`${totals.total_yield_kg.toLocaleString()} kg`} sub={`${(totals.total_yield_kg / areaHa).toFixed(0)} kg/ha`} />
         </div>
       </div>
 
-      {/* Cost Breakdown */}
-      <div>
-        <h3 className="text-sm font-semibold text-stone-700 mb-3">Cost Breakdown</h3>
-        <div className="space-y-2">
-          {costBreakdown.map(item => {
-            const pct = summary.total_cost > 0 ? (item.value / summary.total_cost) * 100 : 0;
-            return (
-              <div key={item.name}>
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-stone-600">{item.name}</span>
-                  <span className="font-medium text-stone-800">{formatZAR(item.value)} ({pct.toFixed(0)}%)</span>
-                </div>
-                <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: item.color }} />
-                </div>
-              </div>
-            );
-          })}
+      {/* Uncategorized warning */}
+      {totals.uncategorized_cost > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+          <AlertTriangle size={12} className="flex-shrink-0" />
+          <span>Uncategorized: {formatZAR(totals.uncategorized_cost)} — transactions with no active usage period.</span>
         </div>
-      </div>
+      )}
 
-      {/* Labour Detail */}
-      <div className="rounded-lg bg-stone-50 p-3">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-stone-600">Total Labour Hours</span>
-          <span className="font-bold text-stone-800">{summary.total_labour_hours.toFixed(1)} hrs</span>
+      {/* Per-usage sections */}
+      {lines.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-stone-700 mb-2">By Usage</h3>
+          <div className="space-y-3">
+            {lines.map((line, idx) => (
+              <CopLineSection key={`${line.usage}-${idx}`} line={line} />
+            ))}
+          </div>
         </div>
-        <div className="flex items-center justify-between text-xs mt-1">
-          <span className="text-stone-600">Labour Cost</span>
-          <span className="font-bold text-amber-700">{formatZAR(summary.total_labour_cost)}</span>
-        </div>
-        <div className="flex items-center justify-between text-xs mt-1">
-          <span className="text-stone-600">Labour / ha</span>
-          <span className="font-medium text-stone-700">{formatZAR(Math.round(summary.total_labour_cost / areaHa))}</span>
-        </div>
-      </div>
+      )}
 
       {/* Yield per Ha (last 5 years) */}
       {yearlyData.length > 0 && (
@@ -625,6 +706,13 @@ function CostsTab({
           </ResponsiveContainer>
         </div>
       )}
+
+      {/* Coverage footnote */}
+      <p className="text-[10px] text-stone-400 leading-relaxed">
+        Excludes: {coverage.excludes.length > 0 ? coverage.excludes.join(', ') : 'none'}.
+        {' '}Denominator: {coverage.denominator}.
+        {coverage.notes ? ` ${coverage.notes}` : ''}
+      </p>
     </div>
   );
 }
