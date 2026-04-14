@@ -55,3 +55,75 @@ describe('migrate-field-cop', () => {
     db.close();
   });
 });
+
+import { initUsagePeriodsSchema } from '../src/db/schema-usage-periods.js';
+import { usageOnDate } from '../src/services/cop.js';
+
+function seedField(db) {
+  const now = new Date().toISOString();
+  db.prepare(`INSERT INTO farms (id,name,code,type,created_at,updated_at) VALUES (?,?,?,?,?,?)`)
+    .run('farm1','Test','t','owned',now,now);
+  db.prepare(`INSERT INTO fields (id,farm_id,name,enterprise,geometry,created_at,updated_at)
+              VALUES (?,?,?,?,?,?,?)`)
+    .run('fld1','farm1','F1','unclassified','{}',now,now);
+}
+
+function seedPeriod(db, args) {
+  const now = new Date().toISOString();
+  db.prepare(`INSERT INTO field_usage_period
+    (id,field_id,usage,start_date,end_date,planted_date,source,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?)`).run(
+      args.id, args.field_id, args.usage, args.start_date, args.end_date ?? null,
+      args.planted_date ?? null, args.source ?? 'seed', now, now
+    );
+}
+
+describe('usageOnDate', () => {
+  it('returns the usage active on the date', () => {
+    const db = setupDb();
+    initUsagePeriodsSchema(db);
+    seedField(db);
+    seedPeriod(db, { id: 'p1', field_id: 'fld1', usage: 'rooibos',
+      start_date: '2022-01-01', end_date: null });
+    expect(usageOnDate(db, 'fld1', '2026-04-14')).toEqual({
+      usage: 'rooibos', period_id: 'p1'
+    });
+    db.close();
+  });
+
+  it('returns null when in a gap', () => {
+    const db = setupDb();
+    initUsagePeriodsSchema(db);
+    seedField(db);
+    seedPeriod(db, { id: 'p1', field_id: 'fld1', usage: 'rooibos',
+      start_date: '2022-01-01', end_date: '2024-01-01' });
+    expect(usageOnDate(db, 'fld1', '2026-04-14')).toBeNull();
+    db.close();
+  });
+
+  it('ignores soft-deleted periods', () => {
+    const db = setupDb();
+    initUsagePeriodsSchema(db);
+    seedField(db);
+    seedPeriod(db, { id: 'p1', field_id: 'fld1', usage: 'rooibos',
+      start_date: '2022-01-01', end_date: null });
+    const now = new Date().toISOString();
+    db.prepare('UPDATE field_usage_period SET deleted_at=? WHERE id=?').run(now, 'p1');
+    expect(usageOnDate(db, 'fld1', '2026-04-14')).toBeNull();
+    db.close();
+  });
+
+  it('picks most recent start_date when multiple overlap', () => {
+    const db = setupDb();
+    initUsagePeriodsSchema(db);
+    seedField(db);
+    seedPeriod(db, { id: 'p1', field_id: 'fld1', usage: 'rooibos',
+      start_date: '2022-01-01', end_date: '2026-03-31' });
+    seedPeriod(db, { id: 'p2', field_id: 'fld1', usage: 'lupines_fourrages',
+      start_date: '2026-04-01', end_date: null });
+    expect(usageOnDate(db, 'fld1', '2026-05-01')).toEqual({
+      usage: 'lupines_fourrages', period_id: 'p2'
+    });
+    db.close();
+  });
+});
