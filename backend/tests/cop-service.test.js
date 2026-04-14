@@ -418,3 +418,27 @@ describe('conversion_factors schema', () => {
     db.close();
   });
 });
+
+import { resolveDenominator } from '../src/services/cop.js';
+
+describe('resolveDenominator', () => {
+  it('returns null when denominator is falsy', () => {
+    expect(resolveDenominator('rooibos', undefined)).toBeNull();
+    expect(resolveDenominator('rooibos', '')).toBeNull();
+  });
+
+  it('resolves rooibos tiers', () => {
+    expect(resolveDenominator('rooibos', 'harvest')).toBe('harvest_wet_kg');
+    expect(resolveDenominator('rooibos', 'dried')).toBe('dried_kg');
+    expect(resolveDenominator('rooibos', 'netto_dry')).toBe('sifted_netto_dry_kg');
+  });
+
+  it('passes through unknown value as explicit UOM', () => {
+    expect(resolveDenominator('rooibos', 'sifted_netto_dry_kg')).toBe('sifted_netto_dry_kg');
+    expect(resolveDenominator('rooibos', 'nonsense')).toBe('nonsense');
+  });
+
+  it('passes through for unknown usage (factor chain will decide)', () => {
+    expect(resolveDenominator('lupines_fourrages', 'netto_dry')).toBe('netto_dry');
+  });
+});

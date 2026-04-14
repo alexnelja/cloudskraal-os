@@ -250,3 +250,24 @@ function computeFieldRotation(db, field) {
 
 module.exports.computeFieldCop = computeFieldCop;
 module.exports.computeFieldRotation = computeFieldRotation;
+
+// TIER_MAPS is hardcoded here for now. Specs 2f (sheep) and 2g (wine) extend it.
+// If a fourth crop type lands (almonds, olives, buchu) reconsider moving this
+// to a DB table so new tiers don't require a code change + deploy.
+const TIER_MAPS = {
+  rooibos: {
+    harvest: 'harvest_wet_kg',
+    dried: 'dried_kg',
+    netto_dry: 'sifted_netto_dry_kg',
+  },
+};
+
+function resolveDenominator(usage, denominator) {
+  if (!denominator) return null;
+  const tierMap = TIER_MAPS[usage] ?? {};
+  if (tierMap[denominator]) return tierMap[denominator];
+  return denominator;
+}
+
+module.exports.resolveDenominator = resolveDenominator;
+module.exports.TIER_MAPS = TIER_MAPS;
