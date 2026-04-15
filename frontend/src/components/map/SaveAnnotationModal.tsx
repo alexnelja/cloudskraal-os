@@ -42,6 +42,9 @@ export default function SaveAnnotationModal({
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [category, setCategory] = useState<string>('generic');
+  // Tracks whether the user has hand-edited the title; when false, title
+  // auto-follows the selected category so Save is immediately usable.
+  const [titleDirty, setTitleDirty] = useState(false);
 
   // Reset when type changes so the picker shows valid options
   useEffect(() => {
@@ -54,8 +57,16 @@ export default function SaveAnnotationModal({
       setTitle('');
       setNotes('');
       setCategory('generic');
+      setTitleDirty(false);
     }
   }, [open]);
+
+  // Auto-seed title from category label while user hasn't edited.
+  useEffect(() => {
+    if (titleDirty) return;
+    const def = getCategoryDef(type, category);
+    setTitle(def.label);
+  }, [type, category, titleDirty]);
 
   const metric = useMemo(() => computeMetricLabel(type, geometry), [type, geometry]);
   const categories = CATEGORIES[type] ?? [];
@@ -123,7 +134,7 @@ export default function SaveAnnotationModal({
               id="ann-title"
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => { setTitle(e.target.value); setTitleDirty(true); }}
               autoFocus
               className="w-full bg-white/60 border border-stone-300/80 rounded-lg px-3 py-2 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-400/30 transition"
               placeholder="e.g. Broken fence"

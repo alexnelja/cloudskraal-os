@@ -27,16 +27,18 @@ describe('SaveAnnotationModal', () => {
     expect(screen.getByRole('button', { name: /discard/i })).toBeInTheDocument();
   });
 
-  it('Save button is disabled when title is empty', () => {
+  it('Save button is enabled by default — title auto-seeds from category', () => {
     renderModal();
-    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+    // Default category for a line is 'generic' → label "Generic".
+    expect(screen.getByLabelText(/title/i)).toHaveValue('Generic');
   });
 
-  it('Save button enables after typing a title', async () => {
+  it('Save button disables if the user clears the title', async () => {
     const user = userEvent.setup();
     renderModal();
-    await user.type(screen.getByLabelText(/title/i), 'Fence');
-    expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+    await user.clear(screen.getByLabelText(/title/i));
+    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
   });
 
   it('computes and displays "m" for a short line', () => {
@@ -79,6 +81,7 @@ describe('SaveAnnotationModal', () => {
     const onSave = vi.fn();
     const geometry = { type: 'Point', coordinates: [19.0, -31.3] } as GeoJSON.Geometry;
     renderModal({ onSave, geometry, type: 'pin' });
+    await user.clear(screen.getByLabelText(/title/i));
     await user.type(screen.getByLabelText(/title/i), 'Gate');
     await user.type(screen.getByLabelText(/notes/i), 'broken latch');
     await user.click(screen.getByRole('button', { name: /save/i }));
@@ -96,6 +99,7 @@ describe('SaveAnnotationModal', () => {
     const onSave = vi.fn();
     const geometry = { type: 'Point', coordinates: [19, -31] } as GeoJSON.Geometry;
     renderModal({ onSave, geometry, type: 'pin' });
+    await user.clear(screen.getByLabelText(/title/i));
     await user.type(screen.getByLabelText(/title/i), 'Pump 1');
     // click the 'pump' category tile
     await user.click(document.querySelector('[data-category="pump"]') as HTMLElement);
