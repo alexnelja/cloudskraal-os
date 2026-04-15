@@ -106,32 +106,60 @@ body {
 }
 
 /* ───────────────────────────────────────────────────────────────────────── */
-/* Fluid glass design system — frosted surfaces for map overlays           */
+/* Fluid glass design system — single source of truth for map overlays     */
 /* ───────────────────────────────────────────────────────────────────────── */
 
-.glass-panel {
-  background: rgba(255, 253, 248, 0.86);
-  backdrop-filter: blur(22px) saturate(165%);
-  -webkit-backdrop-filter: blur(22px) saturate(165%);
-  border: 1px solid rgba(194, 167, 120, 0.28);
-  box-shadow:
-    0 14px 40px -12px rgba(60, 40, 20, 0.28),
+:root {
+  /* Surface tokens — glass layers */
+  --glass-bg: rgba(255, 253, 248, 0.86);
+  --glass-bg-strong: rgba(255, 253, 248, 0.95);
+  --glass-bg-soft: rgba(255, 253, 248, 0.78);
+  --glass-border: 1px solid rgba(194, 167, 120, 0.3);
+  --glass-border-hairline: 1px solid rgba(194, 167, 120, 0.18);
+  --glass-blur: blur(22px) saturate(165%);
+  --glass-blur-sm: blur(16px) saturate(160%);
+  --glass-shadow: 0 14px 40px -12px rgba(60, 40, 20, 0.28),
     0 4px 14px -4px rgba(60, 40, 20, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  --glass-shadow-sm: 0 8px 24px -6px rgba(60, 40, 20, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  --glass-shadow-ctrl: 0 10px 30px -10px rgba(60, 40, 20, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+
+  /* Accent (amber) — used for focus rings, hover tints, long-press affordance */
+  --accent-500: rgb(217, 119, 6);
+  --accent-50: rgba(254, 243, 199, 0.6);
+  --accent-focus-ring: 0 0 0 3px rgba(217, 119, 6, 0.18);
+
+  /* Overlay grid — rails + radii */
+  --overlay-inset: 12px;
+  --overlay-gap: 8px;
+  --overlay-radius: 14px;
+  --overlay-radius-sm: 10px;
+
+  /* Control sizing */
+  --ctrl-size: 32px;
+  --ctrl-ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  box-shadow: var(--glass-shadow);
 }
 
 .glass-button {
   background: rgba(255, 253, 248, 0.82);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid rgba(194, 167, 120, 0.3);
-  box-shadow:
-    0 8px 24px -6px rgba(60, 40, 20, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.72);
-  transition: transform 150ms cubic-bezier(0.32, 0.72, 0, 1), background 150ms;
+  backdrop-filter: var(--glass-blur-sm);
+  -webkit-backdrop-filter: var(--glass-blur-sm);
+  border: var(--glass-border);
+  box-shadow: var(--glass-shadow-sm);
+  transition: transform 150ms var(--ctrl-ease), background 150ms;
 }
 .glass-button:hover {
-  background: rgba(255, 253, 248, 0.95);
+  background: var(--glass-bg-strong);
   transform: translateY(-1px);
 }
 .glass-input {
@@ -141,54 +169,106 @@ body {
 }
 .glass-input:focus {
   background: #fff;
-  border-color: rgb(217, 119, 6);
-  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.18);
+  border-color: var(--accent-500);
+  box-shadow: var(--accent-focus-ring);
   outline: none;
 }
 
 /* Override MapLibre native navigation control to match aesthetic */
 .maplibregl-ctrl-group {
-  background: rgba(255, 253, 248, 0.88) !important;
-  backdrop-filter: blur(18px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
-  border-radius: 14px !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur-sm) !important;
+  -webkit-backdrop-filter: var(--glass-blur-sm) !important;
+  border-radius: var(--overlay-radius) !important;
   overflow: hidden;
-  box-shadow:
-    0 10px 30px -10px rgba(60, 40, 20, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
-  border: 1px solid rgba(194, 167, 120, 0.3) !important;
+  box-shadow: var(--glass-shadow-ctrl) !important;
+  border: var(--glass-border) !important;
 }
 .maplibregl-ctrl-group > button {
   background-color: transparent !important;
-  border-bottom: 1px solid rgba(194, 167, 120, 0.18) !important;
+  border-bottom: var(--glass-border-hairline) !important;
+  width: var(--ctrl-size) !important;
+  height: var(--ctrl-size) !important;
   transition: background 160ms;
 }
 .maplibregl-ctrl-group > button:last-child {
   border-bottom: none !important;
 }
 .maplibregl-ctrl-group > button:hover {
-  background-color: rgba(254, 243, 199, 0.6) !important;
+  background-color: var(--accent-50) !important;
 }
 
 /* Attribution pill */
 .maplibregl-ctrl-attrib {
-  background: rgba(255, 253, 248, 0.78) !important;
+  background: var(--glass-bg-soft) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
-  border-radius: 10px !important;
+  border-radius: var(--overlay-radius-sm) !important;
   font-size: 10px !important;
 }
 
-/* Terradraw control styling — match glass aesthetic */
+/* Terradraw control + measure control — match glass aesthetic */
 .maplibregl-terradraw-control,
 .maplibregl-terradraw-measure-control {
-  background: rgba(255, 253, 248, 0.88) !important;
-  backdrop-filter: blur(18px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
-  border-radius: 14px !important;
-  border: 1px solid rgba(194, 167, 120, 0.3) !important;
-  box-shadow:
-    0 10px 30px -10px rgba(60, 40, 20, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur-sm) !important;
+  -webkit-backdrop-filter: var(--glass-blur-sm) !important;
+  border-radius: var(--overlay-radius) !important;
+  border: var(--glass-border) !important;
+  box-shadow: var(--glass-shadow-ctrl) !important;
   overflow: hidden;
+}
+.maplibregl-terradraw-control button,
+.maplibregl-terradraw-measure-control button {
+  width: var(--ctrl-size) !important;
+  height: var(--ctrl-size) !important;
+  transition: background 160ms;
+}
+.maplibregl-terradraw-control button:hover,
+.maplibregl-terradraw-measure-control button:hover {
+  background-color: var(--accent-50) !important;
+}
+
+/* Measure tooltips / labels — unified glass-panel styling */
+.maplibregl-terradraw-measure-control-label {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur-sm) !important;
+  -webkit-backdrop-filter: var(--glass-blur-sm) !important;
+  border: var(--glass-border) !important;
+  border-radius: var(--overlay-radius-sm) !important;
+  box-shadow: var(--glass-shadow-sm) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: #1a1c1c !important;
+}
+
+/* Map overlay rail — stacks controls in a corner with consistent spacing */
+.map-rail {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: var(--overlay-gap);
+  pointer-events: none;
+}
+.map-rail > * {
+  pointer-events: auto;
+}
+.map-rail--tl { top: var(--overlay-inset); left: var(--overlay-inset); align-items: flex-start; }
+.map-rail--tr { top: var(--overlay-inset); right: var(--overlay-inset); align-items: flex-end; }
+.map-rail--bl { bottom: var(--overlay-inset); left: var(--overlay-inset); align-items: flex-start; }
+.map-rail--br { bottom: var(--overlay-inset); right: var(--overlay-inset); align-items: flex-end; }
+
+/* Long-press affordance — pulsing amber ring */
+.longpress-ring {
+  position: fixed;
+  pointer-events: none;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-500);
+  background: rgba(217, 119, 6, 0.08);
+  transform-origin: center;
+  z-index: 30;
 }
