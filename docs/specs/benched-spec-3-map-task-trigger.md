@@ -1,6 +1,7 @@
-# Spec 3 (SHIPPED) — Map → task trigger
+# Spec 3 (SHIPPED — tight) — Map → task trigger
 
-**Status**: shipped as the tight scope. See `2026-04-15-spec-3-map-task-trigger.md` for the shipped spec; the template-driven full scope (op library + cost estimate) is deferred as 3.2.
+**Status:** tight scope shipped (`2026-04-15-spec-3-map-task-trigger.md`).
+**Deferred to 3.2** (template-driven op suggestions + cost estimate): see `benched-spec-3.2-task-templates.md`.
 
 
 
