@@ -4,7 +4,7 @@ import {
   Gauge, Lightning, Drop, Cylinder, Faders, Plug, PlugCharging, SunHorizon,
   BowlFood, Grains, Barricade, House, Tractor, Wrench, Flag, MapPin,
   Path, Footprints, Lightbulb, Jeep, Barn, Park, ShippingContainer,
-  LineSegment, WaveSquare,
+  LineSegment, WaveSquare, CheckSquare, NotePencil,
 } from '@phosphor-icons/react';
 import type { AnnotationType } from '../../types/annotation';
 
@@ -30,6 +30,8 @@ export const PIN_CATEGORIES: CategoryDef[] = [
   { id: 'tractor', label: 'Tractor', Icon: Tractor },
   { id: 'implement', label: 'Implement', Icon: Wrench },
   { id: 'beacon', label: 'Beacon', Icon: Flag },
+  { id: 'task_location', label: 'Task', Icon: CheckSquare },
+  { id: 'map_note', label: 'Note', Icon: NotePencil },
   { id: 'generic', label: 'Generic', Icon: MapPin },
 ];
 

@@ -2,7 +2,9 @@ const CATEGORIES = {
   pin: [
     'pump', 'motor', 'borehole', 'tank', 'valve',
     'electrical_box', 'solar_panel', 'trough', 'feed_station',
-    'gate', 'shed', 'silo', 'tractor', 'implement', 'beacon', 'generic',
+    'gate', 'shed', 'silo', 'tractor', 'implement', 'beacon',
+    'task_location', 'map_note',
+    'generic',
   ],
   line: [
     'pipe', 'cable', 'powerline', 'fence', 'road',

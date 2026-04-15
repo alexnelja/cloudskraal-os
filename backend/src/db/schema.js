@@ -11,6 +11,7 @@ const { initConversionFactorsSchema } = require('./schema-conversion-factors');
 const { initEnterprisePricesSchema } = require('./schema-enterprise-prices');
 const { initAnnotationsSchema } = require('./schema-annotations');
 const { migrateAnnotationsCategory } = require('./migrate-annotations-category');
+const { migrateTasksAnnotationLink } = require('./migrate-tasks-annotation-link');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -33,6 +34,7 @@ function getDb() {
     initEnterprisePricesSchema(db);
     initAnnotationsSchema(db);
     migrateAnnotationsCategory(db);
+    migrateTasksAnnotationLink(db);
   }
   return db;
 }
