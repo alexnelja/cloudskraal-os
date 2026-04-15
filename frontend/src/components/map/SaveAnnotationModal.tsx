@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'motion/react';
 import length from '@turf/length';
 import area from '@turf/area';
 import { lineString, polygon } from '@turf/helpers';
 import type { AnnotationType, CreateAnnotationInput } from '../../types/annotation';
 import { formatDistance, formatArea } from './tools/metricFormat';
 import { CATEGORIES, getCategoryDef } from './annotationCategories';
+import FluidDialog from './FluidDialog';
 
 interface SaveAnnotationModalProps {
   open: boolean;
@@ -60,8 +62,6 @@ export default function SaveAnnotationModal({
   const selectedDef = getCategoryDef(type, category);
   const SelectedIcon = selectedDef.Icon;
 
-  if (!open) return null;
-
   const canSave = title.trim().length > 0;
   const handleSave = () => {
     if (!canSave) return;
@@ -77,26 +77,46 @@ export default function SaveAnnotationModal({
   const typeLabel = type === 'line' ? 'Line' : type === 'polygon' ? 'Area' : 'Pin';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
+    <FluidDialog open={open} onDismiss={onDiscard}>
+      <div className="p-6">
         <div className="flex items-center gap-3 mb-1">
-          <div className="p-2 rounded-md bg-amber-50 text-amber-700">
-            <SelectedIcon size={22} weight="regular" />
-          </div>
-          <h2 className="text-xl font-semibold">
+          <motion.div
+            key={selectedDef.id}
+            initial={{ scale: 0.6, rotate: -8, opacity: 0 }}
+            animate={{ scale: 1, rotate: 0, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+            className="p-2.5 rounded-xl text-amber-700"
+            style={{
+              background:
+                'linear-gradient(135deg, rgba(254, 243, 199, 0.9), rgba(253, 224, 155, 0.6))',
+              boxShadow:
+                'inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 4px 12px -4px rgba(146, 64, 14, 0.25)',
+            }}
+          >
+            <SelectedIcon size={22} weight="duotone" />
+          </motion.div>
+          <h2 className="text-xl font-serif font-medium text-stone-900 tracking-tight">
             Save {typeLabel}
-            <span className="text-sm font-normal text-gray-500 ml-2">{selectedDef.label}</span>
+            <span className="text-sm font-sans font-normal text-stone-500 ml-2">
+              {selectedDef.label}
+            </span>
           </h2>
         </div>
         {metric && (
-          <p className="text-sm text-gray-600 mb-4" data-testid="annotation-metric">
+          <p
+            className="text-sm text-stone-600 mb-4 font-mono tracking-tight"
+            data-testid="annotation-metric"
+          >
             {metric}
           </p>
         )}
 
         <div className="space-y-4">
           <div>
-            <label htmlFor="ann-title" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="ann-title"
+              className="block text-[11px] uppercase tracking-[0.08em] font-semibold text-stone-600 mb-1.5"
+            >
               Title
             </label>
             <input
@@ -105,13 +125,15 @@ export default function SaveAnnotationModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoFocus
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full bg-white/60 border border-stone-300/80 rounded-lg px-3 py-2 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-400/30 transition"
               placeholder="e.g. Broken fence"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
+            <label className="block text-[11px] uppercase tracking-[0.08em] font-semibold text-stone-600 mb-2">
+              Category
+            </label>
             <div
               className="grid grid-cols-4 gap-1.5"
               role="radiogroup"
@@ -121,7 +143,7 @@ export default function SaveAnnotationModal({
                 const Icon = c.Icon;
                 const isSelected = c.id === category;
                 return (
-                  <button
+                  <motion.button
                     key={c.id}
                     type="button"
                     role="radio"
@@ -129,22 +151,38 @@ export default function SaveAnnotationModal({
                     aria-label={c.label}
                     data-category={c.id}
                     onClick={() => setCategory(c.id)}
-                    className={`flex flex-col items-center justify-center gap-1 p-2 rounded-md border text-xs transition ${
+                    whileTap={{ scale: 0.94 }}
+                    whileHover={{ y: -1 }}
+                    className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg text-xs transition-colors ${
                       isSelected
-                        ? 'border-amber-500 bg-amber-50 text-amber-800 ring-1 ring-amber-400'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                        ? 'text-amber-900'
+                        : 'text-stone-700 hover:text-stone-900'
                     }`}
+                    style={{
+                      border: isSelected
+                        ? '1px solid rgba(217, 119, 6, 0.5)'
+                        : '1px solid rgba(168, 162, 158, 0.3)',
+                      background: isSelected
+                        ? 'linear-gradient(135deg, rgba(254, 243, 199, 0.9), rgba(253, 224, 155, 0.5))'
+                        : 'rgba(255, 255, 255, 0.5)',
+                      boxShadow: isSelected
+                        ? 'inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 2px 8px -2px rgba(146, 64, 14, 0.15)'
+                        : undefined,
+                    }}
                   >
-                    <Icon size={20} weight={isSelected ? 'fill' : 'regular'} />
+                    <Icon size={20} weight={isSelected ? 'duotone' : 'regular'} />
                     <span className="text-[10px] leading-tight text-center">{c.label}</span>
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
           </div>
 
           <div>
-            <label htmlFor="ann-notes" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="ann-notes"
+              className="block text-[11px] uppercase tracking-[0.08em] font-semibold text-stone-600 mb-1.5"
+            >
               Notes
             </label>
             <textarea
@@ -152,7 +190,7 @@ export default function SaveAnnotationModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full bg-white/60 border border-stone-300/80 rounded-lg px-3 py-2 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-400/30 transition resize-none"
               placeholder="Optional context"
             />
           </div>
@@ -162,20 +200,30 @@ export default function SaveAnnotationModal({
           <button
             type="button"
             onClick={onDiscard}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+            className="px-4 py-2 text-stone-700 hover:bg-stone-100 rounded-lg transition"
           >
             Discard
           </button>
-          <button
+          <motion.button
             type="button"
             onClick={handleSave}
             disabled={!canSave}
-            className="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            whileTap={{ scale: canSave ? 0.96 : 1 }}
+            whileHover={{ scale: canSave ? 1.02 : 1 }}
+            className="px-4 py-2 rounded-lg text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed transition"
+            style={{
+              background: canSave
+                ? 'linear-gradient(135deg, #d97706, #b45309)'
+                : '#9ca3af',
+              boxShadow: canSave
+                ? 'inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 12px -2px rgba(180, 83, 9, 0.45)'
+                : 'none',
+            }}
           >
             Save
-          </button>
+          </motion.button>
         </div>
       </div>
-    </div>
+    </FluidDialog>
   );
 }

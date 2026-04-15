@@ -5,6 +5,8 @@ import FarmMap from '../components/map/FarmMap';
 import FieldPanel from '../components/map/FieldPanel';
 import MapControls from '../components/map/MapControls';
 import LayerControl from '../components/map/LayerControl';
+import { AnimatePresence, motion } from 'motion/react';
+import { MapPinArea } from '@phosphor-icons/react';
 import AnnotateTool, { type DrawFinishPayload } from '../components/map/tools/AnnotateTool';
 import SaveAnnotationModal from '../components/map/SaveAnnotationModal';
 import AnnotationsSidebar from '../components/map/AnnotationsSidebar';
@@ -398,16 +400,35 @@ export default function FarmMapPage() {
         onDiscard={handleDiscardAnnotation}
       />
 
-      {/* Sidebar toggle button */}
-      {!sidebarOpen && (
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(true)}
-          className="absolute top-20 right-3 z-10 bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-white"
-        >
-          Annotations ({annotations.length})
-        </button>
-      )}
+      {/* Sidebar toggle button (hidden when sidebar open) */}
+      <AnimatePresence>
+        {!sidebarOpen && (
+          <motion.button
+            key="annotations-toggle"
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.96 }}
+            className="absolute bottom-4 right-3 z-10 rounded-full px-4 py-2.5 text-[12px] font-medium text-stone-800 flex items-center gap-2"
+            style={{
+              background: 'rgba(255, 253, 248, 0.82)',
+              backdropFilter: 'blur(16px) saturate(160%)',
+              WebkitBackdropFilter: 'blur(16px) saturate(160%)',
+              border: '1px solid rgba(194, 167, 120, 0.35)',
+              boxShadow:
+                '0 8px 24px -6px rgba(60, 40, 20, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.7)',
+            }}
+          >
+            <MapPinArea size={16} weight="duotone" className="text-amber-700" />
+            <span>Annotations</span>
+            <span className="text-[11px] font-mono text-stone-500">{annotations.length}</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Annotations sidebar */}
       <AnnotationsSidebar

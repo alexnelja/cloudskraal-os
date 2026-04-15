@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { motion } from 'motion/react';
 import maplibregl from 'maplibre-gl';
 import centroid from '@turf/centroid';
 import { feature as turfFeature } from '@turf/helpers';
@@ -33,30 +34,52 @@ function MarkerContent({ ann, selected }: { ann: Annotation; selected: boolean }
   const def = getCategoryDef(ann.type, ann.category);
   const Icon = def.Icon;
   return (
-    <div
-      className={`group flex items-center gap-1.5 pointer-events-auto select-none ${
-        selected ? 'scale-110' : ''
-      }`}
+    <motion.div
+      className="group flex items-center gap-1.5 pointer-events-auto select-none"
+      initial={{ scale: 0.6, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+      whileHover={{ scale: 1.08 }}
     >
-      <div
-        className={`flex items-center justify-center rounded-full shadow-md border-2 transition ${
-          selected
-            ? 'bg-amber-600 text-white border-white w-8 h-8'
-            : 'bg-white text-amber-700 border-amber-600 w-7 h-7 group-hover:bg-amber-50'
-        }`}
+      <motion.div
+        layout
+        transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+        className="flex items-center justify-center rounded-full"
+        style={{
+          width: selected ? 34 : 28,
+          height: selected ? 34 : 28,
+          background: selected
+            ? 'radial-gradient(circle at 35% 30%, #f59e0b, #b45309)'
+            : 'radial-gradient(circle at 35% 30%, rgba(255,253,248,0.98), rgba(255,253,248,0.85))',
+          color: selected ? '#fff' : '#b45309',
+          border: selected
+            ? '2px solid rgba(255,255,255,0.95)'
+            : '2px solid rgba(217, 119, 6, 0.85)',
+          boxShadow: selected
+            ? '0 6px 16px -4px rgba(146, 64, 14, 0.55), inset 0 1px 0 rgba(255,255,255,0.35)'
+            : '0 4px 10px -2px rgba(60, 40, 20, 0.35), inset 0 1px 0 rgba(255,255,255,0.8)',
+          backdropFilter: 'blur(6px)',
+        }}
       >
-        <Icon size={selected ? 18 : 16} weight={selected ? 'fill' : 'regular'} />
-      </div>
+        <Icon size={selected ? 18 : 15} weight={selected ? 'fill' : 'duotone'} />
+      </motion.div>
       {ann.type === 'pin' && (
-        <span
-          className={`text-[11px] font-medium px-1.5 py-0.5 rounded bg-black/60 text-white whitespace-nowrap max-w-[140px] truncate ${
-            selected ? '' : 'opacity-0 group-hover:opacity-100 transition-opacity'
-          }`}
+        <motion.span
+          animate={{ opacity: selected ? 1 : 0 }}
+          whileHover={{ opacity: 1 }}
+          transition={{ duration: 0.15 }}
+          className="text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap max-w-[160px] truncate group-hover:opacity-100"
+          style={{
+            background: 'rgba(20, 18, 14, 0.78)',
+            color: '#fef3c7',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,0.1)',
+          }}
         >
           {ann.title}
-        </span>
+        </motion.span>
       )}
-    </div>
+    </motion.div>
   );
 }
 
