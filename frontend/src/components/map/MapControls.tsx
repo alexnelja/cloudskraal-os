@@ -49,7 +49,7 @@ export default function MapControls({
   const filterableEnterprises = enterprises.filter(e => !HIDDEN_FROM_FILTER.has(e));
 
   return (
-    <div className="absolute top-3 left-14 right-16 md:right-auto z-10 w-auto md:w-72">
+    <div className="w-[min(calc(100vw-7rem),18rem)] md:w-72">
       <div className="glass-panel rounded-2xl p-3 space-y-2">
 
         {/* Top row: farm dropdown + expand toggle */}

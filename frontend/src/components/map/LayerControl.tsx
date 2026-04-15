@@ -42,7 +42,7 @@ export default function LayerControl({ layers, onToggle, onOpacityChange }: Laye
   ];
 
   return (
-    <div className="absolute top-14 right-3 z-10">
+    <div>
       {/* Toggle button */}
       <button
         onClick={() => setExpanded(prev => !prev)}

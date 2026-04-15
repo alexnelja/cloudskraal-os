@@ -13,6 +13,7 @@ import AnnotationsSidebar from '../components/map/AnnotationsSidebar';
 import AnnotationMarkers from '../components/map/AnnotationMarkers';
 import CreateTaskModal, { type TaskContext } from '../components/map/CreateTaskModal';
 import MapContextMenu, { type MenuItem } from '../components/map/MapContextMenu';
+import MapOverlayRail from '../components/map/MapOverlayRail';
 import type { MapContextMenuEvent } from '../components/map/FarmMap';
 import { listTasks, createTask, type Task } from '../api/tasks';
 import { createAnnotation } from '../api/annotations';
@@ -428,36 +429,54 @@ export default function FarmMapPage() {
         />
       )}
 
-      {/* Floating map controls */}
+      {/* Top-right rail: nav + layers + annotations toggle */}
       {!loading && (
-        <MapControls
-          farms={farms}
-          fields={fields}
-          enterprises={enterprises}
-          visibleEnterprises={visibleEnterprises ?? enterprises}
-          onEnterpriseToggle={handleEnterpriseToggle}
-          onFarmZoom={handleFarmZoom}
-          onFieldSelect={handleFieldSelect}
-        />
+        <MapOverlayRail position="tr">
+          <MapControls
+            farms={farms}
+            fields={fields}
+            enterprises={enterprises}
+            visibleEnterprises={visibleEnterprises ?? enterprises}
+            onEnterpriseToggle={handleEnterpriseToggle}
+            onFarmZoom={handleFarmZoom}
+            onFieldSelect={handleFieldSelect}
+          />
+          <LayerControl
+            layers={mapLayers}
+            onToggle={handleLayerToggle}
+            onOpacityChange={handleLayerOpacity}
+          />
+          <AnimatePresence>
+            {!sidebarOpen && (
+              <motion.button
+                key="annotations-toggle"
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.96 }}
+                className="glass-button rounded-full px-4 py-2.5 text-[12px] font-medium text-stone-800 flex items-center gap-2"
+              >
+                <MapPinArea size={16} weight="duotone" className="text-amber-700" />
+                <span>Annotations</span>
+                <span className="text-[11px] font-mono text-stone-500">{annotations.length}</span>
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </MapOverlayRail>
       )}
 
-      {/* GIS layer control */}
-      {!loading && (
-        <LayerControl
-          layers={mapLayers}
-          onToggle={handleLayerToggle}
-          onOpacityChange={handleLayerOpacity}
-        />
-      )}
-
-      {/* Enterprise color legend */}
+      {/* Enterprise color legend — bottom-left rail */}
       {!loading && enterprises.length > 0 && (() => {
         const legendEnterprises = enterprises.filter(
           e => e !== 'farm_boundary' && e !== 'unclassified',
         );
         if (legendEnterprises.length === 0) return null;
         return (
-          <div className="absolute bottom-8 left-3 z-10">
+          <MapOverlayRail position="bl">
             {/* Mobile: collapsible */}
             <div className="md:hidden">
               {legendExpanded ? (
@@ -526,7 +545,7 @@ export default function FarmMapPage() {
                 </label>
               </div>
             </div>
-          </div>
+          </MapOverlayRail>
         );
       })()}
 
@@ -569,28 +588,6 @@ export default function FarmMapPage() {
         onSave={handleSaveAnnotation}
         onDiscard={handleDiscardAnnotation}
       />
-
-      {/* Sidebar toggle button (hidden when sidebar open) */}
-      <AnimatePresence>
-        {!sidebarOpen && (
-          <motion.button
-            key="annotations-toggle"
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.96 }}
-            className="absolute top-3 right-3 z-10 glass-button rounded-full px-4 py-2.5 text-[12px] font-medium text-stone-800 flex items-center gap-2"
-          >
-            <MapPinArea size={16} weight="duotone" className="text-amber-700" />
-            <span>Annotations</span>
-            <span className="text-[11px] font-mono text-stone-500">{annotations.length}</span>
-          </motion.button>
-        )}
-      </AnimatePresence>
 
       {/* Annotations sidebar */}
       <AnnotationsSidebar
