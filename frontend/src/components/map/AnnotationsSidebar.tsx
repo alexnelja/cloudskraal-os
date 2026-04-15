@@ -13,6 +13,7 @@ interface AnnotationsSidebarProps {
   onToggle: () => void;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  taskCountById?: Record<string, number>;
 }
 
 type FilterValue = 'all' | AnnotationType;
@@ -41,6 +42,7 @@ export default function AnnotationsSidebar({
   onToggle,
   onSelect,
   onDelete,
+  taskCountById = {},
 }: AnnotationsSidebarProps) {
   const [filter, setFilter] = useState<FilterValue>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -182,6 +184,12 @@ export default function AnnotationsSidebar({
                         <span className="text-[10px] uppercase tracking-wide text-stone-400">
                           {def.label}
                         </span>
+                        {taskCountById[a.id] > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-mono">
+                            {taskCountById[a.id]} task
+                            {taskCountById[a.id] === 1 ? '' : 's'}
+                          </span>
+                        )}
                       </div>
                       <div className="text-[10px] text-stone-400 mt-0.5 font-mono">
                         {formatDate(a.created_at)}

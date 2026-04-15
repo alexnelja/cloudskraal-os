@@ -1,4 +1,8 @@
-# Spec 3 (benched) — Map → task trigger
+# Spec 3 (SHIPPED) — Map → task trigger
+
+**Status**: shipped as the tight scope. See `2026-04-15-spec-3-map-task-trigger.md` for the shipped spec; the template-driven full scope (op library + cost estimate) is deferred as 3.2.
+
+
 
 - **Status:** Scope documented, full brainstorming + plan deferred.
 - **Depends on:** Spec #1 (`field_usage_period`) for active-usage lookup; spec 2a/2b for cost estimates from input prices.

@@ -12,6 +12,7 @@ interface AnnotationMarkersProps {
   annotations: Annotation[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onContextMenu?: (annotationId: string, x: number, y: number) => void;
 }
 
 function anchorCoord(ann: Annotation): [number, number] | null {
@@ -95,8 +96,11 @@ export default function AnnotationMarkers({
   annotations,
   selectedId,
   onSelect,
+  onContextMenu,
 }: AnnotationMarkersProps) {
   const markersRef = useRef<Map<string, MarkerRecord>>(new Map());
+  const onContextMenuRef = useRef(onContextMenu);
+  onContextMenuRef.current = onContextMenu;
 
   useEffect(() => {
     if (!map) return;
@@ -132,6 +136,11 @@ export default function AnnotationMarkers({
         el.addEventListener('click', (e) => {
           e.stopPropagation();
           onSelect(ann.id);
+        });
+        el.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onContextMenuRef.current?.(ann.id, e.clientX, e.clientY);
         });
         rec = { marker, root, el, annId: id };
         current.set(id, rec);

@@ -10,6 +10,16 @@ interface GisLayer {
   opacity: number;
 }
 
+export interface MapContextMenuEvent {
+  target: 'field' | 'blank';
+  fieldId?: string;
+  fieldName?: string;
+  lng: number;
+  lat: number;
+  x: number;
+  y: number;
+}
+
 interface FarmMapProps {
   geojson: GeoJSON.FeatureCollection | null;
   farmBoundaries: GeoJSON.FeatureCollection | null;
@@ -22,6 +32,7 @@ interface FarmMapProps {
   annotations?: Annotation[];
   selectedAnnotationId?: string | null;
   onAnnotationSelect?: (id: string) => void;
+  onContextMenu?: (e: MapContextMenuEvent) => void;
 }
 
 function getWmsLayerName(url: string): string {
@@ -166,7 +177,7 @@ function addAnnotationLayers(map: maplibregl.Map) {
 export default function FarmMap({
   geojson, farmBoundaries, selectedFieldId, onFieldSelect,
   visibleEnterprises, showFarmBoundaries = true, onMapReady, gisLayers,
-  annotations, selectedAnnotationId, onAnnotationSelect,
+  annotations, selectedAnnotationId, onAnnotationSelect, onContextMenu,
 }: FarmMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -181,6 +192,9 @@ export default function FarmMap({
 
   const onAnnotationSelectRef = useRef(onAnnotationSelect);
   onAnnotationSelectRef.current = onAnnotationSelect;
+
+  const onContextMenuRef = useRef(onContextMenu);
+  onContextMenuRef.current = onContextMenu;
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -241,6 +255,24 @@ export default function FarmMap({
 
     map.on('mouseenter', 'fields-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'fields-fill', () => { map.getCanvas().style.cursor = ''; });
+
+    // Right-click handling: emit an event with the clicked target info.
+    map.getContainer().addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
+    map.on('contextmenu', (e) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: ['fields-fill'] });
+      const feat = features?.[0];
+      onContextMenuRef.current?.({
+        target: feat ? 'field' : 'blank',
+        fieldId: feat?.properties?.id as string | undefined,
+        fieldName: feat?.properties?.name as string | undefined,
+        lng: e.lngLat.lng,
+        lat: e.lngLat.lat,
+        x: e.originalEvent.clientX,
+        y: e.originalEvent.clientY,
+      });
+    });
 
     return () => {
       mapRef.current = null;

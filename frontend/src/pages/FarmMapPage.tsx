@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import FarmMap from '../components/map/FarmMap';
@@ -6,11 +6,16 @@ import FieldPanel from '../components/map/FieldPanel';
 import MapControls from '../components/map/MapControls';
 import LayerControl from '../components/map/LayerControl';
 import { AnimatePresence, motion } from 'motion/react';
-import { MapPinArea } from '@phosphor-icons/react';
+import { MapPinArea, ClipboardText, NotePencil, CheckSquare, MapPin } from '@phosphor-icons/react';
 import AnnotateTool, { type DrawFinishPayload } from '../components/map/tools/AnnotateTool';
 import SaveAnnotationModal from '../components/map/SaveAnnotationModal';
 import AnnotationsSidebar from '../components/map/AnnotationsSidebar';
 import AnnotationMarkers from '../components/map/AnnotationMarkers';
+import CreateTaskModal, { type TaskContext } from '../components/map/CreateTaskModal';
+import MapContextMenu, { type MenuItem } from '../components/map/MapContextMenu';
+import type { MapContextMenuEvent } from '../components/map/FarmMap';
+import { listTasks, createTask, type Task } from '../api/tasks';
+import { createAnnotation } from '../api/annotations';
 import { getMapGeoJSON, getFarmBoundaries, getFarms, getFields, getMapLayers, updateMapLayer } from '../api/farms';
 import {
   listAnnotations as apiListAnnotations,
@@ -80,6 +85,13 @@ export default function FarmMapPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingDraw, setPendingDraw] = useState<DrawFinishPayload | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number; y: number; title: string; items: MenuItem[];
+  } | null>(null);
+  const [createTaskContext, setCreateTaskContext] = useState<{
+    context: TaskContext; defaultTitle: string;
+  } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -106,7 +118,24 @@ export default function FarmMapPage() {
     apiListAnnotations().then(setAnnotations).catch(err => {
       console.error('Failed to load annotations:', err);
     });
+    listTasks().then(setTasks).catch(err => {
+      console.error('Failed to load tasks:', err);
+    });
   }, []);
+
+  const refreshTasks = useCallback(async () => {
+    try { setTasks(await listTasks()); } catch (e) { console.error(e); }
+  }, []);
+
+  const taskCountByAnnotation = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const t of tasks) {
+      if (t.annotation_id && t.status !== 'completed' && t.status !== 'cancelled') {
+        m[t.annotation_id] = (m[t.annotation_id] ?? 0) + 1;
+      }
+    }
+    return m;
+  }, [tasks]);
 
   const refreshAnnotations = useCallback(async () => {
     try { setAnnotations(await apiListAnnotations()); }
@@ -172,6 +201,117 @@ export default function FarmMapPage() {
     const ann = annotations.find((a) => a.id === id);
     if (ann) flyToAnnotation(ann);
   }, [annotations, flyToAnnotation]);
+
+  const openCreateTaskModal = useCallback((ctx: TaskContext, defaultTitle: string) => {
+    setCreateTaskContext({ context: ctx, defaultTitle });
+  }, []);
+
+  const handleSaveTask = useCallback(async (input: Parameters<typeof createTask>[0]) => {
+    try {
+      await createTask(input);
+      setCreateTaskContext(null);
+      refreshTasks();
+    } catch (e) {
+      console.error('Create task failed', e);
+    }
+  }, [refreshTasks]);
+
+  const handleMapContextMenu = useCallback((e: MapContextMenuEvent) => {
+    const items: MenuItem[] = [];
+    if (e.target === 'field' && e.fieldId) {
+      items.push({
+        id: 'task-for-field',
+        label: `Create task for ${e.fieldName ?? 'this field'}`,
+        Icon: ClipboardText,
+        tint: 'emerald',
+        onClick: () =>
+          openCreateTaskModal(
+            { kind: 'field', label: e.fieldName ?? 'field', fieldId: e.fieldId! },
+            '',
+          ),
+      });
+    } else {
+      items.push({
+        id: 'task-here',
+        label: 'Create task at this location',
+        Icon: ClipboardText,
+        tint: 'emerald',
+        onClick: async () => {
+          // First drop a task_location pin, then open CreateTaskModal linked to it.
+          try {
+            const pin = await createAnnotation({
+              type: 'pin',
+              title: 'Task location',
+              category: 'task_location',
+              geometry: { type: 'Point', coordinates: [e.lng, e.lat] },
+            });
+            setAnnotations((prev) => [pin, ...prev]);
+            openCreateTaskModal(
+              { kind: 'annotation', label: pin.title, annotationId: pin.id },
+              '',
+            );
+          } catch (err) { console.error(err); }
+        },
+      });
+      items.push({
+        id: 'map-note',
+        label: 'Drop map note',
+        Icon: NotePencil,
+        tint: 'amber',
+        onClick: async () => {
+          try {
+            const pin = await createAnnotation({
+              type: 'pin',
+              title: 'Map note',
+              category: 'map_note',
+              geometry: { type: 'Point', coordinates: [e.lng, e.lat] },
+            });
+            setAnnotations((prev) => [pin, ...prev]);
+            setSelectedAnnotationId(pin.id);
+            setSidebarOpen(true);
+          } catch (err) { console.error(err); }
+        },
+      });
+    }
+    setContextMenu({
+      x: e.x,
+      y: e.y,
+      title: e.target === 'field' ? (e.fieldName ?? 'Field') : 'Map',
+      items,
+    });
+  }, [openCreateTaskModal]);
+
+  const handleMarkerContextMenu = useCallback(
+    (annotationId: string, x: number, y: number) => {
+      const ann = annotations.find((a) => a.id === annotationId);
+      if (!ann) return;
+      const items: MenuItem[] = [
+        {
+          id: 'task-linked',
+          label: `Create task linked to ${ann.title}`,
+          Icon: CheckSquare,
+          tint: 'emerald',
+          onClick: () =>
+            openCreateTaskModal(
+              { kind: 'annotation', label: ann.title, annotationId: ann.id },
+              '',
+            ),
+        },
+        {
+          id: 'fly-to',
+          label: 'Zoom to this pin',
+          Icon: MapPin,
+          tint: 'stone',
+          onClick: () => {
+            setSelectedAnnotationId(ann.id);
+            setSidebarOpen(true);
+          },
+        },
+      ];
+      setContextMenu({ x, y, title: ann.title, items });
+    },
+    [annotations, openCreateTaskModal],
+  );
 
   const handleAnnotationDelete = useCallback(async (id: string) => {
     try {
@@ -275,6 +415,7 @@ export default function FarmMapPage() {
           annotations={annotations}
           selectedAnnotationId={selectedAnnotationId}
           onAnnotationSelect={handleAnnotationSelect}
+          onContextMenu={handleMapContextMenu}
         />
       )}
 
@@ -389,6 +530,26 @@ export default function FarmMapPage() {
         annotations={annotations}
         selectedId={selectedAnnotationId}
         onSelect={handleAnnotationSelect}
+        onContextMenu={handleMarkerContextMenu}
+      />
+
+      {/* Context menu on right-click */}
+      <MapContextMenu
+        open={contextMenu !== null}
+        x={contextMenu?.x ?? 0}
+        y={contextMenu?.y ?? 0}
+        title={contextMenu?.title}
+        items={contextMenu?.items ?? []}
+        onDismiss={() => setContextMenu(null)}
+      />
+
+      {/* Create task modal */}
+      <CreateTaskModal
+        open={createTaskContext !== null}
+        defaultTitle={createTaskContext?.defaultTitle ?? ''}
+        context={createTaskContext?.context ?? { kind: 'blank', label: 'location' }}
+        onSave={handleSaveTask}
+        onCancel={() => setCreateTaskContext(null)}
       />
 
       {/* Save dialog after finishing a draw */}
@@ -430,6 +591,7 @@ export default function FarmMapPage() {
         onToggle={() => setSidebarOpen(false)}
         onSelect={handleAnnotationSelect}
         onDelete={handleAnnotationDelete}
+        taskCountById={taskCountByAnnotation}
       />
 
       {/* Field detail panel — overlays on top of map */}
