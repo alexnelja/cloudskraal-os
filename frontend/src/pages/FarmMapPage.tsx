@@ -97,28 +97,50 @@ export default function FarmMapPage() {
   } | null>(null);
   const [armedDropMode, setArmedDropMode] = useState(false);
   const [pressRing, setPressRing] = useState<{ x: number; y: number } | null>(null);
+  const [loadErrors, setLoadErrors] = useState<string[]>([]);
+  const [loadNonce, setLoadNonce] = useState(0);
 
   useEffect(() => {
-    Promise.all([
-      getMapGeoJSON(),
-      getFarmBoundaries(),
-      getFarms(),
-      getFields(),
-      getMapLayers(),
-    ]).then(([gj, boundaries, farmList, fieldList, layerList]) => {
-      setGeojson(gj);
-      setFarmBoundaries(boundaries);
-      setFarms(farmList);
-      setFields(fieldList);
-      setMapLayers(layerList);
-      const ents = getUniqueEnterprises(gj);
-      setEnterprises(ents);
-      setVisibleEnterprises(ents); // start with all visible
-      setLoading(false);
-    }).catch(err => {
-      console.error('Failed to load map data:', err);
-      setLoading(false);
-    });
+    // Fire all endpoints independently so one failure doesn't empty the rest.
+    const errors: string[] = [];
+    let pending = 5;
+    const done = () => {
+      pending -= 1;
+      if (pending === 0) {
+        setLoadErrors(errors);
+        setLoading(false);
+      }
+    };
+
+    getMapGeoJSON()
+      .then(gj => {
+        setGeojson(gj);
+        const ents = getUniqueEnterprises(gj);
+        setEnterprises(ents);
+        setVisibleEnterprises(ents);
+      })
+      .catch(err => { console.error('getMapGeoJSON:', err); errors.push('map'); })
+      .finally(done);
+
+    getFarmBoundaries()
+      .then(setFarmBoundaries)
+      .catch(err => { console.error('getFarmBoundaries:', err); errors.push('boundaries'); })
+      .finally(done);
+
+    getFarms()
+      .then(setFarms)
+      .catch(err => { console.error('getFarms:', err); errors.push('farms'); })
+      .finally(done);
+
+    getFields()
+      .then(setFields)
+      .catch(err => { console.error('getFields:', err); errors.push('fields'); })
+      .finally(done);
+
+    getMapLayers()
+      .then(setMapLayers)
+      .catch(err => { console.error('getMapLayers:', err); errors.push('layers'); })
+      .finally(done);
 
     apiListAnnotations().then(setAnnotations).catch(err => {
       console.error('Failed to load annotations:', err);
@@ -126,7 +148,7 @@ export default function FarmMapPage() {
     listTasks().then(setTasks).catch(err => {
       console.error('Failed to load tasks:', err);
     });
-  }, []);
+  }, [loadNonce]);
 
   const refreshTasks = useCallback(async () => {
     try { setTasks(await listTasks()); } catch (e) { console.error(e); }
@@ -519,6 +541,30 @@ export default function FarmMapPage() {
             exit={{ scale: 1.25, opacity: 0 }}
             transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Data-load error toast */}
+      <AnimatePresence>
+        {loadErrors.length > 0 && (
+          <motion.div
+            key="load-error"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+            className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 glass-panel rounded-2xl px-4 py-3 flex items-center gap-3 max-w-md"
+          >
+            <span className="text-sm text-stone-800">
+              Couldn't load: <span className="font-semibold">{loadErrors.join(', ')}</span>
+            </span>
+            <button
+              onClick={() => { setLoadErrors([]); setLoading(true); setLoadNonce(n => n + 1); }}
+              className="glass-button rounded-full px-3 py-1 text-xs font-medium text-amber-800"
+            >
+              Retry
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
 
