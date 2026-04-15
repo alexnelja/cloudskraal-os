@@ -29,6 +29,7 @@ const usageRoutes = require('./routes/usage');
 const conversionFactorsRoutes = require('./routes/conversion-factors');
 const enterprisePricesRoutes = require('./routes/enterprise-prices');
 const { seedEnterprisePrices } = require('./db/seed-enterprise-prices');
+const annotationsRoutes = require('./routes/annotations');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -64,6 +65,7 @@ app.use('/api', supplyChainRoutes);
 app.use('/api', usageRoutes);
 app.use('/api', conversionFactorsRoutes);
 app.use('/api', enterprisePricesRoutes);
+app.use('/api', annotationsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

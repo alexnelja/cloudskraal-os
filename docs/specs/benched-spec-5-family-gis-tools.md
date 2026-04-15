@@ -13,7 +13,7 @@ Today the map only renders existing field polygons from the seed. No way to meas
 | Sub-spec | Scope | Library |
 |---|---|---|
 | ~~**5a**~~ | ~~Distance + area measurement~~ — **shipped** (see `2026-04-15-spec-5a-measurement.md`) | terradraw |
-| **5b** | Annotations (pinned text, photos, persisted to DB) | terradraw + new `annotations` table |
+| ~~**5b**~~ | ~~Annotations (save + pins + label)~~ — **shipped** (photos deferred to 5b.2; see `2026-04-15-spec-5b-annotations.md`) | terradraw + `annotations` table |
 | **5c** | Free drawing (points, lines, polygons that aren't fields) | terradraw |
 | **5d** | Import/export GeoJSON, KML, Shapefile zip | `@tmcw/togeojson`, `shp-write` |
 | **5e** | Polygon editing (move/insert/delete vertices on existing fields) | maplibre-gl-geo-editor or terradraw edit mode |

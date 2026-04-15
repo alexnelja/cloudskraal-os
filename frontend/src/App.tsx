@@ -13,6 +13,7 @@ import ProductionPage from './pages/ProductionPage';
 import EmployeesPage from './pages/EmployeesPage';
 import InventoryPage from './pages/InventoryPage';
 import FinancialsPage from './pages/FinancialsPage';
+import AnnotationsPage from './pages/AnnotationsPage';
 
 function PageWrapper({ children }: { children: React.ReactNode }) {
   return <div className="p-4 md:p-8"><div className="max-w-7xl mx-auto">{children}</div></div>;
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/employees" element={<EmployeesPage />} />
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/financials" element={<FinancialsPage />} />
+          <Route path="/annotations" element={<PageWrapper><AnnotationsPage /></PageWrapper>} />
         </Routes>
       </AppShell>
     </BrowserRouter>

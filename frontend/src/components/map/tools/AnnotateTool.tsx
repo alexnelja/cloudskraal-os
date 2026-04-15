@@ -4,16 +4,33 @@ import { MaplibreMeasureControl } from '@watergis/maplibre-gl-terradraw';
 import {
   TerraDrawLineStringMode,
   TerraDrawPolygonMode,
+  TerraDrawPointMode,
   TerraDrawUndoRedoKeyboardShortcuts,
 } from 'terra-draw';
 import '@watergis/maplibre-gl-terradraw/dist/maplibre-gl-terradraw.css';
+import type { AnnotationType } from '../../../types/annotation';
 
-interface MeasureToolProps {
-  map: maplibregl.Map | null;
+export interface DrawFinishPayload {
+  type: AnnotationType;
+  geometry: GeoJSON.Geometry;
 }
 
-export default function MeasureTool({ map }: MeasureToolProps) {
+interface AnnotateToolProps {
+  map: maplibregl.Map | null;
+  onFinish?: (payload: DrawFinishPayload) => void;
+}
+
+function geometryToType(geom: GeoJSON.Geometry): AnnotationType | null {
+  if (geom.type === 'LineString') return 'line';
+  if (geom.type === 'Polygon') return 'polygon';
+  if (geom.type === 'Point') return 'pin';
+  return null;
+}
+
+export default function AnnotateTool({ map, onFinish }: AnnotateToolProps) {
   const controlRef = useRef<MaplibreMeasureControl | null>(null);
+  const onFinishRef = useRef(onFinish);
+  onFinishRef.current = onFinish;
 
   useEffect(() => {
     if (!map) return;
@@ -26,7 +43,7 @@ export default function MeasureTool({ map }: MeasureToolProps) {
     };
 
     const control = new MaplibreMeasureControl({
-      modes: ['render', 'linestring', 'polygon', 'delete-selection', 'delete'],
+      modes: ['render', 'linestring', 'polygon', 'point', 'delete-selection', 'delete'],
       measureUnitType: 'metric',
       distancePrecision: 2,
       areaPrecision: 2,
@@ -34,6 +51,7 @@ export default function MeasureTool({ map }: MeasureToolProps) {
       modeOptions: {
         linestring: new TerraDrawLineStringMode(commonModeOptions),
         polygon: new TerraDrawPolygonMode(commonModeOptions),
+        point: new TerraDrawPointMode({ editable: true }),
       },
       undoRedo: {
         keyboardShortcuts: new TerraDrawUndoRedoKeyboardShortcuts({
@@ -46,8 +64,21 @@ export default function MeasureTool({ map }: MeasureToolProps) {
         }),
       },
     });
+
     controlRef.current = control;
     map.addControl(control, 'top-right');
+
+    const td = control.getTerraDrawInstance?.();
+    if (td && typeof td.on === 'function') {
+      td.on('finish', (featureId: string | number) => {
+        const snapshot = typeof td.getSnapshot === 'function' ? td.getSnapshot() : [];
+        const feature = snapshot?.find((f) => f.id === featureId);
+        if (!feature) return;
+        const annType = geometryToType(feature.geometry as GeoJSON.Geometry);
+        if (!annType) return;
+        onFinishRef.current?.({ type: annType, geometry: feature.geometry as GeoJSON.Geometry });
+      });
+    }
 
     return () => {
       if (controlRef.current) {

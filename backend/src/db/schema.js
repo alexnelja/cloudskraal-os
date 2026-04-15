@@ -9,6 +9,7 @@ const { initUsagePeriodsSchema } = require('./schema-usage-periods');
 const { migrateFieldCop } = require('./migrate-field-cop');
 const { initConversionFactorsSchema } = require('./schema-conversion-factors');
 const { initEnterprisePricesSchema } = require('./schema-enterprise-prices');
+const { initAnnotationsSchema } = require('./schema-annotations');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -29,6 +30,7 @@ function getDb() {
     migrateFieldCop(db);
     initConversionFactorsSchema(db);
     initEnterprisePricesSchema(db);
+    initAnnotationsSchema(db);
   }
   return db;
 }

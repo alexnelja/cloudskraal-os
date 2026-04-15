@@ -1,12 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import FarmMap from '../components/map/FarmMap';
 import FieldPanel from '../components/map/FieldPanel';
 import MapControls from '../components/map/MapControls';
 import LayerControl from '../components/map/LayerControl';
+import AnnotateTool, { type DrawFinishPayload } from '../components/map/tools/AnnotateTool';
+import SaveAnnotationModal from '../components/map/SaveAnnotationModal';
+import AnnotationsSidebar from '../components/map/AnnotationsSidebar';
 import { getMapGeoJSON, getFarmBoundaries, getFarms, getFields, getMapLayers, updateMapLayer } from '../api/farms';
+import {
+  listAnnotations as apiListAnnotations,
+  createAnnotation as apiCreateAnnotation,
+  deleteAnnotation as apiDeleteAnnotation,
+} from '../api/annotations';
 import type { Farm, Field, MapLayer } from '../types/farm';
+import type { Annotation, CreateAnnotationInput } from '../types/annotation';
 import { ENTERPRISE_COLORS, ENTERPRISE_LABELS } from '../types/farm';
 
 function getBoundsForFarm(
@@ -60,7 +69,14 @@ export default function FarmMapPage() {
   const [showFarmBoundaries, setShowFarmBoundaries] = useState(true);
   const [mapLayers, setMapLayers] = useState<MapLayer[]>([]);
   const [legendExpanded, setLegendExpanded] = useState(false);
+  const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingDraw, setPendingDraw] = useState<DrawFinishPayload | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     Promise.all([
@@ -83,7 +99,93 @@ export default function FarmMapPage() {
       console.error('Failed to load map data:', err);
       setLoading(false);
     });
+
+    apiListAnnotations().then(setAnnotations).catch(err => {
+      console.error('Failed to load annotations:', err);
+    });
   }, []);
+
+  const refreshAnnotations = useCallback(async () => {
+    try { setAnnotations(await apiListAnnotations()); }
+    catch (e) { console.error('Failed to refresh annotations:', e); }
+  }, []);
+
+  const flyToAnnotation = useCallback((ann: Annotation) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const walk = (c: unknown): [number, number][] => {
+      if (Array.isArray(c) && typeof c[0] === 'number') return [[c[0] as number, c[1] as number]];
+      if (Array.isArray(c)) return (c as unknown[]).flatMap(walk);
+      return [];
+    };
+    const pts = walk((ann.geometry as { coordinates: unknown }).coordinates);
+    if (pts.length === 0) return;
+    if (pts.length === 1) {
+      map.flyTo({ center: pts[0], zoom: Math.max(map.getZoom(), 15) });
+      return;
+    }
+    let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+    for (const [lng, lat] of pts) {
+      minLng = Math.min(minLng, lng); minLat = Math.min(minLat, lat);
+      maxLng = Math.max(maxLng, lng); maxLat = Math.max(maxLat, lat);
+    }
+    map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 80 });
+  }, []);
+
+  // Deep-link: ?annotation=<id>
+  useEffect(() => {
+    const annId = searchParams.get('annotation');
+    if (!annId || annotations.length === 0) return;
+    const ann = annotations.find((a) => a.id === annId);
+    if (!ann) return;
+    setSelectedAnnotationId(annId);
+    setSidebarOpen(true);
+    flyToAnnotation(ann);
+  }, [searchParams, annotations, flyToAnnotation]);
+
+  const handleDrawFinish = useCallback((payload: DrawFinishPayload) => {
+    setPendingDraw(payload);
+  }, []);
+
+  const handleSaveAnnotation = useCallback(async (input: CreateAnnotationInput) => {
+    try {
+      const created = await apiCreateAnnotation(input);
+      setAnnotations((prev) => [created, ...prev]);
+      setSelectedAnnotationId(created.id);
+      setSidebarOpen(true);
+      setPendingDraw(null);
+    } catch (e) {
+      console.error('Save annotation failed:', e);
+    }
+  }, []);
+
+  const handleDiscardAnnotation = useCallback(() => {
+    setPendingDraw(null);
+  }, []);
+
+  const handleAnnotationSelect = useCallback((id: string) => {
+    setSelectedAnnotationId(id);
+    setSidebarOpen(true);
+    const ann = annotations.find((a) => a.id === id);
+    if (ann) flyToAnnotation(ann);
+  }, [annotations, flyToAnnotation]);
+
+  const handleAnnotationDelete = useCallback(async (id: string) => {
+    try {
+      await apiDeleteAnnotation(id);
+      setAnnotations((prev) => prev.filter((a) => a.id !== id));
+      if (selectedAnnotationId === id) setSelectedAnnotationId(null);
+      if (searchParams.get('annotation') === id) {
+        searchParams.delete('annotation');
+        setSearchParams(searchParams, { replace: true });
+      }
+    } catch (e) {
+      console.error('Delete annotation failed:', e);
+    }
+  }, [selectedAnnotationId, searchParams, setSearchParams]);
+
+  // Suppress unused warning in strict mode (reserved for future server refetch).
+  void refreshAnnotations;
 
   function handleLayerToggle(layerId: string, visible: boolean) {
     setMapLayers(prev =>
@@ -165,8 +267,11 @@ export default function FarmMapPage() {
           onFieldSelect={setSelectedFieldId}
           visibleEnterprises={visibleEnterprises}
           showFarmBoundaries={showFarmBoundaries}
-          onMapReady={(map) => { mapRef.current = map; }}
+          onMapReady={(map) => { mapRef.current = map; setMapInstance(map); }}
           gisLayers={mapLayers}
+          annotations={annotations}
+          selectedAnnotationId={selectedAnnotationId}
+          onAnnotationSelect={handleAnnotationSelect}
         />
       )}
 
@@ -271,6 +376,39 @@ export default function FarmMapPage() {
           </div>
         );
       })()}
+
+      {/* Annotate tool — mounts terradraw controls on the map */}
+      <AnnotateTool map={mapInstance} onFinish={handleDrawFinish} />
+
+      {/* Save dialog after finishing a draw */}
+      <SaveAnnotationModal
+        open={pendingDraw !== null}
+        type={pendingDraw?.type ?? 'pin'}
+        geometry={pendingDraw?.geometry ?? { type: 'Point', coordinates: [0, 0] }}
+        onSave={handleSaveAnnotation}
+        onDiscard={handleDiscardAnnotation}
+      />
+
+      {/* Sidebar toggle button */}
+      {!sidebarOpen && (
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          className="absolute top-20 right-3 z-10 bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-white"
+        >
+          Annotations ({annotations.length})
+        </button>
+      )}
+
+      {/* Annotations sidebar */}
+      <AnnotationsSidebar
+        open={sidebarOpen}
+        annotations={annotations}
+        selectedId={selectedAnnotationId}
+        onToggle={() => setSidebarOpen(false)}
+        onSelect={handleAnnotationSelect}
+        onDelete={handleAnnotationDelete}
+      />
 
       {/* Field detail panel — overlays on top of map */}
       <FieldPanel
