@@ -311,7 +311,7 @@ export default function FarmMapPage() {
             {/* Mobile: collapsible */}
             <div className="md:hidden">
               {legendExpanded ? (
-                <div className="bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2 flex flex-col gap-1">
+                <div className="glass-panel rounded-xl px-3 py-2 flex flex-col gap-1">
                   <button
                     onClick={() => setLegendExpanded(false)}
                     className="text-xs font-semibold text-stone-600 text-left mb-1"
@@ -337,14 +337,14 @@ export default function FarmMapPage() {
               ) : (
                 <button
                   onClick={() => setLegendExpanded(true)}
-                  className="bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2 text-xs font-semibold text-stone-600"
+                  className="glass-button rounded-full px-3 py-2 text-xs font-semibold text-stone-700"
                 >
                   Legend ▼
                 </button>
               )}
             </div>
             {/* Desktop: always visible */}
-            <div className="hidden md:block bg-white/90 backdrop-blur rounded-lg shadow px-3 py-2">
+            <div className="hidden md:block glass-panel rounded-xl px-3 py-2">
               <p className="text-xs font-semibold text-stone-500 mb-1">Fields</p>
               <div className="flex flex-col gap-1">
                 {legendEnterprises.map(ent => (
@@ -413,15 +413,7 @@ export default function FarmMapPage() {
             transition={{ type: 'spring', stiffness: 380, damping: 32 }}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.96 }}
-            className="absolute bottom-4 right-3 z-10 rounded-full px-4 py-2.5 text-[12px] font-medium text-stone-800 flex items-center gap-2"
-            style={{
-              background: 'rgba(255, 253, 248, 0.82)',
-              backdropFilter: 'blur(16px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(16px) saturate(160%)',
-              border: '1px solid rgba(194, 167, 120, 0.35)',
-              boxShadow:
-                '0 8px 24px -6px rgba(60, 40, 20, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.7)',
-            }}
+            className="absolute top-3 right-3 z-10 glass-button rounded-full px-4 py-2.5 text-[12px] font-medium text-stone-800 flex items-center gap-2"
           >
             <MapPinArea size={16} weight="duotone" className="text-amber-700" />
             <span>Annotations</span>

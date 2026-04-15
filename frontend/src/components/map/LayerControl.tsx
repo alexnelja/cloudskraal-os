@@ -42,38 +42,20 @@ export default function LayerControl({ layers, onToggle, onOpacityChange }: Laye
   ];
 
   return (
-    <div className="absolute top-24 right-3 z-10">
+    <div className="absolute top-14 right-3 z-10">
       {/* Toggle button */}
       <button
         onClick={() => setExpanded(prev => !prev)}
-        className="rounded-full p-2.5 flex items-center justify-center transition-colors"
+        className="glass-button rounded-full p-2.5 flex items-center justify-center"
         title="Toggle GIS layers"
         aria-label="Toggle GIS layer panel"
-        style={{
-          background: 'rgba(255, 253, 248, 0.82)',
-          backdropFilter: 'blur(16px) saturate(160%)',
-          WebkitBackdropFilter: 'blur(16px) saturate(160%)',
-          border: '1px solid rgba(194, 167, 120, 0.35)',
-          boxShadow:
-            '0 8px 24px -6px rgba(60, 40, 20, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.7)',
-        }}
       >
         <Layers size={18} className={expanded ? 'text-amber-700' : 'text-stone-700'} />
       </button>
 
       {/* Expanded panel */}
       {expanded && (
-        <div
-          className="mt-2 rounded-2xl w-72 max-h-[60vh] overflow-y-auto"
-          style={{
-            background: 'rgba(255, 253, 248, 0.92)',
-            backdropFilter: 'blur(22px) saturate(165%)',
-            WebkitBackdropFilter: 'blur(22px) saturate(165%)',
-            border: '1px solid rgba(194, 167, 120, 0.35)',
-            boxShadow:
-              '0 14px 40px -12px rgba(60, 40, 20, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.7)',
-          }}
-        >
+        <div className="mt-2 glass-panel rounded-2xl w-72 max-h-[60vh] overflow-y-auto">
           <div className="px-3 py-2 border-b border-[#f3f4f3]">
             <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">GIS Layers</p>
           </div>

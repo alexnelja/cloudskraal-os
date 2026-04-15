@@ -49,15 +49,15 @@ export default function MapControls({
   const filterableEnterprises = enterprises.filter(e => !HIDDEN_FROM_FILTER.has(e));
 
   return (
-    <div className="absolute top-3 left-3 right-3 md:right-auto z-10 w-auto md:w-72">
-      <div className="bg-white rounded-xl shadow-lg p-3 space-y-2">
+    <div className="absolute top-3 left-14 right-16 md:right-auto z-10 w-auto md:w-72">
+      <div className="glass-panel rounded-2xl p-3 space-y-2">
 
         {/* Top row: farm dropdown + expand toggle */}
         <div className="flex items-center gap-2">
           {/* Farm zoom dropdown */}
           <div className="relative flex-1">
             <select
-              className="w-full appearance-none bg-white border border-stone-300 rounded-lg px-3 py-1.5 pr-7 text-sm text-stone-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full appearance-none glass-input rounded-lg px-3 py-1.5 pr-7 text-sm text-stone-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500"
               defaultValue=""
               onChange={e => onFarmZoom(e.target.value || null)}
             >
@@ -101,13 +101,13 @@ export default function MapControls({
                     setSearchOpen(true);
                   }}
                   onFocus={() => setSearchOpen(true)}
-                  className="w-full bg-white border border-stone-300 rounded-lg pl-8 pr-3 py-1.5 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full glass-input rounded-lg pl-8 pr-3 py-1.5 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
 
               {/* Search results dropdown */}
               {searchOpen && filteredFields.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-stone-200 rounded-lg shadow-lg overflow-hidden z-20">
+                <div className="absolute top-full left-0 right-0 mt-1 glass-panel rounded-xl overflow-hidden z-20">
                   {filteredFields.map(field => (
                     <button
                       key={field.id}
