@@ -14,6 +14,7 @@ import AnnotationMarkers from '../components/map/AnnotationMarkers';
 import CreateTaskModal, { type TaskContext } from '../components/map/CreateTaskModal';
 import MapContextMenu, { type MenuItem } from '../components/map/MapContextMenu';
 import MapOverlayRail from '../components/map/MapOverlayRail';
+import { useLongPress } from '../hooks/useLongPress';
 import type { MapContextMenuEvent } from '../components/map/FarmMap';
 import { listTasks, createTask, type Task } from '../api/tasks';
 import { createAnnotation } from '../api/annotations';
@@ -95,6 +96,7 @@ export default function FarmMapPage() {
     context: TaskContext; defaultTitle: string;
   } | null>(null);
   const [armedDropMode, setArmedDropMode] = useState(false);
+  const [pressRing, setPressRing] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -354,6 +356,41 @@ export default function FarmMapPage() {
     [annotations, openCreateTaskModal],
   );
 
+  // Long-press handlers — fire the same chooser as right-click, but gesture-based.
+  // Trackpad-friendly alternative to secondary-click per Apple HIG.
+  const openChooserAt = useCallback(
+    (clientX: number, clientY: number) => {
+      const map = mapRef.current;
+      if (!map) return;
+      const rect = map.getContainer().getBoundingClientRect();
+      const point: [number, number] = [clientX - rect.left, clientY - rect.top];
+      const lngLat = map.unproject(point);
+      const features = map.queryRenderedFeatures(point, { layers: ['fields-fill'] });
+      const feat = features?.[0];
+      handleMapContextMenu({
+        target: feat ? 'field' : 'blank',
+        fieldId: feat?.properties?.id as string | undefined,
+        fieldName: feat?.properties?.name as string | undefined,
+        lng: lngLat.lng,
+        lat: lngLat.lat,
+        x: clientX,
+        y: clientY,
+      });
+    },
+    [handleMapContextMenu],
+  );
+
+  const longPress = useLongPress({
+    durationMs: 500,
+    onLongPress: ({ clientX, clientY }) => {
+      if (armedDropMode) return; // armed-click path already handles drop
+      openChooserAt(clientX, clientY);
+    },
+    onProgress: (p) => {
+      setPressRing(p.active ? { x: p.clientX, y: p.clientY } : null);
+    },
+  });
+
   const handleAnnotationDelete = useCallback(async (id: string) => {
     try {
       await apiDeleteAnnotation(id);
@@ -444,6 +481,13 @@ export default function FarmMapPage() {
           <p className="text-stone-500 text-sm">Loading map...</p>
         </div>
       ) : (
+        <div
+          className="w-full h-full"
+          onPointerDown={longPress.onPointerDown}
+          onPointerMove={longPress.onPointerMove}
+          onPointerUp={longPress.onPointerUp}
+          onPointerCancel={longPress.onPointerCancel}
+        >
         <FarmMap
           geojson={geojson}
           farmBoundaries={farmBoundaries}
@@ -460,7 +504,23 @@ export default function FarmMapPage() {
           onMapClick={handleArmedMapClick}
           cursor={armedDropMode ? 'crosshair' : undefined}
         />
+        </div>
       )}
+
+      {/* Long-press affordance — pulsing amber ring grows 0→500ms */}
+      <AnimatePresence>
+        {pressRing && (
+          <motion.div
+            key="press-ring"
+            className="longpress-ring"
+            style={{ left: pressRing.x, top: pressRing.y }}
+            initial={{ scale: 0.2, opacity: 0.8 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 1.25, opacity: 0 }}
+            transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Armed drop-note banner */}
       <AnimatePresence>
