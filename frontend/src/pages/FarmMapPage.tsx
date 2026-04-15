@@ -7,7 +7,7 @@ import MapControls from '../components/map/MapControls';
 import LayerControl from '../components/map/LayerControl';
 import { AnimatePresence, motion } from 'motion/react';
 import { MapPinArea, ClipboardText, NotePencil, CheckSquare, MapPin } from '@phosphor-icons/react';
-import AnnotateTool, { type DrawFinishPayload } from '../components/map/tools/AnnotateTool';
+import AnnotateTool, { type DrawFinishPayload, type DrawMode } from '../components/map/tools/AnnotateTool';
 import SaveAnnotationModal from '../components/map/SaveAnnotationModal';
 import AnnotationsSidebar from '../components/map/AnnotationsSidebar';
 import AnnotationMarkers from '../components/map/AnnotationMarkers';
@@ -99,6 +99,7 @@ export default function FarmMapPage() {
   const [pressRing, setPressRing] = useState<{ x: number; y: number } | null>(null);
   const [loadErrors, setLoadErrors] = useState<string[]>([]);
   const [loadNonce, setLoadNonce] = useState(0);
+  const [drawMode, setDrawMode] = useState<DrawMode>('static');
 
   useEffect(() => {
     // Fire all endpoints independently so one failure doesn't empty the rest.
@@ -568,6 +569,33 @@ export default function FarmMapPage() {
         )}
       </AnimatePresence>
 
+      {/* Drawing help banner — shown while terradraw is in an active draw mode */}
+      <AnimatePresence>
+        {(drawMode === 'linestring' || drawMode === 'polygon' || drawMode === 'point') && (
+          <motion.div
+            key="draw-help"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="absolute top-3 left-1/2 -translate-x-1/2 z-20 glass-panel rounded-full px-4 py-2 flex items-center gap-4 pointer-events-none"
+          >
+            <span className="text-[11px] text-stone-600 flex items-center gap-1.5">
+              <span className="px-1.5 py-0.5 rounded bg-stone-100 font-mono text-[10px] text-stone-700">Click</span>
+              add point
+            </span>
+            <span className="text-[11px] text-stone-600 flex items-center gap-1.5">
+              <span className="px-1.5 py-0.5 rounded bg-emerald-100 font-mono text-[10px] text-emerald-800">Enter</span>
+              save
+            </span>
+            <span className="text-[11px] text-stone-600 flex items-center gap-1.5">
+              <span className="px-1.5 py-0.5 rounded bg-stone-100 font-mono text-[10px] text-stone-700">Esc</span>
+              cancel
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Armed drop-note banner */}
       <AnimatePresence>
         {armedDropMode && (
@@ -711,7 +739,7 @@ export default function FarmMapPage() {
       })()}
 
       {/* Annotate tool — mounts terradraw controls on the map */}
-      <AnnotateTool map={mapInstance} onFinish={handleDrawFinish} />
+      <AnnotateTool map={mapInstance} onFinish={handleDrawFinish} onModeChange={setDrawMode} />
 
       {/* Category icon markers overlay (QGIS-style) */}
       <AnnotationMarkers

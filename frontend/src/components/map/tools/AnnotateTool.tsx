@@ -15,9 +15,12 @@ export interface DrawFinishPayload {
   geometry: GeoJSON.Geometry;
 }
 
+export type DrawMode = 'static' | 'linestring' | 'polygon' | 'point' | 'select' | 'render' | string;
+
 interface AnnotateToolProps {
   map: maplibregl.Map | null;
   onFinish?: (payload: DrawFinishPayload) => void;
+  onModeChange?: (mode: DrawMode) => void;
 }
 
 function geometryToType(geom: GeoJSON.Geometry): AnnotationType | null {
@@ -27,10 +30,12 @@ function geometryToType(geom: GeoJSON.Geometry): AnnotationType | null {
   return null;
 }
 
-export default function AnnotateTool({ map, onFinish }: AnnotateToolProps) {
+export default function AnnotateTool({ map, onFinish, onModeChange }: AnnotateToolProps) {
   const controlRef = useRef<MaplibreMeasureControl | null>(null);
   const onFinishRef = useRef(onFinish);
   onFinishRef.current = onFinish;
+  const onModeChangeRef = useRef(onModeChange);
+  onModeChangeRef.current = onModeChange;
 
   useEffect(() => {
     if (!map) return;
@@ -80,7 +85,20 @@ export default function AnnotateTool({ map, onFinish }: AnnotateToolProps) {
       });
     }
 
+    // terradraw has no mode-change event; poll getMode() cheaply and fire
+    // onModeChange whenever it transitions. 300ms is imperceptible and the
+    // call is trivially fast.
+    let lastMode: string | null = null;
+    const modePollId = window.setInterval(() => {
+      const current = typeof td?.getMode === 'function' ? td.getMode() : null;
+      if (current && current !== lastMode) {
+        lastMode = current;
+        onModeChangeRef.current?.(current as DrawMode);
+      }
+    }, 300);
+
     return () => {
+      window.clearInterval(modePollId);
       if (controlRef.current) {
         map.removeControl(controlRef.current);
         controlRef.current = null;
