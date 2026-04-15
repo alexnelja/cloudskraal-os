@@ -66,7 +66,7 @@ export default function AnnotateTool({ map, onFinish }: AnnotateToolProps) {
     });
 
     controlRef.current = control;
-    map.addControl(control, 'top-right');
+    map.addControl(control, 'top-left');
 
     const td = control.getTerraDrawInstance?.();
     if (td && typeof td.on === 'function') {

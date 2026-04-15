@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/schema');
 const { refreshFieldCurrent } = require('../services/usage');
 const { todayUTC } = require('../utils/dates');
+const { getSoilAtPoint, fieldCentroid } = require('../services/fieldEnrichment');
 
 const router = Router();
 
@@ -114,6 +115,24 @@ router.get('/fields/:id', (req, res) => {
   ).all(req.params.id);
 
   res.json({ ...field, production, field_notes });
+});
+
+// GET /api/fields/:id/enrichment — external GIS data at the field centroid
+router.get('/fields/:id/enrichment', async (req, res) => {
+  const db = getDb();
+  const field = db.prepare('SELECT id, geometry FROM fields WHERE id = ?').get(req.params.id);
+  if (!field) return res.status(404).json({ error: 'Field not found' });
+
+  const c = fieldCentroid(field);
+  if (!c) return res.status(422).json({ error: 'field_centroid_unavailable' });
+
+  try {
+    const soil = await getSoilAtPoint(c.lng, c.lat);
+    res.json({ centroid: c, soil });
+  } catch (err) {
+    console.warn('[enrichment] fetch failed:', err.message);
+    res.json({ centroid: c, soil: null, error: 'fetch_failed' });
+  }
 });
 
 // PATCH /api/fields/:id — partial update

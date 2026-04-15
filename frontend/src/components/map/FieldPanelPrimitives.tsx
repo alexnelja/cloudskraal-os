@@ -15,7 +15,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   seed: 'bg-teal-100 text-teal-700',
 };
 
-export const TABS = ['Overview', 'Inputs', 'Labour', 'Costs'] as const;
+export const TABS = ['Overview', 'Inputs', 'Labour', 'Costs', 'Enrichment'] as const;
 export type Tab = typeof TABS[number];
 
 export interface ChartRow {

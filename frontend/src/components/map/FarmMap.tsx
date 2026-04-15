@@ -321,6 +321,13 @@ export default function FarmMap({
               ],
               tileSize: 256,
             });
+          } else if (layer.source_type === 'xyz') {
+            // URL already contains {z}/{y}/{x} placeholders — use as-is
+            map.addSource(layerId, {
+              type: 'raster',
+              tiles: [layer.source_url],
+              tileSize: 256,
+            });
           }
 
           if (map.getSource(layerId)) {

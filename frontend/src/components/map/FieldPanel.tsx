@@ -11,6 +11,7 @@ import {
   STATUS_COLORS, TABS, type Tab, type ChartRow, hasProductionData,
 } from './FieldPanelPrimitives';
 import { OverviewTab, InputsTab, LabourTab, CostsTab } from './FieldPanelTabs';
+import FieldEnrichmentTab from './FieldEnrichmentTab';
 
 interface FieldPanelProps {
   fieldId: string | null;
@@ -190,6 +191,9 @@ function PanelContent({
                 field={field}
                 loading={costLoading}
               />
+            )}
+            {activeTab === 'Enrichment' && fieldId && (
+              <FieldEnrichmentTab fieldId={fieldId} />
             )}
           </>
         )}

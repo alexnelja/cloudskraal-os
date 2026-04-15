@@ -12,6 +12,7 @@ const { initEnterprisePricesSchema } = require('./schema-enterprise-prices');
 const { initAnnotationsSchema } = require('./schema-annotations');
 const { migrateAnnotationsCategory } = require('./migrate-annotations-category');
 const { migrateTasksAnnotationLink } = require('./migrate-tasks-annotation-link');
+const { migrateMapLayersLive } = require('./migrate-map-layers-live');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -35,6 +36,7 @@ function getDb() {
     initAnnotationsSchema(db);
     migrateAnnotationsCategory(db);
     migrateTasksAnnotationLink(db);
+    migrateMapLayersLive(db);
   }
   return db;
 }
