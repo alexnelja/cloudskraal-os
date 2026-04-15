@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import WikiRenderer from './WikiRenderer';
+import LinkedItemsPanel from './LinkedItemsPanel';
 import WikiCMEditor from './WikiCMEditor';
 import WikiTableOfContents from './WikiTableOfContents';
 import WikiProperties from './WikiProperties';
@@ -176,6 +177,8 @@ export default function WikiSinglePage({ slug, rightSidebarOpen = true, onTitleC
                   }}
                   onNavigate={(s) => navigate(`/wiki/${s}`)}
                 />
+
+                {slug && <LinkedItemsPanel slug={slug} />}
               </div>
 
               {/* Right sidebar */}
