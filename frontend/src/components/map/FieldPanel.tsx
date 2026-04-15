@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, ClipboardList, BookOpen } from 'lucide-react';
+import { X, ClipboardText as ClipboardList, BookOpen } from '@phosphor-icons/react';
 import { getField, getFieldCostOfProduction } from '../../api/farms';
 import type {
   Field, FieldCostOfProduction as FieldCostOfProductionType,

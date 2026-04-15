@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { MagnifyingGlass as Search, SlidersHorizontal, CaretDown as ChevronDown } from '@phosphor-icons/react';
 import { ENTERPRISE_COLORS, ENTERPRISE_LABELS } from '../../types/farm';
 import type { Farm, Field } from '../../types/farm';
 

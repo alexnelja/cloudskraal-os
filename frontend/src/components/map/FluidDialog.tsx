@@ -64,10 +64,10 @@ export default function FluidDialog({
             }}
             onClick={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: 'rgba(255, 253, 248, 0.94)',
-              backdropFilter: 'blur(24px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-              border: '1px solid rgba(255, 255, 255, 0.6)',
+              background: 'var(--glass-bg-strong)',
+              backdropFilter: 'var(--glass-blur)',
+              WebkitBackdropFilter: 'var(--glass-blur)',
+              border: 'var(--glass-border)',
               boxShadow:
                 '0 30px 60px -15px rgba(60, 40, 20, 0.35), 0 8px 24px -8px rgba(60, 40, 20, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
             }}

@@ -2,8 +2,15 @@ import {
   BarChart, Bar, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import {
-  Droplets, Clock, DollarSign, Layers, AlertTriangle, CheckCircle, Sprout, BarChart3,
-} from 'lucide-react';
+  Drop as Droplets,
+  Clock,
+  CurrencyDollar as DollarSign,
+  Stack as Layers,
+  Warning as AlertTriangle,
+  CheckCircle,
+  Plant as Sprout,
+  ChartBar as BarChart3,
+} from '@phosphor-icons/react';
 import type {
   Field, FieldCostOfProduction as FieldCostOfProductionType,
   FieldInputTransaction, FieldTaskInput, FieldLabourEntry,

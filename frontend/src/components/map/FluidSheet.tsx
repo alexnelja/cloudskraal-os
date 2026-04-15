@@ -47,11 +47,11 @@ export default function FluidSheet({
             mass: 0.9,
           }}
           style={{
-            backgroundColor: 'rgba(255, 253, 248, 0.88)',
-            backdropFilter: 'blur(22px) saturate(165%)',
-            WebkitBackdropFilter: 'blur(22px) saturate(165%)',
-            borderLeft: side === 'right' ? '1px solid rgba(194, 167, 120, 0.3)' : undefined,
-            borderRight: side === 'left' ? '1px solid rgba(194, 167, 120, 0.3)' : undefined,
+            background: 'var(--glass-bg)',
+            backdropFilter: 'var(--glass-blur)',
+            WebkitBackdropFilter: 'var(--glass-blur)',
+            borderLeft: side === 'right' ? 'var(--glass-border)' : undefined,
+            borderRight: side === 'left' ? 'var(--glass-border)' : undefined,
             boxShadow:
               side === 'right'
                 ? '-14px 0 40px -12px rgba(60, 40, 20, 0.25), -4px 0 14px -4px rgba(60, 40, 20, 0.15)'

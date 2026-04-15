@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Layers } from 'lucide-react';
+import { Stack as Layers } from '@phosphor-icons/react';
 import type { MapLayer } from '../../types/farm';
 
 interface LayerControlProps {
