@@ -12,11 +12,11 @@ const router = express.Router();
 
 router.get('/annotations', (req, res) => {
   const db = getDb();
-  const { type, field_id } = req.query;
+  const { type, field_id, wiki_page_id } = req.query;
   if (type && !['line', 'polygon', 'pin'].includes(type)) {
     return res.status(400).json({ error: 'invalid_type' });
   }
-  res.json(listAnnotations(db, { type, field_id }));
+  res.json(listAnnotations(db, { type, field_id, wiki_page_id }));
 });
 
 router.get('/annotations/:id', (req, res) => {
@@ -28,7 +28,7 @@ router.get('/annotations/:id', (req, res) => {
 
 router.post('/annotations', (req, res) => {
   const db = getDb();
-  const { type, title, notes, geometry } = req.body || {};
+  const { type, title, notes, geometry, category, metadata, wiki_page_id } = req.body || {};
   if (!type || !['line', 'polygon', 'pin'].includes(type)) {
     return res.status(400).json({ error: 'invalid_type' });
   }
@@ -39,7 +39,9 @@ router.post('/annotations', (req, res) => {
     return res.status(400).json({ error: 'geometry_required' });
   }
   try {
-    const row = createAnnotation(db, { type, title: title.trim(), notes, geometry });
+    const row = createAnnotation(db, {
+      type, title: title.trim(), notes, geometry, category, metadata, wiki_page_id,
+    });
     res.status(201).json(row);
   } catch (e) {
     if (e.code === 'type_mismatch') return res.status(400).json({ error: 'type_mismatch' });
@@ -49,7 +51,7 @@ router.post('/annotations', (req, res) => {
 
 router.patch('/annotations/:id', (req, res) => {
   const db = getDb();
-  const { title, notes, geometry, type, length_m, area_m2, category, metadata } = req.body || {};
+  const { title, notes, geometry, type, length_m, area_m2, category, metadata, wiki_page_id } = req.body || {};
   if (geometry !== undefined || type !== undefined || length_m !== undefined || area_m2 !== undefined) {
     return res.status(400).json({ error: 'immutable_field', message: 'geometry, type, and metrics are immutable; delete + recreate' });
   }
@@ -61,6 +63,7 @@ router.patch('/annotations/:id', (req, res) => {
   if (notes !== undefined) patch.notes = notes;
   if (category !== undefined) patch.category = category;
   if (metadata !== undefined) patch.metadata = metadata;
+  if (wiki_page_id !== undefined) patch.wiki_page_id = wiki_page_id;
   try {
     const row = updateAnnotation(db, req.params.id, patch);
     if (!row) return res.status(404).json({ error: 'not_found' });

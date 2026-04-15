@@ -13,6 +13,7 @@ const { initAnnotationsSchema } = require('./schema-annotations');
 const { migrateAnnotationsCategory } = require('./migrate-annotations-category');
 const { migrateTasksAnnotationLink } = require('./migrate-tasks-annotation-link');
 const { migrateMapLayersLive } = require('./migrate-map-layers-live');
+const { migrateWikiPageLinks } = require('./migrate-wiki-page-links');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -37,6 +38,7 @@ function getDb() {
     migrateAnnotationsCategory(db);
     migrateTasksAnnotationLink(db);
     migrateMapLayersLive(db);
+    migrateWikiPageLinks(db);
   }
   return db;
 }

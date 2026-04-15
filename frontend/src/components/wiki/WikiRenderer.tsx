@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import { useNavigate } from 'react-router-dom';
 import MarkdownIt from 'markdown-it';
 // @ts-expect-error no types for markdown-it-footnote
 import footnotePlugin from 'markdown-it-footnote';
 import DOMPurify from 'dompurify';
 import WikiLinkPreview from './WikiLinkPreview';
+import WikiTaskBlock from './WikiTaskBlock';
+import WikiAnnotationBlock from './WikiAnnotationBlock';
 
 const md = new MarkdownIt({ html: false, linkify: true, typographer: true });
 md.use(footnotePlugin);
@@ -21,6 +24,7 @@ const PURIFY_CONFIG = {
     'href', 'class', 'id', 'style', 'data-wiki-link', 'data-level', 'data-heading-id',
     'data-callout', 'data-mermaid-rendered', 'type', 'checked', 'disabled',
     'src', 'alt', 'title',
+    'data-embed-type', 'data-embed-id',
   ],
 };
 
@@ -42,6 +46,16 @@ function processWikiLinks(body: string): string {
     const slug = titleToSlug(title.trim());
     return `<a href="/wiki/${slug}" class="wiki-link" data-wiki-link="${slug}">${title.trim()}</a>`;
   });
+}
+
+// `::task:UUID::` and `::annotation:UUID::` → embed placeholder spans.
+// The React effect in WikiRenderer will portal real components into these.
+function processEmbeds(body: string): string {
+  return body.replace(
+    /::(task|annotation):([0-9a-f-]{8,})::/g,
+    (_, kind, id) =>
+      `<span class="wiki-embed" data-embed-type="${kind}" data-embed-id="${id}"></span>`,
+  );
 }
 
 const CALLOUT_ICONS: Record<string, string> = {
@@ -75,7 +89,7 @@ function processCallouts(body: string): string {
 
 /** Runs the full markdown pipeline and returns rendered HTML + extracted headings. */
 function renderMarkdown(body: string, brokenSlugs?: Set<string>): { html: string; headings: WikiHeading[] } {
-  const processed = processCallouts(processHighlights(processWikiLinks(body)));
+  const processed = processEmbeds(processCallouts(processHighlights(processWikiLinks(body))));
   let html = md.render(processed);
 
   // Mark broken links
@@ -143,6 +157,36 @@ export default function WikiRenderer({ body, onHeadingsReady, brokenSlugs, onChe
   useEffect(() => {
     onHeadingsReady?.(headings);
   }, [headings, onHeadingsReady]);
+
+  // Mount embed blocks (tasks, annotations) into placeholder spans.
+  const embedRootsRef = useRef<Root[]>([]);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    // Clean up previous roots
+    embedRootsRef.current.forEach((r) => {
+      try { r.unmount(); } catch { /* noop */ }
+    });
+    embedRootsRef.current = [];
+
+    const embeds = container.querySelectorAll<HTMLElement>('span.wiki-embed[data-embed-id]');
+    embeds.forEach((el) => {
+      const type = el.dataset.embedType;
+      const id = el.dataset.embedId;
+      if (!type || !id) return;
+      const root = createRoot(el);
+      if (type === 'task') root.render(<WikiTaskBlock taskId={id} />);
+      else if (type === 'annotation') root.render(<WikiAnnotationBlock annotationId={id} />);
+      embedRootsRef.current.push(root);
+    });
+
+    return () => {
+      embedRootsRef.current.forEach((r) => {
+        try { r.unmount(); } catch { /* noop */ }
+      });
+      embedRootsRef.current = [];
+    };
+  }, [html]);
 
   // Render mermaid diagrams after mount
   useEffect(() => {

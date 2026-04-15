@@ -256,7 +256,7 @@ router.get('/tasks/upcoming', (req, res) => {
 // GET /api/tasks — list tasks
 router.get('/tasks', (req, res) => {
   const db = getDb();
-  const { status, enterprise, field_id, annotation_id, due_before, due_after } = req.query;
+  const { status, enterprise, field_id, annotation_id, wiki_page_id, due_before, due_after } = req.query;
 
   const conditions = [];
   const params = [];
@@ -276,6 +276,10 @@ router.get('/tasks', (req, res) => {
   if (annotation_id) {
     conditions.push('t.annotation_id = ?');
     params.push(annotation_id);
+  }
+  if (wiki_page_id) {
+    conditions.push('t.wiki_page_id = ?');
+    params.push(wiki_page_id);
   }
   if (due_before) {
     conditions.push('t.due_date < ?');
@@ -328,7 +332,7 @@ router.post('/tasks', async (req, res) => {
   try {
     const db = getDb();
     const {
-      title, description, enterprise, field_id, annotation_id, type, status, priority,
+      title, description, enterprise, field_id, annotation_id, wiki_page_id, type, status, priority,
       due_date, assigned_to, depends_on_task_id, recurrence_rule,
       calendar_event_id, notes
     } = req.body;
@@ -339,11 +343,11 @@ router.post('/tasks', async (req, res) => {
     const now = new Date().toISOString();
 
     db.prepare(`
-      INSERT INTO tasks (id, title, description, enterprise, field_id, annotation_id, type, status, priority, due_date, completed_date, completed_by, assigned_to, depends_on_task_id, recurrence_rule, calendar_event_id, google_event_id, notes, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, NULL, ?, ?, ?)
+      INSERT INTO tasks (id, title, description, enterprise, field_id, annotation_id, wiki_page_id, type, status, priority, due_date, completed_date, completed_by, assigned_to, depends_on_task_id, recurrence_rule, calendar_event_id, google_event_id, notes, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, NULL, ?, ?, ?)
     `).run(
       id, title, description || null, enterprise || null, field_id || null,
-      annotation_id || null,
+      annotation_id || null, wiki_page_id || null,
       type || 'manual', status || 'pending', priority || 'medium',
       due_date || null, assigned_to || null, depends_on_task_id || null,
       recurrence_rule || null, calendar_event_id || null, notes || null,
@@ -377,7 +381,7 @@ router.patch('/tasks/:id', (req, res) => {
   if (!existing) return res.status(404).json({ error: 'Task not found' });
 
   const allowed = [
-    'title', 'description', 'enterprise', 'field_id', 'annotation_id',
+    'title', 'description', 'enterprise', 'field_id', 'annotation_id', 'wiki_page_id',
     'type', 'status', 'priority', 'due_date', 'assigned_to', 'depends_on_task_id',
     'recurrence_rule', 'calendar_event_id', 'notes'
   ];

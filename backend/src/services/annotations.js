@@ -37,7 +37,7 @@ function hydrate(row) {
 }
 
 function createAnnotation(db, input) {
-  const { type, title, notes = null, geometry, category = null, metadata = null } = input;
+  const { type, title, notes = null, geometry, category = null, metadata = null, wiki_page_id = null } = input;
   if (!title || typeof title !== 'string') {
     const err = new Error('title_required');
     err.code = 'title_required';
@@ -59,25 +59,26 @@ function createAnnotation(db, input) {
   db.prepare(`
     INSERT INTO annotations
       (id, type, title, notes, geometry_json, length_m, area_m2, field_id, farm_id,
-       created_at, updated_at, category, metadata_json)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+       created_at, updated_at, category, metadata_json, wiki_page_id)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     id, type, title, notes, JSON.stringify(geometry),
     length_m, area_m2, field_id, farm_id, now, now,
-    category, metadata == null ? null : JSON.stringify(metadata),
+    category, metadata == null ? null : JSON.stringify(metadata), wiki_page_id,
   );
   return hydrate(db.prepare('SELECT * FROM annotations WHERE id = ?').get(id));
 }
 
-function listAnnotations(db, { type, field_id } = {}) {
+function listAnnotations(db, { type, field_id, wiki_page_id } = {}) {
   const where = [];
   const params = [];
   if (type) { where.push('type = ?'); params.push(type); }
   if (field_id) { where.push('field_id = ?'); params.push(field_id); }
+  if (wiki_page_id) { where.push('wiki_page_id = ?'); params.push(wiki_page_id); }
   const sql = `
     SELECT * FROM annotations
     ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-    ORDER BY created_at DESC, id DESC
+    ORDER BY created_at DESC, rowid DESC
   `;
   return db.prepare(sql).all(...params).map(hydrate);
 }
@@ -100,6 +101,7 @@ function updateAnnotation(db, id, patch) {
   if (patch.title !== undefined) { fields.push('title = ?'); params.push(patch.title); }
   if (patch.notes !== undefined) { fields.push('notes = ?'); params.push(patch.notes); }
   if (patch.category !== undefined) { fields.push('category = ?'); params.push(patch.category); }
+  if (patch.wiki_page_id !== undefined) { fields.push('wiki_page_id = ?'); params.push(patch.wiki_page_id); }
   if (patch.metadata !== undefined) {
     fields.push('metadata_json = ?');
     params.push(patch.metadata == null ? null : JSON.stringify(patch.metadata));

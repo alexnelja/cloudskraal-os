@@ -256,6 +256,76 @@ router.post('/wiki', (req, res) => {
   });
 });
 
+// POST /api/wiki/map-notes/append — idempotent helper
+// Creates the "map-notes" page if missing; appends an annotation embed token
+// to its body and links the annotation to the page. Returns { page, annotation }.
+router.post('/wiki/map-notes/append', (req, res) => {
+  const db = getDb();
+  const { annotation_id } = req.body || {};
+  if (!annotation_id) return res.status(400).json({ error: 'annotation_id required' });
+
+  const ann = db.prepare('SELECT * FROM annotations WHERE id = ?').get(annotation_id);
+  if (!ann) return res.status(404).json({ error: 'annotation not found' });
+
+  const slug = 'map-notes';
+  let page = db.prepare('SELECT * FROM wiki_pages WHERE slug = ?').get(slug);
+  const now = new Date().toISOString();
+
+  if (!page) {
+    const id = uuidv4();
+    db.prepare(`
+      INSERT INTO wiki_pages (id, slug, title, body, category, enterprise, tags, pinned, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id, slug, 'Map notes',
+      '# Map notes\n\nPins dropped on the farm map appear here. Each entry links back to its map location.\n\n',
+      'field-notes', null, null, 1, now, now,
+    );
+    auditLog(db, 'create', slug, 'Map notes');
+    page = db.prepare('SELECT * FROM wiki_pages WHERE id = ?').get(id);
+  }
+
+  const token = `::annotation:${ann.id}::`;
+  if (!page.body.includes(token)) {
+    const addition = `\n${token}\n`;
+    db.prepare('UPDATE wiki_pages SET body = body || ?, updated_at = ? WHERE id = ?')
+      .run(addition, now, page.id);
+  }
+
+  db.prepare('UPDATE annotations SET wiki_page_id = ? WHERE id = ?')
+    .run(page.id, ann.id);
+
+  invalidateTitleCache();
+  const updated = db.prepare('SELECT * FROM wiki_pages WHERE id = ?').get(page.id);
+  res.json({
+    page: { ...updated, tags: updated.tags ? JSON.parse(updated.tags) : [] },
+    annotation_id: ann.id,
+  });
+});
+
+// GET /api/wiki/:slug/linked — tasks + annotations referencing this page
+router.get('/wiki/:slug/linked', (req, res) => {
+  const db = getDb();
+  const page = db.prepare('SELECT id FROM wiki_pages WHERE slug = ?').get(req.params.slug);
+  if (!page) return res.status(404).json({ error: 'Page not found' });
+
+  const tasks = db.prepare(`
+    SELECT t.*, f.name AS field_name
+    FROM tasks t
+    LEFT JOIN fields f ON f.id = t.field_id
+    WHERE t.wiki_page_id = ?
+    ORDER BY t.status, t.created_at DESC
+  `).all(page.id);
+
+  const annotations = db.prepare(`
+    SELECT * FROM annotations
+    WHERE wiki_page_id = ?
+    ORDER BY created_at DESC
+  `).all(page.id);
+
+  res.json({ tasks, annotations });
+});
+
 // PATCH /api/wiki/:slug — update page
 router.patch('/wiki/:slug', (req, res) => {
   const db = getDb();

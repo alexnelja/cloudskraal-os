@@ -16,6 +16,7 @@ import MapContextMenu, { type MenuItem } from '../components/map/MapContextMenu'
 import type { MapContextMenuEvent } from '../components/map/FarmMap';
 import { listTasks, createTask, type Task } from '../api/tasks';
 import { createAnnotation } from '../api/annotations';
+import { API_BASE_URL } from '../api/config';
 import { getMapGeoJSON, getFarmBoundaries, getFarms, getFields, getMapLayers, updateMapLayer } from '../api/farms';
 import {
   listAnnotations as apiListAnnotations,
@@ -269,6 +270,14 @@ export default function FarmMapPage() {
             setAnnotations((prev) => [pin, ...prev]);
             setSelectedAnnotationId(pin.id);
             setSidebarOpen(true);
+            // Append to the Map Notes wiki page (best-effort)
+            try {
+              await fetch(`${API_BASE_URL}/wiki/map-notes/append`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ annotation_id: pin.id }),
+              });
+            } catch (err2) { console.warn('wiki append failed', err2); }
           } catch (err) { console.error(err); }
         },
       });

@@ -3,6 +3,7 @@ import Database from 'better-sqlite3';
 import { initFarmSchema } from '../src/db/schema-farms.js';
 import { initAnnotationsSchema } from '../src/db/schema-annotations.js';
 import { migrateAnnotationsCategory } from '../src/db/migrate-annotations-category.js';
+import { migrateWikiPageLinks } from '../src/db/migrate-wiki-page-links.js';
 import {
   createAnnotation,
   listAnnotations,
@@ -17,6 +18,11 @@ function setup() {
   initFarmSchema(db);
   initAnnotationsSchema(db);
   migrateAnnotationsCategory(db);
+  // Wiki-page FK can't resolve in a farm-only test DB, so create a minimal
+  // wiki_pages table to satisfy the REFERENCES before running the migration.
+  db.exec('CREATE TABLE IF NOT EXISTS wiki_pages (id TEXT PRIMARY KEY)');
+  db.exec('CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY)');
+  migrateWikiPageLinks(db);
   // Seed one farm + one field that contains the point (0.5, 0.5).
   const now = new Date().toISOString();
   db.prepare(`
