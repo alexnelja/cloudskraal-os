@@ -198,13 +198,23 @@ body {
   background-color: var(--accent-50) !important;
 }
 
-/* Attribution pill */
+/* Attribution pill — kept bottom-right but offset above the FAB on mobile
+   and safely to the side on desktop so © marks never sit under the FAB. */
 .maplibregl-ctrl-attrib {
   background: var(--glass-bg-soft) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
   border-radius: var(--overlay-radius-sm) !important;
   font-size: 10px !important;
+  margin-right: 88px !important;   /* clear the 56px FAB + 16px gap on desktop */
+  margin-bottom: 8px !important;
+}
+@media (max-width: 767px) {
+  /* On mobile the FAB sits at bottom-24 so attribution can tuck under. */
+  .maplibregl-ctrl-attrib {
+    margin-right: 12px !important;
+    margin-bottom: 100px !important;
+  }
 }
 
 /* Terradraw control + measure control — match glass aesthetic */

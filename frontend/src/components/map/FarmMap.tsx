@@ -227,7 +227,9 @@ export default function FarmMap({
       attributionControl: false,
     });
 
-    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+    // No NavigationControl: zoom via trackpad pinch / scroll / +/- keys;
+    // the top-right rail is reserved for MapControls / LayerControl / Annotations.
+    // Attribution stays bottom-right but CSS offsets it above the FAB's footprint.
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
     map.on('load', () => {
