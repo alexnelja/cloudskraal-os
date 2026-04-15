@@ -133,7 +133,7 @@ body {
 
   /* Overlay grid — rails + radii */
   --overlay-inset: 12px;
-  --overlay-gap: 8px;
+  --overlay-gap: 14px;
   --overlay-radius: 14px;
   --overlay-radius-sm: 10px;
 
@@ -258,6 +258,19 @@ body {
 .map-rail--tr { top: var(--overlay-inset); right: var(--overlay-inset); align-items: flex-end; }
 .map-rail--bl { bottom: var(--overlay-inset); left: var(--overlay-inset); align-items: flex-start; }
 .map-rail--br { bottom: var(--overlay-inset); right: var(--overlay-inset); align-items: flex-end; }
+
+/* Softer shadow for glass surfaces living inside a rail, so shadow
+   bleed doesn't visually crowd the next item in the stack. */
+.map-rail .glass-panel {
+  box-shadow:
+    0 8px 22px -8px rgba(60, 40, 20, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+.map-rail .glass-button {
+  box-shadow:
+    0 4px 14px -4px rgba(60, 40, 20, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
 
 /* Long-press affordance — pulsing amber ring */
 .longpress-ring {
