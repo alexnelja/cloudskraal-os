@@ -18,6 +18,8 @@ function makeAnn(overrides: Partial<Annotation> = {}): Annotation {
     farm_id: null,
     created_at: '2026-04-15T00:00:00Z',
     updated_at: '2026-04-15T00:00:00Z',
+    category: null,
+    metadata: null,
     ...overrides,
   };
 }

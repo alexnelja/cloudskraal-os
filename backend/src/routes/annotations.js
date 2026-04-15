@@ -49,7 +49,7 @@ router.post('/annotations', (req, res) => {
 
 router.patch('/annotations/:id', (req, res) => {
   const db = getDb();
-  const { title, notes, geometry, type, length_m, area_m2 } = req.body || {};
+  const { title, notes, geometry, type, length_m, area_m2, category, metadata } = req.body || {};
   if (geometry !== undefined || type !== undefined || length_m !== undefined || area_m2 !== undefined) {
     return res.status(400).json({ error: 'immutable_field', message: 'geometry, type, and metrics are immutable; delete + recreate' });
   }
@@ -59,9 +59,16 @@ router.patch('/annotations/:id', (req, res) => {
   const patch = {};
   if (title !== undefined) patch.title = title.trim();
   if (notes !== undefined) patch.notes = notes;
-  const row = updateAnnotation(db, req.params.id, patch);
-  if (!row) return res.status(404).json({ error: 'not_found' });
-  res.json(row);
+  if (category !== undefined) patch.category = category;
+  if (metadata !== undefined) patch.metadata = metadata;
+  try {
+    const row = updateAnnotation(db, req.params.id, patch);
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    res.json(row);
+  } catch (e) {
+    if (e.code === 'invalid_category') return res.status(400).json({ error: 'invalid_category' });
+    throw e;
+  }
 });
 
 router.delete('/annotations/:id', (req, res) => {

@@ -11,7 +11,9 @@ function initAnnotationsSchema(db) {
       field_id       TEXT REFERENCES fields(id) ON DELETE SET NULL,
       farm_id        TEXT REFERENCES farms(id)  ON DELETE SET NULL,
       created_at     TEXT NOT NULL,
-      updated_at     TEXT NOT NULL
+      updated_at     TEXT NOT NULL,
+      category       TEXT,
+      metadata_json  TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_annotations_type
       ON annotations(type);

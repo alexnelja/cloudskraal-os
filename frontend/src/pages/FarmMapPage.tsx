@@ -8,6 +8,7 @@ import LayerControl from '../components/map/LayerControl';
 import AnnotateTool, { type DrawFinishPayload } from '../components/map/tools/AnnotateTool';
 import SaveAnnotationModal from '../components/map/SaveAnnotationModal';
 import AnnotationsSidebar from '../components/map/AnnotationsSidebar';
+import AnnotationMarkers from '../components/map/AnnotationMarkers';
 import { getMapGeoJSON, getFarmBoundaries, getFarms, getFields, getMapLayers, updateMapLayer } from '../api/farms';
 import {
   listAnnotations as apiListAnnotations,
@@ -379,6 +380,14 @@ export default function FarmMapPage() {
 
       {/* Annotate tool — mounts terradraw controls on the map */}
       <AnnotateTool map={mapInstance} onFinish={handleDrawFinish} />
+
+      {/* Category icon markers overlay (QGIS-style) */}
+      <AnnotationMarkers
+        map={mapInstance}
+        annotations={annotations}
+        selectedId={selectedAnnotationId}
+        onSelect={handleAnnotationSelect}
+      />
 
       {/* Save dialog after finishing a draw */}
       <SaveAnnotationModal

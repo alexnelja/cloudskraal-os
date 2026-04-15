@@ -122,7 +122,7 @@ function annotationsToFC(
       .map((a) => ({
         type: 'Feature',
         id: a.id,
-        properties: { id: a.id, title: a.title },
+        properties: { id: a.id, title: a.title, category: a.category ?? 'generic' },
         geometry: a.geometry,
       })),
   };
@@ -158,41 +158,9 @@ function addAnnotationLayers(map: maplibregl.Map) {
     paint: { 'line-color': '#b45309', 'line-width': 4 },
   });
 
-  map.addLayer({
-    id: 'ann-pin', type: 'circle', source: 'annotations-pins',
-    paint: {
-      'circle-color': '#d97706',
-      'circle-radius': 6,
-      'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 2,
-    },
-  });
-  map.addLayer({
-    id: 'ann-pin-highlight', type: 'circle', source: 'annotations-pins',
-    filter: ['==', ['get', 'id'], ''],
-    paint: {
-      'circle-color': '#b45309',
-      'circle-radius': 9,
-      'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 2,
-    },
-  });
-
-  map.addLayer({
-    id: 'ann-labels', type: 'symbol',
-    source: 'annotations-pins',
-    layout: {
-      'text-field': ['get', 'title'],
-      'text-size': 12, 'text-offset': [0, 1.2], 'text-anchor': 'top',
-      'text-allow-overlap': false,
-    },
-    paint: {
-      'text-color': '#ffffff',
-      'text-halo-color': 'rgba(0,0,0,0.7)',
-      'text-halo-width': 1.5,
-    },
-    minzoom: 13,
-  });
+  // Pin circle/label layers removed — AnnotationMarkers overlay renders Phosphor icons
+  // as DOM markers (see components/map/AnnotationMarkers.tsx). Polygon + line stroke
+  // layers above stay for geometry rendering.
 }
 
 export default function FarmMap({
@@ -260,7 +228,7 @@ export default function FarmMap({
       }
     });
 
-    for (const layerId of ['ann-line', 'ann-poly-fill', 'ann-pin']) {
+    for (const layerId of ['ann-line', 'ann-poly-fill']) {
       map.on('click', layerId, (e) => {
         const feature = e.features?.[0];
         if (feature?.properties?.id) {
@@ -400,9 +368,6 @@ export default function FarmMap({
     }
     if (map.getLayer('ann-poly-highlight')) {
       map.setFilter('ann-poly-highlight', ['==', ['get', 'id'], id]);
-    }
-    if (map.getLayer('ann-pin-highlight')) {
-      map.setFilter('ann-pin-highlight', ['==', ['get', 'id'], id]);
     }
   }, [selectedAnnotationId]);
 

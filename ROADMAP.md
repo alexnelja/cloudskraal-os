@@ -10,6 +10,7 @@
 - **[Workbook] Oct-2025 master workbook ingest** — every non-empty sheet covered (`9a995e9` audit)
 - **[Spec 5a] Map distance + area measurement** — `MaplibreMeasureControl` wired into FarmMap; frontend vitest+jsdom+RTL infra set up
 - **[Spec 5b] Annotations** — save measurements + pins with title/notes; sidebar + `/annotations` page; `annotations` table, CRUD API, auto field resolution (photos deferred to 5b.2)
+- **[Spec 5c] Categorized annotations** — per-type whitelists, Phosphor icons, `category` + `metadata_json` columns; category picker in modal; icon markers overlay on map (QGIS-style)
 
 ## Queued — benched specs (`docs/specs/benched-*.md`)
 
@@ -21,7 +22,7 @@
 - **Spec 2h** — Reporting UI
 - **Spec 3** — Map → task trigger
 - **Spec 4** — Task lifecycle
-- **Spec 5 family (5a–5j)** — GIS tools: ~~5a measurement~~, ~~5b annotations~~ shipped; 5c–5j pending
+- **Spec 5 family (5a–5j)** — GIS tools: ~~5a measurement~~, ~~5b annotations~~, ~~5c categorized~~ shipped; 5d–5j pending
 - **Spec 6** — Technical calculators (sprayer, pest dose, lime, electrical, fluid, fertilizer)
 - **Spec 7 family** — Live position tracking (employees + vehicles) — POPIA-gated
 - **Spec 8 family (8a–8g)** — Weather & climate (ingest, overlays, correlation, forecasts, alerts, station)

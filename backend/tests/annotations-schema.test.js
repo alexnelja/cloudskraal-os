@@ -2,12 +2,14 @@ import { describe, it, expect } from 'vitest';
 import Database from 'better-sqlite3';
 import { initFarmSchema } from '../src/db/schema-farms.js';
 import { initAnnotationsSchema } from '../src/db/schema-annotations.js';
+import { migrateAnnotationsCategory } from '../src/db/migrate-annotations-category.js';
 
 function seedDb() {
   const db = new Database(':memory:');
   db.pragma('foreign_keys = ON');
   initFarmSchema(db);
   initAnnotationsSchema(db);
+  migrateAnnotationsCategory(db);
   return db;
 }
 
@@ -17,8 +19,9 @@ describe('annotations schema', () => {
     const cols = db.prepare('PRAGMA table_info(annotations)').all();
     const names = cols.map((c) => c.name).sort();
     expect(names).toEqual([
-      'area_m2', 'created_at', 'farm_id', 'field_id', 'geometry_json',
-      'id', 'length_m', 'notes', 'title', 'type', 'updated_at',
+      'area_m2', 'category', 'created_at', 'farm_id', 'field_id',
+      'geometry_json', 'id', 'length_m', 'metadata_json', 'notes',
+      'title', 'type', 'updated_at',
     ]);
     db.close();
   });

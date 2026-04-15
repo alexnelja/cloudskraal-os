@@ -14,7 +14,7 @@ Today the map only renders existing field polygons from the seed. No way to meas
 |---|---|---|
 | ~~**5a**~~ | ~~Distance + area measurement~~ — **shipped** (see `2026-04-15-spec-5a-measurement.md`) | terradraw |
 | ~~**5b**~~ | ~~Annotations (save + pins + label)~~ — **shipped** (photos deferred to 5b.2; see `2026-04-15-spec-5b-annotations.md`) | terradraw + `annotations` table |
-| **5c** | Free drawing (points, lines, polygons that aren't fields) | terradraw |
+| ~~**5c**~~ | ~~Categorized annotations (infrastructure pins/lines/polygons with Phosphor icons)~~ — **shipped** (see `2026-04-15-spec-5c-categorized-annotations.md`); free-draw extension deferred | terradraw + phosphor |
 | **5d** | Import/export GeoJSON, KML, Shapefile zip | `@tmcw/togeojson`, `shp-write` |
 | **5e** | Polygon editing (move/insert/delete vertices on existing fields) | maplibre-gl-geo-editor or terradraw edit mode |
 | **5f** | Basemap switcher (OSM, MapTiler streets, satellite tiles, hybrid) | MapLibre style swap |

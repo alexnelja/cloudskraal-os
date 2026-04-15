@@ -13,6 +13,8 @@ export interface Annotation {
   farm_id: string | null;
   created_at: string;
   updated_at: string;
+  category: string | null;
+  metadata: Record<string, unknown> | null;
 }
 
 export interface CreateAnnotationInput {
@@ -20,9 +22,13 @@ export interface CreateAnnotationInput {
   title: string;
   notes?: string | null;
   geometry: GeoJSON.Geometry;
+  category?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface UpdateAnnotationInput {
   title?: string;
   notes?: string | null;
+  category?: string | null;
+  metadata?: Record<string, unknown> | null;
 }

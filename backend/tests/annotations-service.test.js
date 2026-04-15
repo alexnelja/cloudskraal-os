@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { initFarmSchema } from '../src/db/schema-farms.js';
 import { initAnnotationsSchema } from '../src/db/schema-annotations.js';
+import { migrateAnnotationsCategory } from '../src/db/migrate-annotations-category.js';
 import {
   createAnnotation,
   listAnnotations,
@@ -15,6 +16,7 @@ function setup() {
   db.pragma('foreign_keys = ON');
   initFarmSchema(db);
   initAnnotationsSchema(db);
+  migrateAnnotationsCategory(db);
   // Seed one farm + one field that contains the point (0.5, 0.5).
   const now = new Date().toISOString();
   db.prepare(`
@@ -139,5 +141,49 @@ describe('annotations service', () => {
 
   it('delete returns false when not found', () => {
     expect(deleteAnnotation(db, 'missing')).toBe(false);
+  });
+
+  it('create with a valid category persists it', () => {
+    const row = createAnnotation(db, {
+      type: 'pin',
+      title: 'Pump 1',
+      category: 'pump',
+      geometry: { type: 'Point', coordinates: [0.5, 0.5] },
+    });
+    expect(row.category).toBe('pump');
+  });
+
+  it('create with an invalid category throws invalid_category', () => {
+    expect(() =>
+      createAnnotation(db, {
+        type: 'pin',
+        title: 'Bad',
+        category: 'dam',
+        geometry: { type: 'Point', coordinates: [0.5, 0.5] },
+      }),
+    ).toThrow(/invalid_category/);
+  });
+
+  it('update can set and clear category', () => {
+    const row = createAnnotation(db, {
+      type: 'pin',
+      title: 'Pump',
+      geometry: { type: 'Point', coordinates: [0.5, 0.5] },
+    });
+    const updated = updateAnnotation(db, row.id, { category: 'pump' });
+    expect(updated.category).toBe('pump');
+    const cleared = updateAnnotation(db, row.id, { category: null });
+    expect(cleared.category).toBeNull();
+  });
+
+  it('create stores metadata_json when provided', () => {
+    const row = createAnnotation(db, {
+      type: 'pin',
+      title: 'Pump',
+      category: 'pump',
+      metadata: { flow_lps: 12, installed: '2025-03' },
+      geometry: { type: 'Point', coordinates: [0.5, 0.5] },
+    });
+    expect(row.metadata).toEqual({ flow_lps: 12, installed: '2025-03' });
   });
 });

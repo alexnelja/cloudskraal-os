@@ -74,7 +74,7 @@ describe('SaveAnnotationModal', () => {
     expect(screen.queryByTestId('annotation-metric')).not.toBeInTheDocument();
   });
 
-  it('Save calls onSave with {type, title, notes, geometry}', async () => {
+  it('Save calls onSave with {type, title, notes, geometry, category}', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
     const geometry = { type: 'Point', coordinates: [19.0, -31.3] } as GeoJSON.Geometry;
@@ -87,7 +87,29 @@ describe('SaveAnnotationModal', () => {
       title: 'Gate',
       notes: 'broken latch',
       geometry,
+      category: 'generic',
     });
+  });
+
+  it('picks a category and includes it in the saved payload', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    const geometry = { type: 'Point', coordinates: [19, -31] } as GeoJSON.Geometry;
+    renderModal({ onSave, geometry, type: 'pin' });
+    await user.type(screen.getByLabelText(/title/i), 'Pump 1');
+    // click the 'pump' category tile
+    await user.click(document.querySelector('[data-category="pump"]') as HTMLElement);
+    await user.click(screen.getByRole('button', { name: /save/i }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ category: 'pump' }));
+  });
+
+  it('category picker filters by annotation type (polygon has dam, not pump)', () => {
+    renderModal({ type: 'polygon', geometry: {
+      type: 'Polygon',
+      coordinates: [[[0,0],[1,0],[1,1],[0,1],[0,0]]],
+    } as GeoJSON.Geometry });
+    expect(document.querySelector('[data-category="dam"]')).toBeTruthy();
+    expect(document.querySelector('[data-category="pump"]')).toBeFalsy();
   });
 
   it('Discard calls onDiscard', async () => {
