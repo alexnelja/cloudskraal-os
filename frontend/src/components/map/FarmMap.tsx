@@ -33,6 +33,10 @@ interface FarmMapProps {
   selectedAnnotationId?: string | null;
   onAnnotationSelect?: (id: string) => void;
   onContextMenu?: (e: MapContextMenuEvent) => void;
+  /** Fires on every map click with geo coordinates. Use for armed drop modes. */
+  onMapClick?: (e: { lng: number; lat: number; onField: boolean }) => void;
+  /** CSS cursor override (e.g. 'crosshair' while armed). */
+  cursor?: string;
 }
 
 function getWmsLayerName(url: string): string {
@@ -178,6 +182,7 @@ export default function FarmMap({
   geojson, farmBoundaries, selectedFieldId, onFieldSelect,
   visibleEnterprises, showFarmBoundaries = true, onMapReady, gisLayers,
   annotations, selectedAnnotationId, onAnnotationSelect, onContextMenu,
+  onMapClick, cursor,
 }: FarmMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -195,6 +200,9 @@ export default function FarmMap({
 
   const onContextMenuRef = useRef(onContextMenu);
   onContextMenuRef.current = onContextMenu;
+
+  const onMapClickRef = useRef(onMapClick);
+  onMapClickRef.current = onMapClick;
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -240,6 +248,22 @@ export default function FarmMap({
       if (feature?.properties?.id) {
         onFieldSelectRef.current(feature.properties.id as string);
       }
+    });
+
+    // Global click — emits lng/lat for armed drop modes. Skips if the
+    // click was already handled by the field / annotation layers above
+    // so normal select interactions aren't doubled.
+    map.on('click', (e) => {
+      const cb = onMapClickRef.current;
+      if (!cb) return;
+      const features = map.queryRenderedFeatures(e.point, {
+        layers: ['fields-fill'],
+      });
+      cb({
+        lng: e.lngLat.lng,
+        lat: e.lngLat.lat,
+        onField: (features?.length ?? 0) > 0,
+      });
     });
 
     for (const layerId of ['ann-line', 'ann-poly-fill']) {
@@ -410,5 +434,11 @@ export default function FarmMap({
     }
   }, [selectedAnnotationId]);
 
-  return <div ref={mapContainerRef} className="w-full h-full" />;
+  return (
+    <div
+      ref={mapContainerRef}
+      className="w-full h-full"
+      style={cursor ? { cursor } : undefined}
+    />
+  );
 }

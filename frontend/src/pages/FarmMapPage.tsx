@@ -94,6 +94,7 @@ export default function FarmMapPage() {
   const [createTaskContext, setCreateTaskContext] = useState<{
     context: TaskContext; defaultTitle: string;
   } | null>(null);
+  const [armedDropMode, setArmedDropMode] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -128,6 +129,56 @@ export default function FarmMapPage() {
   const refreshTasks = useCallback(async () => {
     try { setTasks(await listTasks()); } catch (e) { console.error(e); }
   }, []);
+
+  const dropMapNote = useCallback(async (lng: number, lat: number) => {
+    try {
+      const pin = await createAnnotation({
+        type: 'pin',
+        title: 'Map note',
+        category: 'map_note',
+        geometry: { type: 'Point', coordinates: [lng, lat] },
+      });
+      setAnnotations((prev) => [pin, ...prev]);
+      setSelectedAnnotationId(pin.id);
+      setSidebarOpen(true);
+      try {
+        await fetch(`${API_BASE_URL}/wiki/map-notes/append`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ annotation_id: pin.id }),
+        });
+      } catch (err2) { console.warn('wiki append failed', err2); }
+    } catch (err) { console.error(err); }
+  }, []);
+
+  // Arm drop-note mode when FAB navigates here with ?armNote=1.
+  useEffect(() => {
+    if (searchParams.get('armNote') === '1') {
+      setArmedDropMode(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('armNote');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Esc cancels armed drop mode.
+  useEffect(() => {
+    if (!armedDropMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setArmedDropMode(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [armedDropMode]);
+
+  const handleArmedMapClick = useCallback(
+    async (e: { lng: number; lat: number }) => {
+      if (!armedDropMode) return;
+      await dropMapNote(e.lng, e.lat);
+      setArmedDropMode(false);
+    },
+    [armedDropMode, dropMapNote],
+  );
 
   const taskCountByAnnotation = useMemo(() => {
     const m: Record<string, number> = {};
@@ -260,27 +311,7 @@ export default function FarmMapPage() {
         label: 'Drop map note',
         Icon: NotePencil,
         tint: 'amber',
-        onClick: async () => {
-          try {
-            const pin = await createAnnotation({
-              type: 'pin',
-              title: 'Map note',
-              category: 'map_note',
-              geometry: { type: 'Point', coordinates: [e.lng, e.lat] },
-            });
-            setAnnotations((prev) => [pin, ...prev]);
-            setSelectedAnnotationId(pin.id);
-            setSidebarOpen(true);
-            // Append to the Map Notes wiki page (best-effort)
-            try {
-              await fetch(`${API_BASE_URL}/wiki/map-notes/append`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ annotation_id: pin.id }),
-              });
-            } catch (err2) { console.warn('wiki append failed', err2); }
-          } catch (err) { console.error(err); }
-        },
+        onClick: () => { dropMapNote(e.lng, e.lat); },
       });
     }
     setContextMenu({
@@ -289,7 +320,7 @@ export default function FarmMapPage() {
       title: e.target === 'field' ? (e.fieldName ?? 'Field') : 'Map',
       items,
     });
-  }, [openCreateTaskModal]);
+  }, [openCreateTaskModal, dropMapNote]);
 
   const handleMarkerContextMenu = useCallback(
     (annotationId: string, x: number, y: number) => {
@@ -426,8 +457,32 @@ export default function FarmMapPage() {
           selectedAnnotationId={selectedAnnotationId}
           onAnnotationSelect={handleAnnotationSelect}
           onContextMenu={handleMapContextMenu}
+          onMapClick={handleArmedMapClick}
+          cursor={armedDropMode ? 'crosshair' : undefined}
         />
       )}
+
+      {/* Armed drop-note banner */}
+      <AnimatePresence>
+        {armedDropMode && (
+          <motion.div
+            key="drop-banner"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="absolute top-3 left-1/2 -translate-x-1/2 z-20 glass-panel rounded-full px-4 py-2 flex items-center gap-3 pointer-events-none"
+          >
+            <NotePencil size={16} weight="duotone" className="text-amber-700" />
+            <span className="text-sm font-medium text-stone-800">
+              Click to drop note
+            </span>
+            <span className="text-[11px] font-mono text-stone-500 px-1.5 py-0.5 rounded bg-stone-100">
+              Esc
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Top-right rail: nav + layers + annotations toggle */}
       {!loading && (

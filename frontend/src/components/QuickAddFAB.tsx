@@ -2,21 +2,23 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import {
-  Plus, FileText, ClipboardList, CalendarPlus, Wrench, Package, X,
-} from 'lucide-react';
+  Plus, FileText, ClipboardText, CalendarPlus, Wrench, Package, X, NotePencil,
+} from '@phosphor-icons/react';
+import type { Icon } from '@phosphor-icons/react';
 
 interface ActionDef {
   label: string;
-  icon: typeof Plus;
+  icon: Icon;
   path: string;
-  tint: string; // gradient end
+  tint: string;
 }
 
 const ACTIONS: ActionDef[] = [
   { label: 'New Wiki Page', icon: FileText, path: '/wiki?create=true', tint: '#2563eb' },
-  { label: 'New Task', icon: ClipboardList, path: '/calendar/tasks?create=true', tint: '#059669' },
+  { label: 'New Task', icon: ClipboardText, path: '/calendar/tasks?create=true', tint: '#059669' },
   { label: 'New Event', icon: CalendarPlus, path: '/calendar?create=true', tint: '#7c3aed' },
-  { label: 'Log Maintenance', icon: Wrench, path: '/equipment?create=true', tint: '#d97706' },
+  { label: 'Drop map note', icon: NotePencil, path: '/map?armNote=1', tint: '#d97706' },
+  { label: 'Log Maintenance', icon: Wrench, path: '/equipment?create=true', tint: '#b45309' },
   { label: 'Record Inventory', icon: Package, path: '/inventory?create=true', tint: '#ea580c' },
 ];
 
@@ -85,7 +87,7 @@ export default function QuickAddFAB() {
                       boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3)',
                     }}
                   >
-                    <Icon size={14} />
+                    <Icon size={14} weight="bold" />
                   </span>
                   <span className="text-sm font-medium text-stone-800 whitespace-nowrap">
                     {action.label}
@@ -114,7 +116,6 @@ export default function QuickAddFAB() {
             : 'inset 0 1px 0 rgba(255,255,255,0.25), 0 14px 34px -10px rgba(4, 120, 87, 0.55)',
         }}
       >
-        {/* specular sheen */}
         <span
           aria-hidden
           className="absolute inset-0 rounded-full pointer-events-none"
@@ -124,9 +125,9 @@ export default function QuickAddFAB() {
           }}
         />
         {open ? (
-          <X size={22} className="text-white relative z-10 -rotate-45" />
+          <X size={22} weight="bold" className="text-white relative z-10 -rotate-45" />
         ) : (
-          <Plus size={24} className="text-white relative z-10" />
+          <Plus size={24} weight="bold" className="text-white relative z-10" />
         )}
       </motion.button>
     </div>
