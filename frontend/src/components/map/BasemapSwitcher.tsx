@@ -84,6 +84,14 @@ export default function BasemapSwitcher({ current, onChange }: BasemapSwitcherPr
                       <Check size={12} weight="bold" />
                     </span>
                   )}
+                  {b.coverage && (
+                    <span
+                      className="absolute bottom-[22px] right-1 px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[9px] font-semibold leading-none"
+                      aria-hidden
+                    >
+                      {b.coverage}
+                    </span>
+                  )}
                   <div className="px-2 py-1.5 bg-white/60">
                     <div className="text-[11px] font-semibold text-stone-800 leading-tight">{b.label}</div>
                   </div>

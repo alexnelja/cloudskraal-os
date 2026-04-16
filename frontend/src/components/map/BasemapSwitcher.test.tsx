@@ -15,10 +15,14 @@ describe('BasemapSwitcher', () => {
       /esri world imagery/i,
       /road \+ place/i,
       /openstreetmap/i,
-      /world topo/i,
+      /esri world topo/i,
       /opentopomap/i,
       /carto dark/i,
       /blue marble/i,
+      /25 cm aerial/i,
+      /50 cm aerial/i,
+      /topocadastral/i,
+      /hillshade dark/i,
     ]) {
       expect(screen.getByTitle(desc)).toBeInTheDocument();
     }
@@ -37,5 +41,20 @@ describe('BasemapSwitcher', () => {
     fireEvent.click(screen.getByRole('button', { name: /basemap/i }));
     const selected = screen.getByTitle(/openstreetmap/i);
     expect(selected).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('renders a coverage pill for entries that declare coverage', () => {
+    render(<BasemapSwitcher current="satellite" onChange={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: /basemap/i }));
+
+    // WC entry has a visible pill reading "WC"
+    const ngi2021 = screen.getByTitle(/25 cm aerial/i);
+    expect(ngi2021.textContent).toContain('WC');
+
+    // A pre-existing entry without coverage has no pill
+    const satellite = screen.getByTitle(/esri world imagery/i);
+    expect(satellite.textContent).not.toContain('WC');
+    expect(satellite.textContent).not.toContain('SA');
+    expect(satellite.textContent).not.toContain('Global');
   });
 });
