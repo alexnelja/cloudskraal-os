@@ -7,7 +7,7 @@ import FieldsSidebar from '../components/map/FieldsSidebar';
 import NewFieldModal from '../components/map/NewFieldModal';
 import LayerControl from '../components/map/LayerControl';
 import { AnimatePresence, motion } from 'motion/react';
-import { MapPinArea, ClipboardText, NotePencil, CheckSquare, MapPin, List } from '@phosphor-icons/react';
+import { MapPinArea, ClipboardText, NotePencil, CheckSquare, MapPin, List, Polygon as PolyIcon } from '@phosphor-icons/react';
 import FluidSheet from '../components/map/FluidSheet';
 import AnnotateTool, { type DrawFinishPayload, type DrawMode } from '../components/map/tools/AnnotateTool';
 import SaveAnnotationModal from '../components/map/SaveAnnotationModal';
@@ -115,6 +115,8 @@ export default function FarmMapPage() {
   const [fieldsSidebarOpen, setFieldsSidebarOpen] = useState(false);
   const [newFieldOpen, setNewFieldOpen] = useState(false);
   const [newFieldSeed, setNewFieldSeed] = useState<{ geometry?: GeoJSON.Geometry; areaHa?: number }>({});
+  // True while we're waiting for the user to draw a polygon for a new field.
+  const [awaitingFieldDraw, setAwaitingFieldDraw] = useState(false);
 
   // 5m — save-as state: geometry captured when a draw finishes
   const [finishedGeometry, setFinishedGeometry] = useState<GeoJSON.Geometry | null>(null);
@@ -122,6 +124,8 @@ export default function FarmMapPage() {
   // Stores the raw draw payload so FEATURE/NOTE route can open SaveAnnotationModal
   // without the modal appearing simultaneously with the chooser panel.
   const pendingDrawPayloadRef = useRef<import('../components/map/tools/AnnotateTool').DrawFinishPayload | null>(null);
+  // Ref mirror of awaitingFieldDraw so handleDrawFinish closure always sees current value.
+  const awaitingFieldDrawRef = useRef(false);
   const [saveMeasurementPending, setSaveMeasurementPending] = useState<{
     geometry: GeoJSON.Geometry;
     kind: 'length' | 'area';
@@ -129,6 +133,9 @@ export default function FarmMapPage() {
     unit: 'm' | 'km' | 'm²' | 'ha';
     formatted: string;
   } | null>(null);
+
+  // Keep ref mirror of awaitingFieldDraw in sync so callbacks always read current value.
+  awaitingFieldDrawRef.current = awaitingFieldDraw;
 
   useEffect(() => {
     // Fire all endpoints independently so one failure doesn't empty the rest.
@@ -225,6 +232,19 @@ export default function FarmMapPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [armedDropMode]);
 
+  // Esc cancels awaiting-field-draw mode.
+  useEffect(() => {
+    if (!awaitingFieldDraw) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setAwaitingFieldDraw(false);
+        terraDraw?.setMode('static');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [awaitingFieldDraw, terraDraw]);
+
   const handleArmedMapClick = useCallback(
     async (e: { lng: number; lat: number }) => {
       if (!armedDropMode) return;
@@ -283,6 +303,19 @@ export default function FarmMapPage() {
   }, [searchParams, annotations, flyToAnnotation]);
 
   const handleDrawFinish = useCallback((payload: DrawFinishPayload) => {
+    // Fix 2 — polygon-first field creation: if we were waiting for a field
+    // boundary polygon, capture it and open NewFieldModal pre-filled.
+    if (awaitingFieldDrawRef.current && payload.geometry.type === 'Polygon') {
+      let areaHa: number | undefined;
+      try {
+        areaHa = turf.area(turf.feature(payload.geometry)) / 10000;
+      } catch { /* ignore */ }
+      setNewFieldSeed({ geometry: payload.geometry, areaHa });
+      setNewFieldOpen(true);
+      setAwaitingFieldDraw(false);
+      return; // don't fall through to save-as chooser
+    }
+
     // Store payload for later — only pushed into pendingDraw when user
     // explicitly picks FEATURE or NOTE from the chooser, so SaveAnnotationModal
     // never appears simultaneously with the save-as chooser panel (Fix 1 — 5m).
@@ -585,8 +618,19 @@ export default function FarmMapPage() {
   }
 
   function handleAddField(opts?: { geometry?: GeoJSON.Geometry; areaHa?: number }) {
-    setNewFieldSeed(opts ?? {});
-    setNewFieldOpen(true);
+    if (opts?.geometry) {
+      // Called with a pre-supplied geometry (e.g. from SaveAs chooser) — open modal directly.
+      setNewFieldSeed(opts);
+      setNewFieldOpen(true);
+      return;
+    }
+    // No geometry yet — arm polygon draw mode; modal opens after the user
+    // finishes drawing the boundary (handleDrawFinish intercepts it).
+    if (terraDraw) {
+      terraDraw.setMode('render');
+      terraDraw.setMode('polygon');
+    }
+    setAwaitingFieldDraw(true);
   }
 
   function handleFieldSelect(fieldId: string) {
@@ -738,6 +782,32 @@ export default function FarmMapPage() {
             <span className="text-[11px] text-stone-600 flex items-center gap-1.5">
               <span className="px-1.5 py-0.5 rounded bg-stone-100 font-mono text-[10px] text-stone-700">Esc</span>
               cancel
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Awaiting field boundary draw banner */}
+      <AnimatePresence>
+        {awaitingFieldDraw && (
+          <motion.div
+            key="field-draw-banner"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="absolute top-3 left-1/2 -translate-x-1/2 z-20 glass-panel rounded-full px-4 py-2 flex items-center gap-3 pointer-events-none"
+          >
+            <PolyIcon size={16} weight="duotone" className="text-amber-700" />
+            <span className="text-sm font-medium text-stone-800">
+              Draw the field boundary
+            </span>
+            <span className="text-[11px] text-stone-600 flex items-center gap-1.5">
+              <span className="px-1.5 py-0.5 rounded bg-emerald-100 font-mono text-[10px] text-emerald-800">Enter</span>
+              finish
+            </span>
+            <span className="text-[11px] font-mono text-stone-500 px-1.5 py-0.5 rounded bg-stone-100">
+              Esc cancel
             </span>
           </motion.div>
         )}
@@ -968,7 +1038,7 @@ export default function FarmMapPage() {
       {/* New field modal — portal-renders outside the flex layout */}
       <NewFieldModal
         open={newFieldOpen}
-        onClose={() => { setNewFieldOpen(false); clearFinished(); }}
+        onClose={() => { setNewFieldOpen(false); setNewFieldSeed({}); clearFinished(); }}
         onCreated={() => {
           // Refetch all data by bumping the nonce
           setLoading(true);
