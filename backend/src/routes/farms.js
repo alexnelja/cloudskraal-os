@@ -163,7 +163,7 @@ router.post('/fields', (req, res) => {
         ? req.body.geometry
         : req.body.geometry
         ? JSON.stringify(req.body.geometry)
-        : '{}',
+        : null,
     notes: req.body.notes ?? null,
     created_at: now,
     updated_at: now,

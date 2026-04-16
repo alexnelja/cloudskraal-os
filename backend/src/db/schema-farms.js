@@ -25,7 +25,7 @@ function initFarmSchema(db) {
       area_ha REAL,
       planted_year TEXT,
       status TEXT DEFAULT 'active',
-      geometry TEXT NOT NULL,
+      geometry TEXT,
       soil_type TEXT,
       irrigation_type TEXT,
       notes TEXT,

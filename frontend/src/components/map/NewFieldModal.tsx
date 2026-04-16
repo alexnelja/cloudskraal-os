@@ -45,6 +45,7 @@ export default function NewFieldModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (saving) return;  // prevent double-submit
     if (!name.trim()) { setError('Name is required'); return; }
     if (!farmId) { setError('Select a farm'); return; }
     if (!enterprise) { setError('Select an enterprise'); return; }

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import NewFieldModal from './NewFieldModal';
 import * as api from '../../api/farms';
@@ -47,6 +47,28 @@ describe('NewFieldModal', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: /create/i }));
     expect(screen.getByText(/name is required/i)).toBeInTheDocument();
+  });
+
+  it('ignores rapid double-submit — createField called exactly once', async () => {
+    let resolveCreate!: (v: unknown) => void;
+    const spy = vi.spyOn(api, 'createField').mockReturnValue(
+      new Promise((res) => { resolveCreate = res; }) as never,
+    );
+    render(
+      <NewFieldModal open={true} onClose={vi.fn()} onCreated={vi.fn()} farms={FARMS} enterprises={['rooibos', 'wine']} />
+    );
+    fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Blok' } });
+    fireEvent.change(screen.getByLabelText(/enterprise/i), { target: { value: 'rooibos' } });
+    fireEvent.change(screen.getByLabelText(/area/i), { target: { value: '10' } });
+
+    const btn = screen.getByRole('button', { name: /create/i });
+    fireEvent.click(btn);  // first click — triggers the pending promise
+    fireEvent.click(btn);  // second click — should be ignored by guard
+
+    // resolve to avoid promise leak
+    await act(async () => { resolveCreate({ id: 'x' }); });
+
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 
   it('accepts optional pre-filled geometry + area (from 5m FIELD branch)', async () => {
