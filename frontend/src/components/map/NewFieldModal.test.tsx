@@ -8,6 +8,27 @@ const FARMS: Farm[] = [
   { id: 'f1', name: 'Cloudskraal', code: 'CS', type: 'owned', total_ha: 1000, lat: -33, lng: 20, region: 'WC', notes: null },
 ];
 
+const TWO_FARMS: Farm[] = [
+  { id: 'f1', name: 'Cloudskraal', code: 'CS', type: 'owned', total_ha: 1000, lat: -33, lng: 20, region: 'WC', notes: null },
+  { id: 'f2', name: 'Biekoes', code: 'BK', type: 'owned', total_ha: 500, lat: -33, lng: 21, region: 'WC', notes: null },
+];
+
+const FARM_BOUNDARIES: GeoJSON.FeatureCollection = {
+  type: 'FeatureCollection',
+  features: [
+    {
+      type: 'Feature',
+      properties: { id: 'f1', name: 'Cloudskraal' },
+      geometry: { type: 'Polygon', coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]] },
+    },
+    {
+      type: 'Feature',
+      properties: { id: 'f2', name: 'Biekoes' },
+      geometry: { type: 'Polygon', coordinates: [[[20, 0], [30, 0], [30, 10], [20, 10], [20, 0]]] },
+    },
+  ],
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -113,5 +134,48 @@ describe('NewFieldModal', () => {
     const call = spy.mock.calls[0][0];
     expect(call.area_ha).toBe(80.72);
     expect(call.geometry).toBeTruthy();
+  });
+
+  it('auto-selects the farm whose boundary contains the drawn polygon centroid (5n)', () => {
+    // Polygon centroid at (25, 5) → inside farm f2 (Biekoes), not f1
+    const geom: GeoJSON.Geometry = {
+      type: 'Polygon',
+      coordinates: [[[24, 4], [26, 4], [26, 6], [24, 6], [24, 4]]],
+    };
+    render(
+      <NewFieldModal
+        open={true}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+        farms={TWO_FARMS}
+        enterprises={['rooibos']}
+        geometry={geom}
+        areaHa={2.5}
+        farmBoundaries={FARM_BOUNDARIES}
+      />
+    );
+    const farmSelect = screen.getByLabelText(/farm/i) as HTMLSelectElement;
+    expect(farmSelect.value).toBe('f2');
+  });
+
+  it('falls back to first farm when polygon centroid is outside every boundary', () => {
+    const geom: GeoJSON.Geometry = {
+      type: 'Polygon',
+      coordinates: [[[100, 100], [101, 100], [101, 101], [100, 101], [100, 100]]],
+    };
+    render(
+      <NewFieldModal
+        open={true}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+        farms={TWO_FARMS}
+        enterprises={['rooibos']}
+        geometry={geom}
+        areaHa={2.5}
+        farmBoundaries={FARM_BOUNDARIES}
+      />
+    );
+    const farmSelect = screen.getByLabelText(/farm/i) as HTMLSelectElement;
+    expect(farmSelect.value).toBe('f1');  // first farm fallback
   });
 });

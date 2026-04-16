@@ -3,6 +3,7 @@ import FluidDialog from './FluidDialog';
 import { createField } from '../../api/farms';
 import { ENTERPRISE_LABELS } from '../../types/farm';
 import type { Farm, Field } from '../../types/farm';
+import { findContainingFarm } from '../../utils/farms';
 
 interface NewFieldModalProps {
   open: boolean;
@@ -14,10 +15,12 @@ interface NewFieldModalProps {
   geometry?: GeoJSON.Geometry;
   /** Optional — computed area_ha from the drawn polygon. */
   areaHa?: number;
+  /** Optional — farm polygons for centroid-in-polygon auto-detection (5n). */
+  farmBoundaries?: GeoJSON.FeatureCollection | null;
 }
 
 export default function NewFieldModal({
-  open, onClose, onCreated, farms, enterprises, geometry, areaHa,
+  open, onClose, onCreated, farms, enterprises, geometry, areaHa, farmBoundaries,
 }: NewFieldModalProps) {
   const [farmId, setFarmId] = useState('');
   const [name, setName] = useState('');
@@ -31,7 +34,18 @@ export default function NewFieldModal({
 
   useEffect(() => {
     if (!open) return;
-    setFarmId(farms[0]?.id ?? '');
+    // Auto-detect farm from polygon centroid when a drawn geometry is
+    // pre-filled (polygon-first add-field flow). Falls back to first farm
+    // in the list when no geometry or no match. The user can still override
+    // via the dropdown — auto-detect only sets the initial selection.
+    let detectedFarmId: string | null = null;
+    if (geometry && farmBoundaries) {
+      const match = findContainingFarm(farmBoundaries, geometry);
+      if (match && farms.some((f) => f.id === match.farmId)) {
+        detectedFarmId = match.farmId;
+      }
+    }
+    setFarmId(detectedFarmId ?? farms[0]?.id ?? '');
     setName('');
     setEnterprise(enterprises[0] ?? '');
     setCropType('');
@@ -39,7 +53,7 @@ export default function NewFieldModal({
     setPlantedYear('');
     setNotes('');
     setError(null);
-  }, [open, farms, enterprises, areaHa]);
+  }, [open, farms, enterprises, areaHa, geometry, farmBoundaries]);
 
   if (!open) return null;
 

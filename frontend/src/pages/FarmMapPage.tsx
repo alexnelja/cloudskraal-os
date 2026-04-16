@@ -1049,6 +1049,7 @@ export default function FarmMapPage() {
         enterprises={enterprises}
         geometry={newFieldSeed.geometry}
         areaHa={newFieldSeed.areaHa}
+        farmBoundaries={farmBoundaries}
       />
 
       {/* Save measurement modal (5m) */}
