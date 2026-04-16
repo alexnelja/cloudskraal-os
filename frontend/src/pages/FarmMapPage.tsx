@@ -4,6 +4,7 @@ import maplibregl from 'maplibre-gl';
 import FarmMap from '../components/map/FarmMap';
 import FieldPanel from '../components/map/FieldPanel';
 import FieldsSidebar from '../components/map/FieldsSidebar';
+import NewFieldModal from '../components/map/NewFieldModal';
 import LayerControl from '../components/map/LayerControl';
 import { AnimatePresence, motion } from 'motion/react';
 import { MapPinArea, ClipboardText, NotePencil, CheckSquare, MapPin, List } from '@phosphor-icons/react';
@@ -439,9 +440,6 @@ export default function FarmMapPage() {
 
   // Suppress unused warning in strict mode (reserved for future server refetch).
   void refreshAnnotations;
-  // newFieldOpen + newFieldSeed are wired in Task 6 (NewFieldModal) — suppress until then.
-  void newFieldOpen;
-  void newFieldSeed;
 
   function handleLayerToggle(layerId: string, visible: boolean) {
     setMapLayers(prev =>
@@ -845,6 +843,21 @@ export default function FarmMapPage() {
         onClose={() => setSelectedFieldId(null)}
       />
       </div> {/* end map area flex-1 */}
+
+      {/* New field modal — portal-renders outside the flex layout */}
+      <NewFieldModal
+        open={newFieldOpen}
+        onClose={() => setNewFieldOpen(false)}
+        onCreated={() => {
+          // Refetch all data by bumping the nonce
+          setLoading(true);
+          setLoadNonce((n) => n + 1);
+        }}
+        farms={farms}
+        enterprises={enterprises}
+        geometry={newFieldSeed.geometry}
+        areaHa={newFieldSeed.areaHa}
+      />
     </div>
   );
 }

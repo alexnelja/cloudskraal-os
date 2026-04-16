@@ -63,3 +63,19 @@ export async function getFieldCostOfProduction(id: string, year?: number): Promi
 export async function createFieldNote(fieldId: string, data: { lat: number; lng: number; title?: string; body?: string; tags?: string[] }): Promise<FieldNote> {
   return request<FieldNote>(`/fields/${fieldId}/notes`, { method: 'POST', body: JSON.stringify(data) });
 }
+
+export interface CreateFieldInput {
+  farm_id: string;
+  name: string;
+  enterprise: string;
+  area_ha: number;
+  crop_type?: string | null;
+  planted_year?: string | null;
+  status?: string | null;
+  geometry?: string | null;
+  notes?: string | null;
+}
+
+export async function createField(input: CreateFieldInput): Promise<Field> {
+  return request<Field>('/fields', { method: 'POST', body: JSON.stringify(input) });
+}
