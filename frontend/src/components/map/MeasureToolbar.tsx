@@ -80,7 +80,6 @@ export default function MeasureToolbar({
                 // enters active draw mode.
                 terraDraw.setMode('render');
                 terraDraw.setMode(m.mode);
-                console.log('[MeasureToolbar] setMode', m.mode, 'enabled=', (terraDraw as unknown as { enabled?: boolean }).enabled, 'mode after=', (terraDraw as unknown as { getMode?: () => string }).getMode?.());
               }}
               aria-label={m.label}
               aria-pressed={active}
