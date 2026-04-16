@@ -25,11 +25,14 @@ describe('MeasureToolbar', () => {
     expect(screen.getByRole('button', { name: /draw polygon/i })).toBeInTheDocument();
   });
 
-  it('calls setMode with linestring when distance is clicked', () => {
+  it('calls setMode with render then linestring when distance is clicked (double-setMode fix)', () => {
     const td = makeTd();
     render(<MeasureToolbar terraDraw={td as never} currentMode="static" />);
     fireEvent.click(screen.getByRole('button', { name: /measure distance/i }));
-    expect(td.setMode).toHaveBeenCalledWith('linestring');
+    // Fix 1: reset to render first, then set the target mode
+    expect(td.setMode).toHaveBeenNthCalledWith(1, 'render');
+    expect(td.setMode).toHaveBeenNthCalledWith(2, 'linestring');
+    expect(td.setMode).toHaveBeenCalledTimes(2);
   });
 
   it('highlights the active mode with aria-pressed=true', () => {

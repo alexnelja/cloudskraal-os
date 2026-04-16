@@ -72,7 +72,16 @@ export default function MeasureToolbar({
             <button
               key={m.id}
               type="button"
-              onClick={() => terraDraw.setMode(m.mode)}
+              onClick={() => {
+                // Reset to render (default) mode first, then activate the target
+                // mode. The library's own button handlers do the same sequence
+                // internally (resetActiveMode → setMode). Without the reset step,
+                // the Proxy's handleModeChange path skips it and the map never
+                // enters active draw mode.
+                terraDraw.setMode('render');
+                terraDraw.setMode(m.mode);
+                console.log('[MeasureToolbar] setMode', m.mode, 'enabled=', (terraDraw as unknown as { enabled?: boolean }).enabled, 'mode after=', (terraDraw as unknown as { getMode?: () => string }).getMode?.());
+              }}
               aria-label={m.label}
               aria-pressed={active}
               title={m.label}
