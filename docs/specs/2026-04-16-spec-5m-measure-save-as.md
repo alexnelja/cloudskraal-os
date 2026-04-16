@@ -41,7 +41,7 @@ After any finished geometry, the `MeasureToolbar` (from Spec 5k) grows a compact
 
 | Destination | Accepted geometry | Target | UX |
 |---|---|---|---|
-| FIELD | polygon only | `fields` table | Opens the existing field-create form pre-filled with the drawn polygon + computed `area_ha`. Operator adds name, enterprise, crop_type. Skipped entirely if the geometry lies inside an existing field (show "Already inside <field name>" toast + cancel). |
+| FIELD | polygon only | `fields` table | Opens the existing field-create form pre-filled with the drawn polygon + computed `area_ha`. Operator adds name, enterprise, crop_type. Skipped entirely if the geometry lies inside an existing field — use `@turf/turf`'s `booleanContains(existingPolygon, drawnPolygon)` (already a dependency); show "Already inside <field name>" toast + cancel. |
 | FEATURE | any (pin / line / polygon) | existing `annotations` table | Reuses the existing `SaveAnnotationModal` unchanged. This is today's flow — the chooser just makes it an explicit option. |
 | MEASUREMENT | line or polygon (not pin) | new `measurements` table | Opens `SaveMeasurementModal` — name + optional notes. Persists geometry + value + unit. Surfaces in a new "Measurements" tab in `AnnotationsSidebar`. |
 | NOTE | any geometry (point usually) | existing `annotations` table with category `map_note` | Reuses the existing "Drop map note" pathway — same as the FAB arm-drop shortcut. |
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS measurements (
 CREATE INDEX IF NOT EXISTS idx_measurements_created ON measurements(created_at DESC);
 ```
 
-**Migration:** `backend/src/db/migrate-measurements.js`. Registered in `backend/src/db/schema.js` alongside existing migrations. Idempotent (`CREATE TABLE IF NOT EXISTS`).
+**Migration:** `backend/src/db/migrate-measurements.js`. Registered in `backend/src/db/schema.js` at two insertion points (matching the existing pattern): (1) `const { migrateMeasurements } = require('./migrate-measurements')` at the top of the file alongside the other migrate requires, and (2) `migrateMeasurements(db);` inside `getDb()` after the existing migration calls. Idempotent (`CREATE TABLE IF NOT EXISTS`).
 
 **Endpoints:**
 - `GET /api/measurements` — list, newest first.
