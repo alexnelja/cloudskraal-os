@@ -144,38 +144,78 @@ npx vitest run src/db/migrate-measurements.test.js
 
 - [ ] **Step 2.1: Write failing route tests**
 
+**Important:** no existing backend route tests exist — this plan establishes the test-harness pattern. `supertest` isn't currently a dev dep, so install it first:
+
+```bash
+cd /Users/alexnelja/projects/cloudskraal-capex/backend
+npm install --save-dev supertest
+```
+
+Also: `backend/src/index.js` currently starts the server on import (`app.listen(...)`). Check whether `app` is exported; if not, we need to export it without calling `listen` during tests. Quick pattern — at the bottom of `index.js`:
+
+```js
+// Existing `app.listen(...)` stays for `npm start`/`dev`, guarded by:
+if (require.main === module) {
+  app.listen(PORT, () => console.log(...));
+}
+module.exports = { app };
+```
+
+If this change touches `index.js`, bundle it with the route commit.
+
 Create `backend/src/routes/measurements.test.js`:
 
 ```js
+const { describe, it, expect, beforeEach, afterAll } = require('vitest');
 const request = require('supertest');
-const { app } = require('../index'); // or however the existing tests import
+const path = require('path');
+const fs = require('fs');
+
+// Use a separate test DB so we don't stomp on the dev data
+const TEST_DB_PATH = path.join(__dirname, '..', '..', 'data', 'test-measurements.db');
+process.env.CAPEX_DB_PATH = TEST_DB_PATH; // if schema.js honours this; otherwise stub as needed
+
+// Reset the db between tests
+beforeEach(() => {
+  if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
+});
+
+afterAll(() => {
+  if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
+});
+
+// Must require AFTER env var is set so getDb() reads the test path
+const { app } = require('../index');
 
 describe('measurements routes', () => {
-  beforeAll(async () => {
-    // Reuse existing test db setup. Look at another routes.test.js for the pattern.
-  });
+  const validBody = {
+    name: 'Fence line',
+    kind: 'length',
+    value: 1234.56,
+    unit: 'm',
+    formatted: '1.23 km',
+    geometry: JSON.stringify({ type: 'LineString', coordinates: [[0,0],[1,1]] }),
+  };
 
-  it('POST /api/measurements creates a row', async () => {
-    const res = await request(app)
-      .post('/api/measurements')
-      .send({
-        name: 'Fence line',
-        kind: 'length',
-        value: 1234.56,
-        unit: 'm',
-        formatted: '1.23 km',
-        geometry: JSON.stringify({ type: 'LineString', coordinates: [[0,0],[1,1]] }),
-      });
+  it('POST /api/measurements creates a row and returns 201', async () => {
+    const res = await request(app).post('/api/measurements').send(validBody);
     expect(res.status).toBe(201);
     expect(res.body).toHaveProperty('id');
     expect(res.body.name).toBe('Fence line');
+    expect(res.body.kind).toBe('length');
   });
 
   it('GET /api/measurements returns newest first', async () => {
-    // create two with spaced created_at, assert order
+    await request(app).post('/api/measurements').send({ ...validBody, name: 'First' });
+    await new Promise((r) => setTimeout(r, 10));
+    await request(app).post('/api/measurements').send({ ...validBody, name: 'Second' });
+    const res = await request(app).get('/api/measurements');
+    expect(res.status).toBe(200);
+    expect(res.body[0].name).toBe('Second');
+    expect(res.body[1].name).toBe('First');
   });
 
-  it('DELETE /api/measurements/:id — not-found returns 404', async () => {
+  it('DELETE /api/measurements/:id returns 404 for unknown id', async () => {
     const res = await request(app).delete('/api/measurements/does-not-exist');
     expect(res.status).toBe(404);
   });
@@ -183,11 +223,17 @@ describe('measurements routes', () => {
   it('POST rejects missing required fields with 400', async () => {
     const res = await request(app).post('/api/measurements').send({ name: 'x' });
     expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/required/i);
+  });
+
+  it('POST rejects invalid kind', async () => {
+    const res = await request(app).post('/api/measurements').send({ ...validBody, kind: 'weight' });
+    expect(res.status).toBe(400);
   });
 });
 ```
 
-Look at `backend/src/routes/annotations.test.js` (if it exists) for the exact test-harness pattern before finalising the imports.
+**If `schema.js` doesn't honour `CAPEX_DB_PATH`**: the simplest workaround is to modify `backend/src/db/schema.js` to read `process.env.CAPEX_DB_PATH ?? path.join(__dirname, '..', '..', 'data', 'capex.db')` at module load. That's a small, isolated change that benefits all future tests. Include it in the Task 1 commit.
 
 - [ ] **Step 2.2: Run — expect FAIL**
 
@@ -508,25 +554,70 @@ The three `open*` helpers depend on the existing modals; wire them to whatever s
 
 - [ ] **Step 8.3: Implement `findEnclosingField`**
 
-In `frontend/src/utils/fields.ts` (new or extend):
+**Geometry source (verified):** `Field` (in `frontend/src/types/farm.ts`) holds no polygon — only `area_ha`, `enterprise`, etc. Field polygons live separately in a `FeatureCollection` named `geojson` that `FarmMapPage` already loads and passes to `FarmMap` (`map.addSource('fields', { type: 'geojson', data: geojson })` in `FarmMap.tsx:53`). Each feature has `properties.id` matching the `Field.id`, as seen in `FarmMapPage.tsx:480`:
 
 ```ts
-import { booleanContains, polygon, feature } from '@turf/turf';
-import type { Field } from '../types/farm';
+const feature = geojson.features.find(f => f.properties?.id === fieldId);
+```
 
-export function findEnclosingField(fields: Field[], geom: GeoJSON.Geometry): Field | null {
-  for (const f of fields) {
-    // field geometry lives in its GeoJSON feature; adapt if your data shape differs
-    const fieldPoly = /* hydrate polygon from field */;
-    if (fieldPoly && booleanContains(fieldPoly, feature(geom))) {
-      return f;
+So `findEnclosingField` takes both the geojson and the drawn geometry — not the `fields` array:
+
+Create `frontend/src/utils/fields.ts` (new):
+
+```ts
+import * as turf from '@turf/turf';
+
+export interface EnclosingMatch {
+  fieldId: string;
+  fieldName: string;
+}
+
+/**
+ * Returns the first field polygon that fully contains the drawn geometry,
+ * or null if none does. Skips features that aren't polygons (can't contain).
+ */
+export function findEnclosingField(
+  fieldsGeoJson: GeoJSON.FeatureCollection,
+  drawn: GeoJSON.Geometry,
+): EnclosingMatch | null {
+  // turf.booleanContains wants Feature<Polygon>|Feature<MultiPolygon> on the outer side.
+  const drawnFeature = turf.feature(drawn);
+  for (const f of fieldsGeoJson.features) {
+    if (f.geometry.type !== 'Polygon' && f.geometry.type !== 'MultiPolygon') continue;
+    try {
+      if (turf.booleanContains(f as GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon>, drawnFeature)) {
+        return {
+          fieldId: String(f.properties?.id ?? ''),
+          fieldName: String(f.properties?.name ?? f.properties?.id ?? 'unknown'),
+        };
+      }
+    } catch {
+      // turf throws on degenerate geometries — treat as non-enclosing
+      continue;
     }
   }
   return null;
 }
 ```
 
-If `fields` don't carry geometry in the flat array (they may live in a separate geojson), reuse whatever helper `FarmMap.tsx` uses to render polygons.
+In `FarmMapPage.tsx`'s `handleSaveAsPick`:
+
+```ts
+if (dest === 'field') {
+  const match = findEnclosingField(geojson, finishedGeometry);
+  if (match) {
+    toast(`Already inside "${match.fieldName}" — no new field created.`);
+    clearFinished();
+    return;
+  }
+  // no existing field create flow yet (see 5l) — show a follow-up toast for now
+  toast.info('Field creation flow pending (tracked in handoff)');
+  clearFinished();
+  return;
+}
+```
+
+**Important:** since 5l also stubs `onAddField` (no real field-creation flow exists), the FIELD branch in 5m is ALSO a stub. The `turf.booleanContains` guard ships — the downstream "open the real field-create form" is deferred. Document this in the handoff.
 
 ---
 
@@ -536,13 +627,35 @@ If `fields` don't carry geometry in the flat array (they may live in a separate 
 
 - [ ] **Step 9.1: Modify the finish handler**
 
+Current body (verified at `AnnotateTool.tsx:78-86`):
+
 ```tsx
 control.on('finish', (id) => {
-  const mode = td.getMode();
-  if (mode === 'static' || mode === 'select') return;
-  // existing logic
+  const snapshot = td.getSnapshot?.();
+  const feature = snapshot?.find((f) => f.id === id);
+  if (!feature) return;
+  const annType = geometryToType(feature.geometry as GeoJSON.Geometry);
+  if (!annType) return;
+  onFinishRef.current?.({ type: annType, geometry: feature.geometry as GeoJSON.Geometry });
 });
 ```
+
+Add a mode guard at the top — keep the existing body below it:
+
+```tsx
+control.on('finish', (id) => {
+  const mode = td.getMode?.();
+  if (mode === 'static' || mode === 'select') return;
+  const snapshot = td.getSnapshot?.();
+  const feature = snapshot?.find((f) => f.id === id);
+  if (!feature) return;
+  const annType = geometryToType(feature.geometry as GeoJSON.Geometry);
+  if (!annType) return;
+  onFinishRef.current?.({ type: annType, geometry: feature.geometry as GeoJSON.Geometry });
+});
+```
+
+This is a pure early-return; nothing else in the handler changes. Do not replace the existing snapshot lookup or callback invocation.
 
 - [ ] **Step 9.2: Verify manually**
 

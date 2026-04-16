@@ -396,7 +396,11 @@ In `FarmMapPage.tsx`:
 
 If `navigate` isn't imported, add `import { useNavigate } from 'react-router-dom'` and `const navigate = useNavigate()`.
 
-Wire the "Add field" behaviour to whatever route or modal the existing legacy "Add" button used — grep `frontend/src/pages` for the current ADD flow and reuse it. If there's a modal, lift the modal into `FarmMapPage` and toggle its open state on `onAddField`.
+**"Add field" wiring (pragmatic):** grep confirms **no existing field-creation flow** in the codebase — no `/fields/new` route, no `NewFieldModal`, no `createField` API client. The ADD button in image 9 is aspirational; building real field-creation is a separate spec.
+
+For this plan, `onAddField` is a stub: show a toast "Field creation coming in a later spec" and no-op. Reuse whatever toast primitive the rest of the app uses (check `FarmMapPage` for existing `react-hot-toast` or similar). If no toast library is in use, fall back to `alert('Field creation coming soon')`. The button stays on the sidebar so the UI matches image 9; wiring the real creation flow is deferred.
+
+Capture this deferral in the handoff (Task 4.2) so it's tracked.
 
 - [ ] **Step 2.3: Delete MapControls**
 
@@ -439,28 +443,54 @@ EOF
 
 - [ ] **Step 3.1: Conditionally render as FluidSheet below md**
 
-In `FarmMapPage.tsx`, wrap the sidebar so that on mobile it becomes a slide-out sheet controlled by a hamburger pill. Pattern:
+Grep confirmed: **no `useMediaQuery` hook exists** in `frontend/src/hooks/`. Don't write one — use Tailwind responsive classes, which handle render + hide without JS state.
+
+In `FarmMapPage.tsx`, render the sidebar twice with mutually-exclusive visibility:
 
 ```tsx
 const [sidebarOpen, setSidebarOpen] = useState(false);
 
-// desktop: render inline
-// mobile: render inside FluidSheet, toggled by hamburger button
+const sidebar = (
+  <FieldsSidebar
+    farms={farms}
+    fields={fields}
+    enterprises={enterprises}
+    visibleEnterprises={visibleEnterprises}
+    selectedFieldId={selectedFieldId}
+    onEnterpriseToggle={handleEnterpriseToggle}
+    onFarmSelect={handleFarmZoom}
+    onFieldSelect={(id) => setSelectedFieldId(id)}
+    onAddField={handleAddField}
+  />
+);
 
-const isMobile = useMediaQuery('(max-width: 767px)'); // or existing hook
-
-{isMobile ? (
-  <FluidSheet side="left" open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
-    <FieldsSidebar {...sidebarProps} />
-  </FluidSheet>
-) : (
-  <FieldsSidebar {...sidebarProps} />
-)}
+return (
+  <div className="flex h-full min-h-0">
+    {/* Desktop: inline flex child */}
+    <div className="hidden md:block h-full">{sidebar}</div>
+    {/* Mobile: FluidSheet overlay */}
+    <div className="md:hidden">
+      <FluidSheet side="left" open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
+        {sidebar}
+      </FluidSheet>
+    </div>
+    <div className="flex-1 relative min-w-0">
+      {/* Hamburger pill (mobile only) */}
+      <button
+        type="button"
+        className="md:hidden absolute top-3 left-3 z-10 glass-button rounded-full w-10 h-10 flex items-center justify-center"
+        aria-label="Open fields sidebar"
+        onClick={() => setSidebarOpen(true)}
+      >
+        <List size={18} />
+      </button>
+      {/* existing FarmMap + other overlays */}
+    </div>
+  </div>
+);
 ```
 
-Add the hamburger pill inside the map (top-left, md:hidden) that opens the sheet.
-
-Check if a `useMediaQuery` hook exists (`grep -rn "useMediaQuery" frontend/src/hooks`). If not, a simple Tailwind `hidden md:block` / `md:hidden` approach works — render both trees, hide one via CSS.
+Import the Phosphor `List` icon at the top. Verify `FluidSheet` accepts a `side` prop (`grep -n "side" frontend/src/components/map/FluidSheet.tsx`) — if not, use the default behaviour and apply any needed CSS override via className.
 
 If the project already has a shared `activeSheet` pattern for mutual exclusion, use it. Otherwise add a basic state in `FarmMapPage`:
 

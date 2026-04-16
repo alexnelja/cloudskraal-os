@@ -203,12 +203,27 @@ Confirm there's a `control.getTerraDrawInstance?.()` call that returns the Terra
 
 - [ ] **Step 2.2: Modify AnnotateTool props + lifecycle**
 
-Edit `AnnotateTool.tsx`:
+Edit `AnnotateTool.tsx`. Current state (verified by grep):
+- `onFinish` and `onModeChange` props already exist (props interface at line 22).
+- `map.addControl(control, 'top-left')` at line 74.
+- Cleanup returns include `map.removeControl(controlRef.current)` at line 103.
+- `controlRef` holds the `MaplibreMeasureControl` instance for lifecycle + TerraDraw access via `control.getTerraDrawInstance?.()`.
 
-1. Add `onReady?: (td: TerraDraw) => void;` to its props interface (mirror `onModeChange`).
-2. Remove the `map.addControl(control, 'top-left')` call. Keep the `control` variable — the `MaplibreMeasureControl` instance still wires terradraw modes and event loops; we just don't want it rendered as a MapLibre control.
-3. After `const td = control.getTerraDrawInstance?.();`, if `td` is defined and an `onReady` prop was passed, call `onReady(td)` exactly once (guard with a `useRef<boolean>(false)` flag).
-4. Leave `onModeChange` polling unchanged.
+Changes:
+
+1. Add `onReady?: (td: TerraDraw) => void;` to the props interface.
+2. Destructure `onReady` in the function signature.
+3. **Remove BOTH `map.addControl(control, 'top-left')` (line 74) AND the matching `map.removeControl(controlRef.current)` in the cleanup return (line 103).** Removing only the add without the remove will throw on unmount because MapLibre rejects removing a control it never registered. `controlRef` still exists (used for `getTerraDrawInstance`).
+4. After `const td = control.getTerraDrawInstance?.();`, if `td` is defined, call `onReady?.(td)`. Guard with a `useRef<boolean>(false)` flag so it only fires once even if React re-runs the effect.
+5. Leave `onModeChange` polling unchanged.
+
+Quick sanity grep after the edit:
+
+```bash
+grep -n "addControl\|removeControl" /Users/alexnelja/projects/cloudskraal-capex/frontend/src/components/map/tools/AnnotateTool.tsx
+```
+
+Should return **zero matches** (all `MaplibreMeasureControl` registrations gone). The map still mounts the `control` instance — it just doesn't live in MapLibre's control tree.
 
 - [ ] **Step 2.3: Typecheck**
 
