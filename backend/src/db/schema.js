@@ -16,6 +16,7 @@ const { migrateMapLayersLive } = require('./migrate-map-layers-live');
 const { migrateMapLayersExtra } = require('./migrate-map-layers-extra');
 const { migrateMapLayersCleanupBasemaps } = require('./migrate-map-layers-cleanup-basemaps');
 const { migrateWikiPageLinks } = require('./migrate-wiki-page-links');
+const { migrateMeasurements } = require('./migrate-measurements');
 
 const DB_PATH = process.env.CAPEX_DB_PATH ?? path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -43,6 +44,7 @@ function getDb() {
     migrateMapLayersExtra(db);
     migrateMapLayersCleanupBasemaps(db);
     migrateWikiPageLinks(db);
+    migrateMeasurements(db);
   }
   return db;
 }
