@@ -21,21 +21,23 @@ Unify the overlay rail under a single glass-token visual language while modernis
 ## In scope
 
 - Move measurement controls into the TR rail as a **custom React toolbar** that drives the TerraDraw instance directly. Remove the built-in `MaplibreMeasureControl` toolbar at TL.
-- Enterprise filter: replace the checkbox + dot + label grid with **coloured pill chips** (filled = visible, outlined = hidden).
-- Field search: keep, restyle with consistent rounded-10 glass-input surface.
-- Farm dropdown: keep as native `<select>` with glass-input styling (no combobox rewrite — YAGNI).
+- Add a **save-as chooser** to the measure toolbar (2026-04-16 amendment — see "Measure save-as" section below).
+- ~~Enterprise filter: replace the checkbox + dot + label grid with coloured pill chips.~~ **Superseded by Spec 5l** — the enterprise filter moves into the new left-side `FieldsSidebar` as eye-icon toggles per group. `MapControls` is deleted by 5l, so this spec no longer touches the enterprise filter.
+- ~~Field search: keep, restyle with consistent rounded-10 glass-input surface.~~ **Moves to `FieldsSidebar`** per Spec 5l.
+- ~~Farm dropdown: keep as native `<select>` with glass-input styling.~~ **Moves to `FieldsSidebar`** per Spec 5l.
 - `QuickAddFAB`: swap green gradient for **glass + emerald accent** (emerald border, emerald icon, emerald-tinted shadow, same glass-bg as the rail).
-- TR stack order (top → bottom): filter panel → measure toolbar → basemap pill → layers button → annotations pill.
-- Mobile responsiveness preserved (≤ 768px): filter panel already constrained to `min(100vw-7rem, 18rem)`; measure toolbar fits 4 × 34px = 144px.
+- TR stack order (top → bottom): **measure toolbar → basemap pill → layers button → annotations pill** (filter panel no longer in TR — see 5l).
+- Mobile responsiveness preserved (≤ 768px): measure toolbar fits 4 × 34px = 144px.
 
 ## Out of scope (deferred)
 
 | Ref | What | Why deferred |
 |---|---|---|
-| Spec B | Field info interface + total hectarage | Separate spec, brainstormed after A locks. |
-| — | Farm dropdown → custom combobox with search | Native select is fine; change only adds code. |
+| Spec 5l | Fields tree sidebar (left side) | Separate spec, locked 2026-04-16. |
+| Spec 8 | Weather modal | Benched. |
 | — | Keyboard shortcuts for measure modes | Already handled via TerraDraw's built-in undo/redo shortcuts. |
 | — | Annotations sidebar redesign | Out of scope; only the launcher pill lives in TR. |
+| — | FEATURE branch: custom feature types with icon picker | Large UX lift (icon picker over ~1,200 Phosphor icons, `feature_types` CRUD). Benched in `benched-spec-5.save-chooser.md` — revisit when the feature-type library need appears in practice. |
 | — | Legend (BL) restyle | Already glass-token'd; no polish needed this round. |
 | — | Basemap switcher popover redesign | Recently shipped + A1 WC basemap work still smoke-pending. |
 
@@ -114,7 +116,59 @@ interface MeasureToolbarProps {
 
 Button specs (avoid per-implementer drift): each button is `w-[34px] h-[34px] rounded-[10px]`; Phosphor icons `size={18} weight="regular"`; toolbar container `rounded-[16px] p-1.5 gap-1 flex` with the same `--glass-bg` / `--glass-border` / `--glass-blur` / `--glass-shadow` tokens as the rest of the rail.
 
-Rendered inside the TR `MapOverlayRail` between the filter panel and basemap pill.
+Rendered at the top of the TR `MapOverlayRail`, above the basemap pill (the former filter panel has moved to the left sidebar per 5l).
+
+## Measure save-as (2026-04-16 amendment — Alex's image 10 reference)
+
+When the operator finishes drawing a geometry (pressing Enter in a measure mode), the toolbar grows a panel below it showing:
+
+1. **Live measurement chip** — `{kind}: {formatted}` e.g. "Area: 80.72 ha", with a red × to discard without saving.
+2. **`+ SAVE AS ▾`** primary button and **DISCARD** outline button side by side.
+3. The primary button opens a dropdown with four destinations: **FIELD**, **FEATURE**, **MEASUREMENT**, **NOTE** — matching image 10 plus the existing `MEASUREMENT` option from the benched save-chooser spec.
+
+### Destination behaviour
+
+| Destination | Accepted geometry | Target | UX |
+|---|---|---|---|
+| FIELD | polygon | `fields` table | Opens the existing field-create form pre-filled with the drawn polygon + computed `area_ha`. User adds name, enterprise, crop_type, etc. Skipped entirely if the geometry lies inside an existing field. |
+| FEATURE | any (pin / line / polygon) | existing `annotations` table with `category` | Reuses the existing `SaveAnnotationModal` (category + title + notes). This is the current flow; the chooser just makes it an explicit branch. |
+| MEASUREMENT | line or polygon | new `measurements` table | Opens a minimal `SaveMeasurementModal` with name + optional notes; persists the geometry + value + unit. Renders in a new "Measurements" tab in the `AnnotationsSidebar` with copy-to-clipboard buttons. |
+| NOTE | any geometry (point usually) | existing `annotations` table with category `map_note` | Reuses the existing "Drop map note" pathway — same as the FAB arm-drop shortcut. |
+
+### Backend delta
+
+- **`measurements` table** (new):
+  ```
+  id            TEXT PK
+  name          TEXT NOT NULL
+  kind          TEXT NOT NULL           -- 'length' | 'area'
+  value         REAL NOT NULL           -- metres or square metres
+  unit          TEXT NOT NULL           -- 'm', 'km', 'ha', 'm²'
+  formatted     TEXT NOT NULL           -- precomputed display string
+  geometry      TEXT NOT NULL           -- GeoJSON
+  field_id      TEXT NULL FK fields(id)
+  created_at    TEXT NOT NULL
+  notes         TEXT NULL
+  ```
+- **Endpoints:** `GET /api/measurements`, `POST /api/measurements`, `DELETE /api/measurements/:id`. No PATCH for v1.
+- Migration `migrate-measurements.js` registered in `backend/src/db/schema.js` alongside existing migrations.
+
+### Components
+
+- `SaveAsChooserPopover.tsx` (new) — small dropdown anchored under the `+ SAVE AS` button, rendered by `MeasureToolbar`.
+- `SaveMeasurementModal.tsx` (new) — minimal modal with `name` + `notes`; saves via `POST /api/measurements`.
+- `AnnotationsSidebar.tsx` — add a "Measurements" tab alongside the existing Lines / Polygons / Pins tabs.
+
+### Terradraw click-to-finish bug (fold-in)
+
+While amending the measure UX we also fix the bug Alex flagged where clicking a saved pin re-triggers the save dialog. The fix is to gate `onFinish` to only fire during an active draw mode (`td.getMode()` not in `['static', 'select']`). This is a ~3-line change in `AnnotateTool.tsx`, safer shipped together with the new chooser.
+
+### Save-as tests (TDD, tests first)
+
+- **`SaveAsChooserPopover.test.tsx` (new):** all four destinations appear; clicking each fires the right callback.
+- **`SaveMeasurementModal.test.tsx` (new):** minimum-required validation + save call.
+- **`MeasureToolbar.test.tsx` (extend):** after finishing a draw, the live measurement chip + SAVE AS / DISCARD buttons render; DISCARD clears without persisting.
+- Backend: `measurements` CRUD endpoints + migration idempotence.
 
 ### `frontend/src/components/QuickAddFAB.tsx`
 
