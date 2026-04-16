@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, cleanup, within } from '@testing-library/react';
+import { render, screen, cleanup, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AnnotationsSidebar from './AnnotationsSidebar';
 import type { Annotation } from '../../types/annotation';
+import type { Measurement } from '../../types/measurement';
+import * as measurementsApi from '../../api/measurements';
+
+vi.mock('../../api/measurements');
 
 function makeAnn(overrides: Partial<Annotation> = {}): Annotation {
   return {
@@ -43,8 +47,28 @@ function renderSidebar(overrides: Partial<React.ComponentProps<typeof Annotation
   return { ...props, ...render(<AnnotationsSidebar {...props} />) };
 }
 
+function makeMeasurement(overrides: Partial<Measurement> = {}): Measurement {
+  return {
+    id: 'm1',
+    name: 'Fence line',
+    kind: 'length',
+    value: 1230,
+    unit: 'm',
+    formatted: '1.23 km',
+    geometry: '{"type":"LineString","coordinates":[[0,0],[1,1]]}',
+    field_id: null,
+    notes: null,
+    created_at: '2026-04-15T00:00:00Z',
+    ...overrides,
+  };
+}
+
 describe('AnnotationsSidebar', () => {
-  beforeEach(cleanup);
+  beforeEach(() => {
+    cleanup();
+    vi.mocked(measurementsApi.listMeasurements).mockResolvedValue([]);
+    vi.mocked(measurementsApi.deleteMeasurement).mockResolvedValue(undefined);
+  });
 
   it('renders count badge equal to items length', () => {
     renderSidebar();
@@ -121,5 +145,90 @@ describe('AnnotationsSidebar', () => {
     renderSidebar({ selectedId: 'a2' });
     const fenceRow = screen.getByText('Fence').closest('[data-annotation-row]')!;
     expect(fenceRow).toHaveAttribute('data-selected', 'true');
+  });
+});
+
+describe('AnnotationsSidebar — Measurements tab', () => {
+  beforeEach(() => {
+    cleanup();
+    vi.mocked(measurementsApi.deleteMeasurement).mockResolvedValue(undefined);
+  });
+
+  it('shows Measurements tab', async () => {
+    vi.mocked(measurementsApi.listMeasurements).mockResolvedValue([makeMeasurement()]);
+    render(
+      <AnnotationsSidebar
+        open={true}
+        annotations={[]}
+        selectedId={null}
+        onToggle={vi.fn()}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /measurements/i })).toBeInTheDocument();
+  });
+
+  it('displays measurement rows when Measurements tab is active', async () => {
+    const user = userEvent.setup();
+    vi.mocked(measurementsApi.listMeasurements).mockResolvedValue([makeMeasurement()]);
+    render(
+      <AnnotationsSidebar
+        open={true}
+        annotations={[]}
+        selectedId={null}
+        onToggle={vi.fn()}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /measurements/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Fence line')).toBeInTheDocument();
+      expect(screen.getByText('1.23 km')).toBeInTheDocument();
+    });
+  });
+
+  it('delete button removes measurement row', async () => {
+    const user = userEvent.setup();
+    vi.mocked(measurementsApi.listMeasurements).mockResolvedValue([makeMeasurement()]);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(
+      <AnnotationsSidebar
+        open={true}
+        annotations={[]}
+        selectedId={null}
+        onToggle={vi.fn()}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /measurements/i }));
+    await waitFor(() => expect(screen.getByText('Fence line')).toBeInTheDocument());
+    const row = screen.getByText('Fence line').closest('[data-measurement-row]')!;
+    await user.click(within(row as HTMLElement).getByRole('button', { name: /delete/i }));
+    expect(measurementsApi.deleteMeasurement).toHaveBeenCalledWith('m1');
+    confirmSpy.mockRestore();
+  });
+
+  it('copy button writes formatted to clipboard', async () => {
+    const user = userEvent.setup();
+    vi.mocked(measurementsApi.listMeasurements).mockResolvedValue([makeMeasurement()]);
+    const writeSpy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+    render(
+      <AnnotationsSidebar
+        open={true}
+        annotations={[]}
+        selectedId={null}
+        onToggle={vi.fn()}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /measurements/i }));
+    await waitFor(() => expect(screen.getByText('Fence line')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /copy/i }));
+    expect(writeSpy).toHaveBeenCalledWith('1.23 km');
+    writeSpy.mockRestore();
   });
 });

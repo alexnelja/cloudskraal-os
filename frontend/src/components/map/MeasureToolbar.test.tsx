@@ -8,6 +8,8 @@ function makeTd(): MockTerraDraw {
   return { setMode: vi.fn() };
 }
 
+const lineGeometry: GeoJSON.Geometry = { type: 'LineString', coordinates: [[0, 0], [1, 1]] };
+
 describe('MeasureToolbar', () => {
   it('renders nothing when terraDraw is null', () => {
     const { container } = render(<MeasureToolbar terraDraw={null} currentMode="static" />);
@@ -37,5 +39,70 @@ describe('MeasureToolbar', () => {
     expect(poly).toHaveAttribute('aria-pressed', 'true');
     const line = screen.getByRole('button', { name: /measure distance/i });
     expect(line).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('renders save-as panel when finishedGeometry is set and mode is static', () => {
+    const td = makeTd();
+    render(
+      <MeasureToolbar
+        terraDraw={td as never}
+        currentMode="static"
+        finishedGeometry={lineGeometry}
+        measurementText="1.23 km"
+        onPick={vi.fn()}
+        onDiscard={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('1.23 km')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save as/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /discard/i })).toBeInTheDocument();
+  });
+
+  it('does not render save-as panel when mode is not static', () => {
+    const td = makeTd();
+    render(
+      <MeasureToolbar
+        terraDraw={td as never}
+        currentMode="linestring"
+        finishedGeometry={lineGeometry}
+        measurementText="1.23 km"
+        onPick={vi.fn()}
+        onDiscard={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText('1.23 km')).not.toBeInTheDocument();
+  });
+
+  it('calls onDiscard when DISCARD button is clicked', () => {
+    const td = makeTd();
+    const onDiscard = vi.fn();
+    render(
+      <MeasureToolbar
+        terraDraw={td as never}
+        currentMode="static"
+        finishedGeometry={lineGeometry}
+        measurementText="1.23 km"
+        onPick={vi.fn()}
+        onDiscard={onDiscard}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /discard/i }));
+    expect(onDiscard).toHaveBeenCalled();
+  });
+
+  it('opens chooser popover when SAVE AS is clicked', () => {
+    const td = makeTd();
+    render(
+      <MeasureToolbar
+        terraDraw={td as never}
+        currentMode="static"
+        finishedGeometry={lineGeometry}
+        measurementText="1.23 km"
+        onPick={vi.fn()}
+        onDiscard={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /save as/i }));
+    expect(screen.getByRole('button', { name: /measurement/i })).toBeInTheDocument();
   });
 });

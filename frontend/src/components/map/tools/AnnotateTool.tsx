@@ -81,6 +81,9 @@ export default function AnnotateTool({ map, onFinish, onModeChange, onReady }: A
     const td = control.getTerraDrawInstance?.();
     if (td && typeof td.on === 'function') {
       td.on('finish', (featureId: string | number) => {
+        // Guard: skip re-trigger from clicking an already-saved feature (pin bug fix)
+        const mode = typeof td.getMode === 'function' ? td.getMode() : null;
+        if (mode === 'static' || mode === 'select') return;
         const snapshot = typeof td.getSnapshot === 'function' ? td.getSnapshot() : [];
         const feature = snapshot?.find((f) => f.id === featureId);
         if (!feature) return;

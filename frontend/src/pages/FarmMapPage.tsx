@@ -25,6 +25,9 @@ import { listTasks, createTask, type Task } from '../api/tasks';
 import { createAnnotation } from '../api/annotations';
 import { API_BASE_URL } from '../api/config';
 import { getMapGeoJSON, getFarmBoundaries, getFarms, getFields, getMapLayers, updateMapLayer } from '../api/farms';
+import { findEnclosingField } from '../utils/fields';
+import { formatDistance, formatArea } from '../components/map/tools/metricFormat';
+import * as turf from '@turf/turf';
 import {
   listAnnotations as apiListAnnotations,
   createAnnotation as apiCreateAnnotation,
@@ -32,6 +35,8 @@ import {
 } from '../api/annotations';
 import type { Farm, Field, MapLayer } from '../types/farm';
 import type { Annotation, CreateAnnotationInput } from '../types/annotation';
+import type { Measurement } from '../types/measurement';
+import SaveMeasurementModal from '../components/map/SaveMeasurementModal';
 import { ENTERPRISE_COLORS, ENTERPRISE_LABELS } from '../types/farm';
 
 function getBoundsForFarm(
@@ -110,6 +115,17 @@ export default function FarmMapPage() {
   const [fieldsSidebarOpen, setFieldsSidebarOpen] = useState(false);
   const [newFieldOpen, setNewFieldOpen] = useState(false);
   const [newFieldSeed, setNewFieldSeed] = useState<{ geometry?: GeoJSON.Geometry; areaHa?: number }>({});
+
+  // 5m — save-as state: geometry captured when a draw finishes
+  const [finishedGeometry, setFinishedGeometry] = useState<GeoJSON.Geometry | null>(null);
+  const [measurementText, setMeasurementText] = useState<string | null>(null);
+  const [saveMeasurementPending, setSaveMeasurementPending] = useState<{
+    geometry: GeoJSON.Geometry;
+    kind: 'length' | 'area';
+    value: number;
+    unit: 'm' | 'km' | 'm²' | 'ha';
+    formatted: string;
+  } | null>(null);
 
   useEffect(() => {
     // Fire all endpoints independently so one failure doesn't empty the rest.
@@ -264,8 +280,85 @@ export default function FarmMapPage() {
   }, [searchParams, annotations, flyToAnnotation]);
 
   const handleDrawFinish = useCallback((payload: DrawFinishPayload) => {
+    // Open save-annotation modal for the existing annotation flow
     setPendingDraw(payload);
+    // Also capture for the save-as chooser (5m)
+    setFinishedGeometry(payload.geometry);
+    // Compute a measurement text for the chip
+    try {
+      if (payload.type === 'line' && payload.geometry.type === 'LineString') {
+        const meters = turf.length(turf.lineString((payload.geometry as GeoJSON.LineString).coordinates), { units: 'meters' });
+        setMeasurementText(formatDistance(meters));
+      } else if (payload.type === 'polygon' && payload.geometry.type === 'Polygon') {
+        const m2 = turf.area(turf.polygon((payload.geometry as GeoJSON.Polygon).coordinates));
+        setMeasurementText(formatArea(m2));
+      } else {
+        setMeasurementText(null);
+      }
+    } catch {
+      setMeasurementText(null);
+    }
   }, []);
+
+  const clearFinished = useCallback(() => {
+    setFinishedGeometry(null);
+    setMeasurementText(null);
+  }, []);
+
+  const handleSaveAsPick = useCallback(
+    (dest: 'field' | 'feature' | 'measurement' | 'note') => {
+      if (!finishedGeometry) return;
+      if (dest === 'field') {
+        if (geojson) {
+          const match = findEnclosingField(geojson, finishedGeometry);
+          if (match) {
+            // eslint-disable-next-line no-alert
+            window.alert(`Already inside "${match.fieldName}" — no new field created.`);
+            clearFinished();
+            return;
+          }
+        }
+        let areaHa: number | undefined;
+        try {
+          if (finishedGeometry.type === 'Polygon') {
+            areaHa = turf.area(turf.feature(finishedGeometry)) / 10000;
+          }
+        } catch { /* ignore */ }
+        setNewFieldSeed({ geometry: finishedGeometry, areaHa });
+        setNewFieldOpen(true);
+        // clearFinished called when modal closes
+        return;
+      }
+      if (dest === 'measurement') {
+        try {
+          let kind: 'length' | 'area' = 'length';
+          let value = 0;
+          let unit: 'm' | 'km' | 'm²' | 'ha' = 'm';
+          let formatted = measurementText ?? '';
+          if (finishedGeometry.type === 'LineString') {
+            kind = 'length';
+            value = turf.length(turf.lineString((finishedGeometry as GeoJSON.LineString).coordinates), { units: 'meters' });
+            unit = value >= 1000 ? 'km' : 'm';
+          } else if (finishedGeometry.type === 'Polygon') {
+            kind = 'area';
+            value = turf.area(turf.feature(finishedGeometry));
+            unit = value >= 10000 ? 'ha' : 'm²';
+          }
+          setSaveMeasurementPending({ geometry: finishedGeometry, kind, value, unit, formatted });
+        } catch { /* ignore */ }
+        clearFinished();
+        return;
+      }
+      if (dest === 'feature' || dest === 'note') {
+        // Route through existing SaveAnnotationModal
+        // pendingDraw should already be set from handleDrawFinish
+        clearFinished();
+        return;
+      }
+      clearFinished();
+    },
+    [finishedGeometry, measurementText, geojson, clearFinished],
+  );
 
   const handleSaveAnnotation = useCallback(async (input: CreateAnnotationInput) => {
     try {
@@ -673,7 +766,14 @@ export default function FarmMapPage() {
       {/* Top-right rail: nav + layers + annotations toggle */}
       {!loading && (
         <MapOverlayRail position="tr">
-          <MeasureToolbar terraDraw={terraDraw} currentMode={drawMode} />
+          <MeasureToolbar
+            terraDraw={terraDraw}
+            currentMode={drawMode}
+            finishedGeometry={finishedGeometry}
+            measurementText={measurementText}
+            onPick={handleSaveAsPick}
+            onDiscard={clearFinished}
+          />
           <BasemapSwitcher
             current={basemapId}
             onChange={(id) => { setBasemapId(id); saveBasemapPreference(id); }}
@@ -847,17 +947,34 @@ export default function FarmMapPage() {
       {/* New field modal — portal-renders outside the flex layout */}
       <NewFieldModal
         open={newFieldOpen}
-        onClose={() => setNewFieldOpen(false)}
+        onClose={() => { setNewFieldOpen(false); clearFinished(); }}
         onCreated={() => {
           // Refetch all data by bumping the nonce
           setLoading(true);
           setLoadNonce((n) => n + 1);
+          clearFinished();
         }}
         farms={farms}
         enterprises={enterprises}
         geometry={newFieldSeed.geometry}
         areaHa={newFieldSeed.areaHa}
       />
+
+      {/* Save measurement modal (5m) */}
+      {saveMeasurementPending && (
+        <SaveMeasurementModal
+          open={true}
+          kind={saveMeasurementPending.kind}
+          value={saveMeasurementPending.value}
+          unit={saveMeasurementPending.unit}
+          formatted={saveMeasurementPending.formatted}
+          geometry={saveMeasurementPending.geometry}
+          onSaved={(_m: Measurement) => {
+            setSaveMeasurementPending(null);
+          }}
+          onDiscard={() => setSaveMeasurementPending(null)}
+        />
+      )}
     </div>
   );
 }
