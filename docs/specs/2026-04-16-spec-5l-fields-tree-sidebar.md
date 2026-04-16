@@ -54,6 +54,12 @@ Introduce a left-side `/map` sidebar that lists fields grouped by enterprise, sh
 
 **Aggregate totals:** computed client-side from the loaded `fields` array. No backend aggregation endpoint needed for Cloudskraal's ~50 fields; revisit if a farm grows past ~500.
 
+**Mobile overlay stacking:** the sidebar mounts as `FluidSheet side="left"` at `z-30`. Opening it dismisses any other open sheet (`FieldPanel`, `AnnotationsSidebar`) via a shared `activeSheet` string in `FarmMapPage` — only one sheet open at a time on mobile. Hamburger toggle lives in a small top-left pill inside the map viewport, visible only below the `md:` breakpoint.
+
+**State migration from `MapControls`:** `visibleEnterprises`, `setVisibleEnterprises`, `handleEnterpriseToggle`, and the farm-zoom handler already live in `FarmMapPage.tsx` (confirmed around lines 632-634). The sidebar receives them as props verbatim — no hoist or context extraction needed.
+
+**`onAddField` prop:** wires to the existing "Add field" flow — navigates to `/fields/new` if that route exists, otherwise reuses the existing `NewFieldModal` (same as today's ADD button on the legacy fields page). The sidebar is pass-through; scope of this spec is the sidebar itself, not the field-create flow.
+
 ## Component shape
 
 `frontend/src/components/map/FieldsSidebar.tsx` (new):

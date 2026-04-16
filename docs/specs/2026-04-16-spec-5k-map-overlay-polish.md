@@ -1,101 +1,54 @@
-# Spec 5k — Map overlay polish (pill filters + measure in TR + emerald-glass FAB)
+# Spec 5k — Map overlay polish (measure in TR + emerald-glass FAB)
 
 - **Status:** Approved for planning (2026-04-16, Spec A of the current cycle).
-- **Parent:** extends `MapOverlayRail` + `MapControls` + `QuickAddFAB` shipped 2026-04-16 (commits `895ebbd`, `a9d52e9`, `54c87bd`, `db2ba62`).
-- **Part of:** Spec A of the map UX polish cycle. Spec B (field info interface) is a separate brainstorm.
+- **Parent:** extends `MapOverlayRail` + `QuickAddFAB` shipped 2026-04-16 (commits `895ebbd`, `a9d52e9`, `54c87bd`, `db2ba62`).
+- **Part of:** Spec A of the map UX polish cycle.
+- **Related:** Spec 5l (fields tree sidebar) deletes `MapControls` — the old TR filter panel — and takes over farm/search/enterprise filtering. Spec 5m (measure save-as chooser) adds the FIELD/FEATURE/MEASUREMENT/NOTE destinations for finished measurements.
 
 ## Problem
 
-Three friction points in today's `/map` overlay:
+Two friction points in today's `/map` overlay:
 
 1. **Measure toolbar lives at TL** (via `map.addControl(MaplibreMeasureControl, 'top-left')`), visually disconnected from the rest of the right-side controls and with its own library-provided styling that doesn't match the glass-token language adopted in commit `54c87bd`.
-2. **Filter UI in `MapControls`** uses custom checkboxes + dots + labels. Functional but dated — doesn't lean on the distinctive enterprise brand palette (rooibos green, wine purple, sheep amber, buchu teal) that already codes the map.
-3. **FAB** ships with a heavy emerald gradient + dual radial highlight + big drop shadow. Stylistically foreign next to the neutral glass rail.
+2. **FAB** ships with a heavy emerald gradient + dual radial highlight + big drop shadow. Stylistically foreign next to the neutral glass rail.
 
-The operator's eye has to re-parse three visual languages to use one page. Alex wants one.
+The operator's eye has to re-parse two visual languages to use one page.
 
 ## Goal
 
-Unify the overlay rail under a single glass-token visual language while modernising the filter affordance, without growing scope into data-view territory (that's Spec B).
+Unify the overlay rail under a single glass-token visual language: measure moves into TR, FAB adopts the rail's surface with an emerald accent. No filter-UI work (that's 5l), no save-as UX (that's 5m).
 
 ## In scope
 
 - Move measurement controls into the TR rail as a **custom React toolbar** that drives the TerraDraw instance directly. Remove the built-in `MaplibreMeasureControl` toolbar at TL.
-- Add a **save-as chooser** to the measure toolbar (2026-04-16 amendment — see "Measure save-as" section below).
-- ~~Enterprise filter: replace the checkbox + dot + label grid with coloured pill chips.~~ **Superseded by Spec 5l** — the enterprise filter moves into the new left-side `FieldsSidebar` as eye-icon toggles per group. `MapControls` is deleted by 5l, so this spec no longer touches the enterprise filter.
-- ~~Field search: keep, restyle with consistent rounded-10 glass-input surface.~~ **Moves to `FieldsSidebar`** per Spec 5l.
-- ~~Farm dropdown: keep as native `<select>` with glass-input styling.~~ **Moves to `FieldsSidebar`** per Spec 5l.
 - `QuickAddFAB`: swap green gradient for **glass + emerald accent** (emerald border, emerald icon, emerald-tinted shadow, same glass-bg as the rail).
-- TR stack order (top → bottom): **measure toolbar → basemap pill → layers button → annotations pill** (filter panel no longer in TR — see 5l).
+- TR stack order (top → bottom): **measure toolbar → basemap pill → layers button → annotations pill**.
 - Mobile responsiveness preserved (≤ 768px): measure toolbar fits 4 × 34px = 144px.
 
 ## Out of scope (deferred)
 
 | Ref | What | Why deferred |
 |---|---|---|
-| Spec 5l | Fields tree sidebar (left side) | Separate spec, locked 2026-04-16. |
+| Spec 5l | Fields tree sidebar — replaces TR filter panel; farm/search/enterprise filter lives there | Separate spec, locked 2026-04-16. |
+| Spec 5m | Save-as chooser on finished measurements (FIELD / FEATURE / MEASUREMENT / NOTE) + `measurements` table + CRUD | Separate spec, locked 2026-04-16. |
 | Spec 8 | Weather modal | Benched. |
 | — | Keyboard shortcuts for measure modes | Already handled via TerraDraw's built-in undo/redo shortcuts. |
 | — | Annotations sidebar redesign | Out of scope; only the launcher pill lives in TR. |
-| — | FEATURE branch: custom feature types with icon picker | Large UX lift (icon picker over ~1,200 Phosphor icons, `feature_types` CRUD). Benched in `benched-spec-5.save-chooser.md` — revisit when the feature-type library need appears in practice. |
 | — | Legend (BL) restyle | Already glass-token'd; no polish needed this round. |
 | — | Basemap switcher popover redesign | Recently shipped + A1 WC basemap work still smoke-pending. |
 
 ## Design decisions (locked in brainstorm)
 
-**Filter direction:** pill chips — `data-choice="pills"`.
-Filled pill = enterprise visible; outlined pill = hidden. Tap to toggle. Colour comes from `ENTERPRISE_COLORS`.
-
-**FAB variant:** `F2 — Glass with emerald accent` — `data-choice="fab-accent-glass"`.
+**FAB variant:** `F2 — Glass with emerald accent`.
 - Background: `var(--glass-bg)` (same as rail).
 - Border: `1px solid rgba(4,120,87,0.4)` (emerald-700 @ 40%).
 - Icon color: `#047857` (emerald-700).
 - Shadow: `0 8px 20px rgba(4,120,87,0.18)`.
-- Open state: X icon in same emerald; no gradient swap (since there's no dark-open variant needed any more — glass recedes on its own).
+- Open state: X icon in same emerald; no gradient swap (since there's no dark-open variant needed — glass recedes on its own).
 
 **Measure integration:** custom React toolbar that calls `td.setMode('linestring' | 'polygon' | 'point')` on the existing TerraDraw instance. The `MaplibreMeasureControl.addControl()` registration is removed from `AnnotateTool.tsx`; the component still owns the TerraDraw instance via `getTerraDrawInstance()` so callers (CreateTaskModal, SaveAnnotationModal, etc.) are unaffected.
 
 ## Component changes
-
-### `frontend/src/components/map/MapControls.tsx`
-
-**Enterprise filter — replace the checkbox/dot/label grid:**
-
-```tsx
-// Before: Custom checkbox with inline SVG + dot + label
-// After: Pill chips
-<div className="flex flex-wrap gap-1.5">
-  {filterableEnterprises.map((ent) => {
-    const isVisible = visibleEnterprises.includes(ent);
-    const color = ENTERPRISE_COLORS[ent] ?? '#6b7280';
-    return (
-      <button
-        key={ent}
-        onClick={() => onEnterpriseToggle(ent)}
-        aria-pressed={isVisible}
-        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors"
-        style={isVisible
-          ? { background: color, color: 'white', borderWidth: 0 }
-          : { background: 'transparent', color: '#a8a29e', border: '1px solid #d6d3d1' }
-        }
-      >
-        {ENTERPRISE_LABELS[ent] ?? ent}
-      </button>
-    );
-  })}
-</div>
-```
-
-Label omits the leading dot since the pill colour is the affordance.
-Label text uses `ENTERPRISE_LABELS[ent] ?? ent`.
-`aria-pressed` communicates toggle state for assistive tech.
-
-**Farm dropdown — polish only:**
-
-- Swap `glass-input` class for a slightly rounded-10 variant — reuse `var(--glass-bg-soft)` so it matches the surrounding panel.
-- Keep native `<select>`. Keep chevron indicator.
-
-**Field search:** unchanged except apply the same rounded-10 + `--glass-bg-soft` surface as the farm dropdown so both inputs feel related.
 
 ### `frontend/src/components/map/tools/AnnotateTool.tsx`
 
@@ -116,59 +69,7 @@ interface MeasureToolbarProps {
 
 Button specs (avoid per-implementer drift): each button is `w-[34px] h-[34px] rounded-[10px]`; Phosphor icons `size={18} weight="regular"`; toolbar container `rounded-[16px] p-1.5 gap-1 flex` with the same `--glass-bg` / `--glass-border` / `--glass-blur` / `--glass-shadow` tokens as the rest of the rail.
 
-Rendered at the top of the TR `MapOverlayRail`, above the basemap pill (the former filter panel has moved to the left sidebar per 5l).
-
-## Measure save-as (2026-04-16 amendment — Alex's image 10 reference)
-
-When the operator finishes drawing a geometry (pressing Enter in a measure mode), the toolbar grows a panel below it showing:
-
-1. **Live measurement chip** — `{kind}: {formatted}` e.g. "Area: 80.72 ha", with a red × to discard without saving.
-2. **`+ SAVE AS ▾`** primary button and **DISCARD** outline button side by side.
-3. The primary button opens a dropdown with four destinations: **FIELD**, **FEATURE**, **MEASUREMENT**, **NOTE** — matching image 10 plus the existing `MEASUREMENT` option from the benched save-chooser spec.
-
-### Destination behaviour
-
-| Destination | Accepted geometry | Target | UX |
-|---|---|---|---|
-| FIELD | polygon | `fields` table | Opens the existing field-create form pre-filled with the drawn polygon + computed `area_ha`. User adds name, enterprise, crop_type, etc. Skipped entirely if the geometry lies inside an existing field. |
-| FEATURE | any (pin / line / polygon) | existing `annotations` table with `category` | Reuses the existing `SaveAnnotationModal` (category + title + notes). This is the current flow; the chooser just makes it an explicit branch. |
-| MEASUREMENT | line or polygon | new `measurements` table | Opens a minimal `SaveMeasurementModal` with name + optional notes; persists the geometry + value + unit. Renders in a new "Measurements" tab in the `AnnotationsSidebar` with copy-to-clipboard buttons. |
-| NOTE | any geometry (point usually) | existing `annotations` table with category `map_note` | Reuses the existing "Drop map note" pathway — same as the FAB arm-drop shortcut. |
-
-### Backend delta
-
-- **`measurements` table** (new):
-  ```
-  id            TEXT PK
-  name          TEXT NOT NULL
-  kind          TEXT NOT NULL           -- 'length' | 'area'
-  value         REAL NOT NULL           -- metres or square metres
-  unit          TEXT NOT NULL           -- 'm', 'km', 'ha', 'm²'
-  formatted     TEXT NOT NULL           -- precomputed display string
-  geometry      TEXT NOT NULL           -- GeoJSON
-  field_id      TEXT NULL FK fields(id)
-  created_at    TEXT NOT NULL
-  notes         TEXT NULL
-  ```
-- **Endpoints:** `GET /api/measurements`, `POST /api/measurements`, `DELETE /api/measurements/:id`. No PATCH for v1.
-- Migration `migrate-measurements.js` registered in `backend/src/db/schema.js` alongside existing migrations.
-
-### Components
-
-- `SaveAsChooserPopover.tsx` (new) — small dropdown anchored under the `+ SAVE AS` button, rendered by `MeasureToolbar`.
-- `SaveMeasurementModal.tsx` (new) — minimal modal with `name` + `notes`; saves via `POST /api/measurements`.
-- `AnnotationsSidebar.tsx` — add a "Measurements" tab alongside the existing Lines / Polygons / Pins tabs.
-
-### Terradraw click-to-finish bug (fold-in)
-
-While amending the measure UX we also fix the bug Alex flagged where clicking a saved pin re-triggers the save dialog. The fix is to gate `onFinish` to only fire during an active draw mode (`td.getMode()` not in `['static', 'select']`). This is a ~3-line change in `AnnotateTool.tsx`, safer shipped together with the new chooser.
-
-### Save-as tests (TDD, tests first)
-
-- **`SaveAsChooserPopover.test.tsx` (new):** all four destinations appear; clicking each fires the right callback.
-- **`SaveMeasurementModal.test.tsx` (new):** minimum-required validation + save call.
-- **`MeasureToolbar.test.tsx` (extend):** after finishing a draw, the live measurement chip + SAVE AS / DISCARD buttons render; DISCARD clears without persisting.
-- Backend: `measurements` CRUD endpoints + migration idempotence.
+Rendered at the top of the TR `MapOverlayRail`, above the basemap pill. Spec 5m later adds the save-as chooser panel below the toolbar when a draw finishes — 5k only builds the mode buttons.
 
 ### `frontend/src/components/QuickAddFAB.tsx`
 
@@ -190,17 +91,18 @@ While amending the measure UX we also fix the bug Alex flagged where clicking a 
 
 Owns two new pieces of state — `const [terraDraw, setTerraDraw] = useState<TerraDraw | null>(null)` and `const [drawMode, setDrawMode] = useState<string>('static')`. Both are wired through existing props on `AnnotateTool`: the new `onReady={setTerraDraw}` callback for the instance, and the existing `onModeChange={setDrawMode}` callback for the active mode. `AnnotateTool` itself doesn't hold either in React state today (mode is polled via `setInterval`; instance lives in a ref), so this is pure consumer-side capture, no ref-lift or prop-drill refactor.
 
-Add `MeasureToolbar` to the TR rail stack between `MapControls` and `BasemapSwitcher`:
+Add `MeasureToolbar` at the top of the TR rail stack. With 5l also landing (removes `MapControls`), the TR rail becomes:
 
 ```tsx
 <MapOverlayRail position="tr">
-  <MapControls ... />
   <MeasureToolbar terraDraw={terraDraw} currentMode={drawMode} />
   <BasemapSwitcher ... />
   <LayerControl ... />
   {/* Annotations pill */}
 </MapOverlayRail>
 ```
+
+If 5k ships before 5l, the `<MapControls />` JSX stays in place and `MeasureToolbar` inserts below it. 5l later removes the `<MapControls />` line. Either shipping order works.
 
 ## Tests (TDD, tests first)
 
@@ -210,56 +112,45 @@ Add `MeasureToolbar` to the TR rail stack between `MapControls` and `BasemapSwit
    - `currentMode` prop highlights the matching button (aria-pressed + class assertion).
    - Renders nothing / graceful no-op when `terraDraw === null` (early mount).
 
-2. **`MapControls.test.tsx` (extend existing)**
-   - Pill chip renders as a `<button>` with `aria-pressed` reflecting `visibleEnterprises`.
-   - Clicking a pill calls `onEnterpriseToggle` with the enterprise key.
-   - Visible pills have inline background = `ENTERPRISE_COLORS[ent]`; hidden pills have no background.
-   - Removal of old custom checkbox markup verified by absence of `role="switch"` or `input[type=checkbox].sr-only`.
-
-3. **`QuickAddFAB.test.tsx` (extend existing)**
+2. **`QuickAddFAB.test.tsx` (extend existing)**
    - Closed state: inspect the element's inline `style.background` string directly (not `getComputedStyle`, which jsdom doesn't resolve gradients for). Expect: `expect(button.style.background).not.toMatch(/linear-gradient/)` AND `expect(button.style.background).toMatch(/var\(--glass-bg\)|rgba\(255,\s*255,\s*255/)` — one positive match for the glass surface.
    - Open state: same inline-style check — no gradient, same glass background. (Today's code swaps to a dark gradient on open; the spec removes that conditional.)
    - Icon: `expect(iconElement).toHaveClass('text-emerald-700')` or equivalent — verifies the colour rule directly.
    - Existing click-to-expand + Esc-to-close tests still pass.
 
-4. **Smoke (required):**
+3. **Smoke (required):**
    - Measure toolbar renders in TR (not TL).
    - Tapping each measure button enters the matching TerraDraw mode (tooltip + cursor change confirms).
-   - Enterprise pills toggle field visibility as before.
-   - FAB open/close animation still works.
-   - Mobile (390px): TR stack doesn't horizontally clip; pills wrap cleanly.
+   - FAB open/close animation still works; no green gradient visible.
+   - Mobile (390px): TR stack doesn't horizontally clip.
 
 ## Risks
 
-- **TerraDraw lifecycle coupling.** Measure toolbar needs the TerraDraw instance, which today is ref-owned inside `AnnotateTool`. Lifting state may surface mount-order bugs (toolbar mounts before TerraDraw is ready). Mitigation: toolbar renders nothing when `terraDraw === null`, matching `MapControls`' farm-dropdown pattern.
+- **TerraDraw lifecycle coupling.** Measure toolbar needs the TerraDraw instance, which today is ref-owned inside `AnnotateTool`. Lifting state may surface mount-order bugs (toolbar mounts before TerraDraw is ready). Mitigation: toolbar renders nothing when `terraDraw === null`.
 - **Built-in TL toolbar removal.** Any keyboard shortcut or gesture provided by `MaplibreMeasureControl`'s UI (not by the underlying `TerraDraw` instance) is lost. Spot-check: undo/redo come from `TerraDrawUndoRedoKeyboardShortcuts`, which is already wired independently. Mode-switching shortcuts aren't currently in use. Safe to remove.
-- **Pill chip a11y.** Replacing `input[type=checkbox]` with `button[aria-pressed]` loses native checkbox keyboard semantics. Still accessible, but worth confirming with VoiceOver.
-- **FAB visibility contrast.** Glass FAB may be harder to spot against a bright Esri satellite tile than the current solid gradient. Mitigation: the emerald border + shadow keeps it readable; smoke check confirms across all 11 basemaps in the current BasemapSwitcher registry.
-- **Orphaned CSS from `MaplibreMeasureControl`.** The library injects styles under `.maplibregl-ctrl-group` for its toolbar. After we stop adding the control, the CSS remains imported (`'@watergis/maplibre-gl-terradraw/dist/maplibre-gl-terradraw.css'`) but the rules don't attach to anything. No visual effect — but if the import is kept solely for that stylesheet, the import comment should note that it also scopes terradraw's draw-geometry paint (fill/line for in-progress geometries) which IS still needed. Don't remove the CSS import.
+- **FAB visibility contrast.** Glass FAB may be harder to spot against a bright Esri satellite tile than the current solid gradient. Mitigation: the emerald border + shadow keeps it readable; smoke check confirms across all 11 basemaps.
+- **Orphaned CSS from `MaplibreMeasureControl`.** The library's stylesheet is still imported (`'@watergis/maplibre-gl-terradraw/dist/maplibre-gl-terradraw.css'`) because it also scopes terradraw's in-progress draw-geometry paint. Don't remove the CSS import.
 
 ## Files changed
 
 | File | Change |
 |---|---|
-| `frontend/src/components/map/MapControls.tsx` | Swap enterprise checkbox grid for pill chips; polish farm dropdown + search surfaces. |
-| `frontend/src/components/map/MapControls.test.tsx` | Extend with pill-chip assertions. |
 | `frontend/src/components/map/MeasureToolbar.tsx` (new) | Custom React toolbar driving TerraDraw. |
 | `frontend/src/components/map/MeasureToolbar.test.tsx` (new) | Unit tests for the toolbar. |
-| `frontend/src/components/map/tools/AnnotateTool.tsx` | Remove `MaplibreMeasureControl` registration; expose TerraDraw instance. |
+| `frontend/src/components/map/tools/AnnotateTool.tsx` | Remove `MaplibreMeasureControl` registration; add `onReady` prop. |
 | `frontend/src/components/QuickAddFAB.tsx` | Swap green-gradient style for glass + emerald accent. |
 | `frontend/src/components/QuickAddFAB.test.tsx` | Extend with glass-surface assertions. |
-| `frontend/src/pages/FarmMapPage.tsx` | Wire `MeasureToolbar` into TR rail; hoist `drawMode` state. |
+| `frontend/src/pages/FarmMapPage.tsx` | Wire `MeasureToolbar` into TR rail; hold `terraDraw` + `drawMode` state. |
 | `docs/handoffs/2026-04-17-spec-5k-map-overlay.md` (new on ship) | Smoke results + visual diff notes. |
 
 No backend changes. No new dependencies. No DB migration.
 
 ## Success criteria
 
-- TR rail contains 5 items in order: filter → measure → basemap → layers → annotations.
+- TR rail contains (at least) 4 items in order: **measure → basemap → layers → annotations**. If 5l hasn't shipped yet, `MapControls` is still above this stack — that's fine.
 - TL rail is empty (terradraw's built-in toolbar gone).
-- Filter panel uses pill chips; no `<input type="checkbox">` remains.
-- FAB closed state shows no `linear-gradient` in computed style; `aria-pressed`-equivalent visual cues work.
-- Full frontend test suite green (existing + 4 new tests across 2 new test files + extensions).
+- FAB closed + open states show no `linear-gradient` in inline `style.background`; icon is emerald-700 in both states.
+- All automated tests green: new `MeasureToolbar` tests + extended `QuickAddFAB` tests + existing suite.
 - `npx tsc -b --noEmit` clean.
-- `git log` for 5k work is ≤ 4 focused commits.
+- `git log` for 5k work is ≤ 3 focused commits.
 - Manual smoke passes across 3 viewport widths (390 / 1280 / 1920).
