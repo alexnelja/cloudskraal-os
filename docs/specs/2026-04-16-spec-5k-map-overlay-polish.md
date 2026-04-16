@@ -97,8 +97,9 @@ Label text uses `ENTERPRISE_LABELS[ent] ?? ent`.
 
 ### `frontend/src/components/map/tools/AnnotateTool.tsx`
 
-- Remove `map.addControl(control, 'top-left')` and the surrounding `MaplibreMeasureControl` setup — keep only the raw TerraDraw instance via a new `TerraDrawLifecycle` hook or refactor the AnnotateTool component.
-- Expose the TerraDraw instance (already kept as a ref) to a new sibling component `MeasureToolbar.tsx`.
+- Remove `map.addControl(control, 'top-left')` and the surrounding `MaplibreMeasureControl` registration. The library class is still imported and instantiated so it wires the TerraDraw modes + keyboard shortcuts + event loop — just not added as a MapLibre control.
+- Add an `onReady?: (td: TerraDraw) => void` prop. After `getTerraDrawInstance()` resolves, call `onReady(td)` once. This is how `FarmMapPage` gets the instance for `MeasureToolbar` — no ref-forwarding, no hook extraction, matches the existing `onMapReady` pattern in `FarmMap`.
+- Keep the existing `onModeChange(mode)` callback (polling-based). It already fires on mode transitions; no additional plumbing needed.
 
 ### `frontend/src/components/map/MeasureToolbar.tsx` (new)
 
@@ -110,6 +111,8 @@ interface MeasureToolbarProps {
   currentMode: string;
 }
 ```
+
+Button specs (avoid per-implementer drift): each button is `w-[34px] h-[34px] rounded-[10px]`; Phosphor icons `size={18} weight="regular"`; toolbar container `rounded-[16px] p-1.5 gap-1 flex` with the same `--glass-bg` / `--glass-border` / `--glass-blur` / `--glass-shadow` tokens as the rest of the rail.
 
 Rendered inside the TR `MapOverlayRail` between the filter panel and basemap pill.
 
@@ -131,6 +134,8 @@ Rendered inside the TR `MapOverlayRail` between the filter panel and basemap pil
 
 ### `frontend/src/pages/FarmMapPage.tsx`
 
+Owns two new pieces of state — `const [terraDraw, setTerraDraw] = useState<TerraDraw | null>(null)` and `const [drawMode, setDrawMode] = useState<string>('static')`. Both are wired through existing props on `AnnotateTool`: the new `onReady={setTerraDraw}` callback for the instance, and the existing `onModeChange={setDrawMode}` callback for the active mode. `AnnotateTool` itself doesn't hold either in React state today (mode is polled via `setInterval`; instance lives in a ref), so this is pure consumer-side capture, no ref-lift or prop-drill refactor.
+
 Add `MeasureToolbar` to the TR rail stack between `MapControls` and `BasemapSwitcher`:
 
 ```tsx
@@ -142,8 +147,6 @@ Add `MeasureToolbar` to the TR rail stack between `MapControls` and `BasemapSwit
   {/* Annotations pill */}
 </MapOverlayRail>
 ```
-
-The existing state that tracks `drawMode` (already polled from TerraDraw per the AnnotateTool code) gets hoisted one level so MeasureToolbar can highlight the active button.
 
 ## Tests (TDD, tests first)
 
@@ -160,8 +163,9 @@ The existing state that tracks `drawMode` (already polled from TerraDraw per the
    - Removal of old custom checkbox markup verified by absence of `role="switch"` or `input[type=checkbox].sr-only`.
 
 3. **`QuickAddFAB.test.tsx` (extend existing)**
-   - Closed state: button has no `background: linear-gradient(...)`; has `border: 1px solid rgba(4,120,87,0.4)` or a CSS class that produces it.
-   - Open/closed: icon colour is `emerald-700`-derived in both states.
+   - Closed state: inspect the element's inline `style.background` string directly (not `getComputedStyle`, which jsdom doesn't resolve gradients for). Expect: `expect(button.style.background).not.toMatch(/linear-gradient/)` AND `expect(button.style.background).toMatch(/var\(--glass-bg\)|rgba\(255,\s*255,\s*255/)` — one positive match for the glass surface.
+   - Open state: same inline-style check — no gradient, same glass background. (Today's code swaps to a dark gradient on open; the spec removes that conditional.)
+   - Icon: `expect(iconElement).toHaveClass('text-emerald-700')` or equivalent — verifies the colour rule directly.
    - Existing click-to-expand + Esc-to-close tests still pass.
 
 4. **Smoke (required):**
@@ -177,6 +181,7 @@ The existing state that tracks `drawMode` (already polled from TerraDraw per the
 - **Built-in TL toolbar removal.** Any keyboard shortcut or gesture provided by `MaplibreMeasureControl`'s UI (not by the underlying `TerraDraw` instance) is lost. Spot-check: undo/redo come from `TerraDrawUndoRedoKeyboardShortcuts`, which is already wired independently. Mode-switching shortcuts aren't currently in use. Safe to remove.
 - **Pill chip a11y.** Replacing `input[type=checkbox]` with `button[aria-pressed]` loses native checkbox keyboard semantics. Still accessible, but worth confirming with VoiceOver.
 - **FAB visibility contrast.** Glass FAB may be harder to spot against a bright Esri satellite tile than the current solid gradient. Mitigation: the emerald border + shadow keeps it readable; smoke check confirms across all 11 basemaps in the current BasemapSwitcher registry.
+- **Orphaned CSS from `MaplibreMeasureControl`.** The library injects styles under `.maplibregl-ctrl-group` for its toolbar. After we stop adding the control, the CSS remains imported (`'@watergis/maplibre-gl-terradraw/dist/maplibre-gl-terradraw.css'`) but the rules don't attach to anything. No visual effect — but if the import is kept solely for that stylesheet, the import comment should note that it also scopes terradraw's draw-geometry paint (fill/line for in-progress geometries) which IS still needed. Don't remove the CSS import.
 
 ## Files changed
 
