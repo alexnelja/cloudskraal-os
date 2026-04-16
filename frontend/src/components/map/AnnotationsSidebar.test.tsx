@@ -231,4 +231,79 @@ describe('AnnotationsSidebar — Measurements tab', () => {
     expect(writeSpy).toHaveBeenCalledWith('1.23 km');
     writeSpy.mockRestore();
   });
+
+  it('clicking measurement row name/value area fires onMeasurementZoom with the measurement (Fix 2)', async () => {
+    const user = userEvent.setup();
+    const measurement = makeMeasurement();
+    vi.mocked(measurementsApi.listMeasurements).mockResolvedValue([measurement]);
+    const onMeasurementZoom = vi.fn();
+    render(
+      <AnnotationsSidebar
+        open={true}
+        annotations={[]}
+        selectedId={null}
+        onToggle={vi.fn()}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+        onMeasurementZoom={onMeasurementZoom}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /measurements/i }));
+    await waitFor(() => expect(screen.getByText('Fence line')).toBeInTheDocument());
+
+    // Click the zoom button (name area)
+    await user.click(screen.getByRole('button', { name: /zoom to fence line/i }));
+    expect(onMeasurementZoom).toHaveBeenCalledTimes(1);
+    expect(onMeasurementZoom).toHaveBeenCalledWith(measurement);
+  });
+
+  it('clicking Delete button does NOT fire onMeasurementZoom (Fix 2)', async () => {
+    const user = userEvent.setup();
+    const measurement = makeMeasurement();
+    vi.mocked(measurementsApi.listMeasurements).mockResolvedValue([measurement]);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const onMeasurementZoom = vi.fn();
+    render(
+      <AnnotationsSidebar
+        open={true}
+        annotations={[]}
+        selectedId={null}
+        onToggle={vi.fn()}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+        onMeasurementZoom={onMeasurementZoom}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /measurements/i }));
+    await waitFor(() => expect(screen.getByText('Fence line')).toBeInTheDocument());
+    const row = screen.getByText('Fence line').closest('[data-measurement-row]')!;
+    await user.click(within(row as HTMLElement).getByRole('button', { name: /delete/i }));
+    expect(onMeasurementZoom).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it('clicking Copy button does NOT fire onMeasurementZoom (Fix 2)', async () => {
+    const user = userEvent.setup();
+    const measurement = makeMeasurement();
+    vi.mocked(measurementsApi.listMeasurements).mockResolvedValue([measurement]);
+    const writeSpy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+    const onMeasurementZoom = vi.fn();
+    render(
+      <AnnotationsSidebar
+        open={true}
+        annotations={[]}
+        selectedId={null}
+        onToggle={vi.fn()}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+        onMeasurementZoom={onMeasurementZoom}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /measurements/i }));
+    await waitFor(() => expect(screen.getByText('Fence line')).toBeInTheDocument());
+    const row = screen.getByText('Fence line').closest('[data-measurement-row]')!;
+    await user.click(within(row as HTMLElement).getByRole('button', { name: /copy/i }));
+    expect(onMeasurementZoom).not.toHaveBeenCalled();
+    writeSpy.mockRestore();
+  });
 });

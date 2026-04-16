@@ -16,6 +16,7 @@ interface AnnotationsSidebarProps {
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   taskCountById?: Record<string, number>;
+  onMeasurementZoom?: (m: Measurement) => void;
 }
 
 type FilterValue = 'all' | AnnotationType;
@@ -46,6 +47,7 @@ export default function AnnotationsSidebar({
   onSelect,
   onDelete,
   taskCountById = {},
+  onMeasurementZoom,
 }: AnnotationsSidebarProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>('annotations');
   const [filter, setFilter] = useState<FilterValue>('all');
@@ -284,15 +286,23 @@ export default function AnnotationsSidebar({
                   className="border-b border-stone-200/50 px-4 py-3"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex-1 min-w-0">
+                    <button
+                      type="button"
+                      className="flex-1 min-w-0 text-left"
+                      onClick={() => onMeasurementZoom?.(m)}
+                      aria-label={`Zoom to ${m.name}`}
+                    >
                       <span className="font-medium text-stone-900 truncate block">{m.name}</span>
                       <span className="text-[11px] text-stone-600 font-mono">{m.formatted}</span>
-                    </div>
+                    </button>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
                         aria-label="Copy measurement"
-                        onClick={() => navigator.clipboard.writeText(m.formatted).catch(() => {})}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(m.formatted).catch(() => {});
+                        }}
                         className="text-stone-400 hover:text-stone-700 text-[11px] transition-colors px-1"
                         title="Copy to clipboard"
                       >
@@ -301,7 +311,8 @@ export default function AnnotationsSidebar({
                       <button
                         type="button"
                         aria-label="Delete measurement"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (window.confirm(`Delete "${m.name}"?`)) {
                             deleteMeasurement(m.id)
                               .then(() => setMeasurements((prev) => prev.filter((x) => x.id !== m.id)))

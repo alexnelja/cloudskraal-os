@@ -119,6 +119,9 @@ export default function FarmMapPage() {
   // 5m — save-as state: geometry captured when a draw finishes
   const [finishedGeometry, setFinishedGeometry] = useState<GeoJSON.Geometry | null>(null);
   const [measurementText, setMeasurementText] = useState<string | null>(null);
+  // Stores the raw draw payload so FEATURE/NOTE route can open SaveAnnotationModal
+  // without the modal appearing simultaneously with the chooser panel.
+  const pendingDrawPayloadRef = useRef<import('../components/map/tools/AnnotateTool').DrawFinishPayload | null>(null);
   const [saveMeasurementPending, setSaveMeasurementPending] = useState<{
     geometry: GeoJSON.Geometry;
     kind: 'length' | 'area';
@@ -280,9 +283,11 @@ export default function FarmMapPage() {
   }, [searchParams, annotations, flyToAnnotation]);
 
   const handleDrawFinish = useCallback((payload: DrawFinishPayload) => {
-    // Open save-annotation modal for the existing annotation flow
-    setPendingDraw(payload);
-    // Also capture for the save-as chooser (5m)
+    // Store payload for later — only pushed into pendingDraw when user
+    // explicitly picks FEATURE or NOTE from the chooser, so SaveAnnotationModal
+    // never appears simultaneously with the save-as chooser panel (Fix 1 — 5m).
+    pendingDrawPayloadRef.current = payload;
+    // Capture for the save-as chooser (5m)
     setFinishedGeometry(payload.geometry);
     // Compute a measurement text for the chip
     try {
@@ -303,6 +308,7 @@ export default function FarmMapPage() {
   const clearFinished = useCallback(() => {
     setFinishedGeometry(null);
     setMeasurementText(null);
+    pendingDrawPayloadRef.current = null;
   }, []);
 
   const handleSaveAsPick = useCallback(
@@ -350,9 +356,14 @@ export default function FarmMapPage() {
         return;
       }
       if (dest === 'feature' || dest === 'note') {
-        // Route through existing SaveAnnotationModal
-        // pendingDraw should already be set from handleDrawFinish
+        // Route through existing SaveAnnotationModal.
+        // clearFinished() first so the chooser panel unmounts before
+        // SaveAnnotationModal mounts — no dual-modal flash (Fix 1 — 5m).
         clearFinished();
+        if (pendingDrawPayloadRef.current) {
+          setPendingDraw(pendingDrawPayloadRef.current);
+          pendingDrawPayloadRef.current = null;
+        }
         return;
       }
       clearFinished();
@@ -374,6 +385,7 @@ export default function FarmMapPage() {
 
   const handleDiscardAnnotation = useCallback(() => {
     setPendingDraw(null);
+    pendingDrawPayloadRef.current = null;
   }, []);
 
   const handleAnnotationSelect = useCallback((id: string) => {
@@ -935,6 +947,15 @@ export default function FarmMapPage() {
         onSelect={handleAnnotationSelect}
         onDelete={handleAnnotationDelete}
         taskCountById={taskCountByAnnotation}
+        onMeasurementZoom={(m) => {
+          try {
+            const geom = JSON.parse(m.geometry) as GeoJSON.Geometry;
+            const bbox = turf.bbox(turf.feature(geom));
+            mapRef.current?.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 80, maxZoom: 17 });
+          } catch (err) {
+            console.warn('Failed to zoom to measurement:', err);
+          }
+        }}
       />
 
       {/* Field detail panel — overlays on top of map */}

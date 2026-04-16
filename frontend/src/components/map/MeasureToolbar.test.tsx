@@ -105,4 +105,36 @@ describe('MeasureToolbar', () => {
     fireEvent.click(screen.getByRole('button', { name: /save as/i }));
     expect(screen.getByRole('button', { name: /measurement/i })).toBeInTheDocument();
   });
+
+  it('hides save-as panel when finishedGeometry is cleared (Fix 1 — no dual-modal flash)', () => {
+    // Simulate parent clearing finishedGeometry after FEATURE/NOTE pick:
+    // panel should disappear when finishedGeometry becomes null.
+    const td = makeTd();
+    const { rerender } = render(
+      <MeasureToolbar
+        terraDraw={td as never}
+        currentMode="static"
+        finishedGeometry={lineGeometry}
+        measurementText="1.23 km"
+        onPick={vi.fn()}
+        onDiscard={vi.fn()}
+      />,
+    );
+    // Panel is visible initially.
+    expect(screen.getByRole('button', { name: /save as/i })).toBeInTheDocument();
+
+    // Parent clears finishedGeometry (as handleSaveAsPick does for FEATURE/NOTE).
+    rerender(
+      <MeasureToolbar
+        terraDraw={td as never}
+        currentMode="static"
+        finishedGeometry={null}
+        measurementText={null}
+        onPick={vi.fn()}
+        onDiscard={vi.fn()}
+      />,
+    );
+    // Panel must be gone — no dual-modal flash.
+    expect(screen.queryByRole('button', { name: /save as/i })).not.toBeInTheDocument();
+  });
 });
