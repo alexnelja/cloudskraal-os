@@ -14,6 +14,8 @@ import AnnotationMarkers from '../components/map/AnnotationMarkers';
 import CreateTaskModal, { type TaskContext } from '../components/map/CreateTaskModal';
 import MapContextMenu, { type MenuItem } from '../components/map/MapContextMenu';
 import MapOverlayRail from '../components/map/MapOverlayRail';
+import BasemapSwitcher from '../components/map/BasemapSwitcher';
+import { loadBasemapPreference, saveBasemapPreference } from '../config/basemaps';
 import { useLongPress } from '../hooks/useLongPress';
 import type { MapContextMenuEvent } from '../components/map/FarmMap';
 import { listTasks, createTask, type Task } from '../api/tasks';
@@ -100,6 +102,7 @@ export default function FarmMapPage() {
   const [loadErrors, setLoadErrors] = useState<string[]>([]);
   const [loadNonce, setLoadNonce] = useState(0);
   const [drawMode, setDrawMode] = useState<DrawMode>('static');
+  const [basemapId, setBasemapId] = useState<string>(() => loadBasemapPreference());
 
   useEffect(() => {
     // Fire all endpoints independently so one failure doesn't empty the rest.
@@ -526,6 +529,7 @@ export default function FarmMapPage() {
           onContextMenu={handleMapContextMenu}
           onMapClick={handleArmedMapClick}
           cursor={armedDropMode ? 'crosshair' : undefined}
+          basemapId={basemapId}
         />
         </div>
       )}
@@ -629,6 +633,10 @@ export default function FarmMapPage() {
             onEnterpriseToggle={handleEnterpriseToggle}
             onFarmZoom={handleFarmZoom}
             onFieldSelect={handleFieldSelect}
+          />
+          <BasemapSwitcher
+            current={basemapId}
+            onChange={(id) => { setBasemapId(id); saveBasemapPreference(id); }}
           />
           <LayerControl
             layers={mapLayers}

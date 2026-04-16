@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import type { Annotation } from '../../types/annotation';
+import { getBasemap, DEFAULT_BASEMAP_ID } from '../../config/basemaps';
 
 interface GisLayer {
   id: string;
@@ -37,6 +38,8 @@ interface FarmMapProps {
   onMapClick?: (e: { lng: number; lat: number; onField: boolean }) => void;
   /** CSS cursor override (e.g. 'crosshair' while armed). */
   cursor?: string;
+  /** Basemap id from config/basemaps. Changes swap raster source/layer in place. */
+  basemapId?: string;
 }
 
 function getWmsLayerName(url: string): string {
@@ -182,7 +185,7 @@ export default function FarmMap({
   geojson, farmBoundaries, selectedFieldId, onFieldSelect,
   visibleEnterprises, showFarmBoundaries = true, onMapReady, gisLayers,
   annotations, selectedAnnotationId, onAnnotationSelect, onContextMenu,
-  onMapClick, cursor,
+  onMapClick, cursor, basemapId = DEFAULT_BASEMAP_ID,
 }: FarmMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -204,24 +207,77 @@ export default function FarmMap({
   const onMapClickRef = useRef(onMapClick);
   onMapClickRef.current = onMapClick;
 
+  // Swap basemap (+ optional overlay) source/layer in place when basemapId changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoadedRef.current) return;
+    const bm = getBasemap(basemapId);
+
+    // Pick the first content layer above the basemap so we reinsert at the bottom.
+    const layers = map.getStyle().layers ?? [];
+    const firstContentId = layers.find((l) => l.id !== 'basemap' && l.id !== 'basemap-overlay')?.id;
+
+    const removeIf = (id: string) => {
+      if (map.getLayer(id)) map.removeLayer(id);
+      if (map.getSource(id)) map.removeSource(id);
+    };
+    removeIf('basemap-overlay');
+    removeIf('basemap');
+
+    map.addSource('basemap', {
+      type: 'raster',
+      tiles: [bm.primary.url],
+      tileSize: bm.primary.tileSize ?? 256,
+      attribution: bm.primary.attribution,
+      maxzoom: bm.primary.maxzoom ?? 19,
+    });
+    map.addLayer({ id: 'basemap', type: 'raster', source: 'basemap' }, firstContentId);
+
+    if (bm.overlay) {
+      map.addSource('basemap-overlay', {
+        type: 'raster',
+        tiles: [bm.overlay.url],
+        tileSize: bm.overlay.tileSize ?? 256,
+        attribution: bm.overlay.attribution,
+        maxzoom: bm.overlay.maxzoom ?? 19,
+      });
+      map.addLayer(
+        { id: 'basemap-overlay', type: 'raster', source: 'basemap-overlay' },
+        firstContentId,
+      );
+    }
+  }, [basemapId]);
+
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
+    const initialBm = getBasemap(basemapId);
+    const initialSources: Record<string, maplibregl.SourceSpecification> = {
+      basemap: {
+        type: 'raster',
+        tiles: [initialBm.primary.url],
+        tileSize: initialBm.primary.tileSize ?? 256,
+        attribution: initialBm.primary.attribution,
+        maxzoom: initialBm.primary.maxzoom ?? 19,
+      },
+    };
+    const initialLayers: maplibregl.LayerSpecification[] = [
+      { id: 'basemap', type: 'raster', source: 'basemap' },
+    ];
+    if (initialBm.overlay) {
+      initialSources['basemap-overlay'] = {
+        type: 'raster',
+        tiles: [initialBm.overlay.url],
+        tileSize: initialBm.overlay.tileSize ?? 256,
+        attribution: initialBm.overlay.attribution,
+        maxzoom: initialBm.overlay.maxzoom ?? 19,
+      };
+      initialLayers.push({ id: 'basemap-overlay', type: 'raster', source: 'basemap-overlay' });
+    }
+
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: {
-        version: 8,
-        sources: {
-          satellite: {
-            type: 'raster',
-            tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-            tileSize: 256,
-            attribution: '&copy; Esri',
-            maxzoom: 19,
-          },
-        },
-        layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }],
-      },
+      style: { version: 8, sources: initialSources, layers: initialLayers },
       center: [19.0198, -31.3222],
       zoom: 12,
       attributionControl: false,
