@@ -13,6 +13,7 @@ vault/
 build/
 .vscode/
 .claude/
+.superpowers/
 *.log
 __pycache__/
 .venv/
