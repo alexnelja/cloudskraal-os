@@ -71,6 +71,23 @@ describe('NewFieldModal', () => {
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
+  it('accepts decimal comma as a valid number', async () => {
+    const spy = vi.spyOn(api, 'createField').mockResolvedValue({
+      id: 'new', farm_id: 'f1', name: 'Blok', enterprise: 'rooibos', area_ha: 1.5,
+      code: null, crop_type: null, planted_year: null, status: 'active', soil_type: null, irrigation_type: null, notes: null,
+    } as never);
+    render(
+      <NewFieldModal open={true} onClose={vi.fn()} onCreated={vi.fn()} farms={FARMS} enterprises={['rooibos', 'wine']} />
+    );
+    fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Blok' } });
+    fireEvent.change(screen.getByLabelText(/enterprise/i), { target: { value: 'rooibos' } });
+    fireEvent.change(screen.getByLabelText(/area/i), { target: { value: '1,5' } });
+    fireEvent.click(screen.getByRole('button', { name: /create/i }));
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    const call = spy.mock.calls[0][0];
+    expect(call.area_ha).toBe(1.5);
+  });
+
   it('accepts optional pre-filled geometry + area (from 5m FIELD branch)', async () => {
     const spy = vi.spyOn(api, 'createField').mockResolvedValue({ id: 'n' } as never);
     const geom = { type: 'Polygon' as const, coordinates: [[[0,0],[1,0],[1,1],[0,0]]] };

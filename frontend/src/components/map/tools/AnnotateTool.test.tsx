@@ -12,7 +12,7 @@ vi.mock('@watergis/maplibre-gl-terradraw', () => ({
       mockMeasureCtor(options);
     }
     getTerraDrawInstance() {
-      return { on: mockTerraDrawOn, getSnapshot: () => [] };
+      return { on: mockTerraDrawOn, setMode: vi.fn(), getSnapshot: () => [] };
     }
   },
 }));
@@ -59,12 +59,12 @@ describe('AnnotateTool', () => {
     expect(mockMeasureCtor).not.toHaveBeenCalled();
   });
 
-  it('instantiates a MaplibreMeasureControl (no longer registers it as a map control)', () => {
+  it('instantiates a MaplibreMeasureControl and registers it as a map control', () => {
     const map = makeMockMap();
     render(<AnnotateTool map={map} />);
     expect(mockMeasureCtor).toHaveBeenCalledTimes(1);
-    // addControl is NOT called — the control is used only for TerraDraw instance access
-    expect(map.addControl).not.toHaveBeenCalled();
+    // addControl IS called — onAdd(map) must run for TerraDraw to be instantiated
+    expect(map.addControl).toHaveBeenCalledTimes(1);
   });
 
   it('includes point mode in the configured modes list', () => {
@@ -82,11 +82,24 @@ describe('AnnotateTool', () => {
     expect(mockTerraDrawOn).toHaveBeenCalledWith('finish', expect.any(Function));
   });
 
-  it('does not call removeControl on unmount (control not registered)', () => {
+  it('calls removeControl on unmount to clean up the registered control', () => {
     const map = makeMockMap();
     const { unmount } = render(<AnnotateTool map={map} />);
     unmount();
-    expect(map.removeControl).not.toHaveBeenCalled();
+    expect(map.removeControl).toHaveBeenCalledTimes(1);
+  });
+
+  it('onReady fires with a TerraDraw-like instance once addControl runs', () => {
+    const map = makeMockMap();
+    const onReady = vi.fn();
+    render(<AnnotateTool map={map} onReady={onReady} />);
+    // addControl must have been called (triggers onAdd -> TerraDraw init)
+    expect(map.addControl).toHaveBeenCalledTimes(1);
+    // onReady must fire with an object that has setMode (TerraDraw-like)
+    expect(onReady).toHaveBeenCalledTimes(1);
+    const td = onReady.mock.calls[0][0];
+    expect(td).not.toBeNull();
+    expect(typeof td.on).toBe('function');
   });
 
   it('calls onReady with the TerraDraw instance once mounted', () => {

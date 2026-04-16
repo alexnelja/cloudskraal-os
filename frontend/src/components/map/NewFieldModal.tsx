@@ -49,7 +49,8 @@ export default function NewFieldModal({
     if (!name.trim()) { setError('Name is required'); return; }
     if (!farmId) { setError('Select a farm'); return; }
     if (!enterprise) { setError('Select an enterprise'); return; }
-    const areaNum = Number(area);
+    const normalised = area.replace(',', '.');
+    const areaNum = Number(normalised);
     if (!Number.isFinite(areaNum) || areaNum <= 0) { setError('Area must be a positive number'); return; }
     setSaving(true);
     setError(null);
@@ -120,7 +121,7 @@ export default function NewFieldModal({
             Area (ha)
             <input
               aria-label="Area (ha)"
-              type="number" step="0.01" value={area} onChange={(e) => setArea(e.target.value)}
+              type="text" inputMode="decimal" placeholder="e.g. 1.5 or 1,5" value={area} onChange={(e) => setArea(e.target.value)}
               readOnly={areaHa != null}
               className={`mt-1 w-full glass-input rounded-lg px-2 py-1.5 text-[12px] ${areaHa != null ? 'bg-stone-100' : ''}`}
             />

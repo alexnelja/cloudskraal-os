@@ -78,6 +78,14 @@ export default function AnnotateTool({ map, onFinish, onModeChange, onReady }: A
 
     controlRef.current = control;
 
+    map.addControl(control, 'top-left');
+    // Hide the library's built-in DOM container so only our React MeasureToolbar
+    // is visible. The addControl call is still required — it triggers onAdd(map)
+    // which is the only place TerraDraw is instantiated inside the library.
+    const container = (control as unknown as { controlContainer?: HTMLElement }).controlContainer
+      ?? (control as unknown as { _container?: HTMLElement })._container;
+    if (container) container.style.display = 'none';
+
     const td = control.getTerraDrawInstance?.();
     if (td && typeof td.on === 'function') {
       td.on('finish', (featureId: string | number) => {
@@ -112,6 +120,9 @@ export default function AnnotateTool({ map, onFinish, onModeChange, onReady }: A
 
     return () => {
       window.clearInterval(modePollId);
+      if (controlRef.current) {
+        map.removeControl(controlRef.current);
+      }
       controlRef.current = null;
     };
   }, [map]);
