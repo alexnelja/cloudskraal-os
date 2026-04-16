@@ -135,6 +135,46 @@ router.get('/fields/:id/enrichment', async (req, res) => {
   }
 });
 
+// POST /api/fields — create a new field
+router.post('/fields', (req, res) => {
+  const db = getDb();
+  const required = ['farm_id', 'name', 'enterprise', 'area_ha'];
+  for (const k of required) {
+    if (req.body[k] === undefined || req.body[k] === null || req.body[k] === '') {
+      return res.status(400).json({ error: `Missing required field: ${k}` });
+    }
+  }
+  const farm = db.prepare('SELECT id FROM farms WHERE id = ?').get(req.body.farm_id);
+  if (!farm) return res.status(400).json({ error: 'Unknown farm_id' });
+
+  const now = new Date().toISOString();
+  const row = {
+    id: uuidv4(),
+    farm_id: req.body.farm_id,
+    name: req.body.name,
+    code: req.body.code ?? null,
+    enterprise: req.body.enterprise,
+    crop_type: req.body.crop_type ?? null,
+    area_ha: Number(req.body.area_ha),
+    planted_year: req.body.planted_year ?? null,
+    status: req.body.status ?? 'active',
+    geometry:
+      typeof req.body.geometry === 'string'
+        ? req.body.geometry
+        : req.body.geometry
+        ? JSON.stringify(req.body.geometry)
+        : '{}',
+    notes: req.body.notes ?? null,
+    created_at: now,
+    updated_at: now,
+  };
+  db.prepare(
+    `INSERT INTO fields (id, farm_id, name, code, enterprise, crop_type, area_ha, planted_year, status, geometry, notes, created_at, updated_at)
+     VALUES (@id, @farm_id, @name, @code, @enterprise, @crop_type, @area_ha, @planted_year, @status, @geometry, @notes, @created_at, @updated_at)`,
+  ).run(row);
+  res.status(201).json(row);
+});
+
 // PATCH /api/fields/:id — partial update
 router.patch('/fields/:id', (req, res) => {
   const db = getDb();

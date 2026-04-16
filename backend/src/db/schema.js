@@ -17,7 +17,7 @@ const { migrateMapLayersExtra } = require('./migrate-map-layers-extra');
 const { migrateMapLayersCleanupBasemaps } = require('./migrate-map-layers-cleanup-basemaps');
 const { migrateWikiPageLinks } = require('./migrate-wiki-page-links');
 
-const DB_PATH = path.join(__dirname, '..', '..', 'data', 'capex.db');
+const DB_PATH = process.env.CAPEX_DB_PATH ?? path.join(__dirname, '..', '..', 'data', 'capex.db');
 
 let db;
 
@@ -96,4 +96,12 @@ function initSchema(db) {
   `);
 }
 
-module.exports = { getDb };
+/** Only call this in tests — closes and forgets the current db instance. */
+function _resetForTest() {
+  if (db) {
+    try { db.close(); } catch (_) { /* ignore */ }
+    db = undefined;
+  }
+}
+
+module.exports = { getDb, _resetForTest };
