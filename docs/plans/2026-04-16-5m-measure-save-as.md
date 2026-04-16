@@ -117,7 +117,7 @@ function migrateMeasurements(db) {
 module.exports = { migrateMeasurements };
 ```
 
-- [ ] **Step 1.4: Register in schema.js**
+- [ ] **Step 1.4: Register in schema.js + honour CAPEX_DB_PATH**
 
 In `backend/src/db/schema.js`:
 
@@ -129,6 +129,16 @@ In `backend/src/db/schema.js`:
    ```js
    migrateMeasurements(db);
    ```
+3. **Commit up front:** replace the hardcoded `DB_PATH` constant near the top of the file with an env-aware version so backend route tests can use a throwaway SQLite file:
+   ```js
+   // Before:
+   const DB_PATH = path.join(__dirname, '..', '..', 'data', 'capex.db');
+   // After:
+   const DB_PATH = process.env.CAPEX_DB_PATH
+     ?? path.join(__dirname, '..', '..', 'data', 'capex.db');
+   ```
+
+This change is isolated (one line), keeps default behaviour unchanged for dev/prod, and unblocks Task 2's route tests (and every future backend test). Ship it in the Task 1 commit.
 
 - [ ] **Step 1.5: Run — expect PASS**
 
