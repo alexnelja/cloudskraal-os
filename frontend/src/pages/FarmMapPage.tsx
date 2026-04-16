@@ -3,10 +3,11 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import FarmMap from '../components/map/FarmMap';
 import FieldPanel from '../components/map/FieldPanel';
-import MapControls from '../components/map/MapControls';
+import FieldsSidebar from '../components/map/FieldsSidebar';
 import LayerControl from '../components/map/LayerControl';
 import { AnimatePresence, motion } from 'motion/react';
-import { MapPinArea, ClipboardText, NotePencil, CheckSquare, MapPin } from '@phosphor-icons/react';
+import { MapPinArea, ClipboardText, NotePencil, CheckSquare, MapPin, List } from '@phosphor-icons/react';
+import FluidSheet from '../components/map/FluidSheet';
 import AnnotateTool, { type DrawFinishPayload, type DrawMode } from '../components/map/tools/AnnotateTool';
 import SaveAnnotationModal from '../components/map/SaveAnnotationModal';
 import AnnotationsSidebar from '../components/map/AnnotationsSidebar';
@@ -105,6 +106,9 @@ export default function FarmMapPage() {
   const [drawMode, setDrawMode] = useState<DrawMode>('static');
   const [terraDraw, setTerraDraw] = useState<{ setMode: (mode: string) => void } | null>(null);
   const [basemapId, setBasemapId] = useState<string>(() => loadBasemapPreference());
+  const [fieldsSidebarOpen, setFieldsSidebarOpen] = useState(false);
+  const [newFieldOpen, setNewFieldOpen] = useState(false);
+  const [newFieldSeed, setNewFieldSeed] = useState<{ geometry?: GeoJSON.Geometry; areaHa?: number }>({});
 
   useEffect(() => {
     // Fire all endpoints independently so one failure doesn't empty the rest.
@@ -435,6 +439,9 @@ export default function FarmMapPage() {
 
   // Suppress unused warning in strict mode (reserved for future server refetch).
   void refreshAnnotations;
+  // newFieldOpen + newFieldSeed are wired in Task 6 (NewFieldModal) — suppress until then.
+  void newFieldOpen;
+  void newFieldSeed;
 
   function handleLayerToggle(layerId: string, visible: boolean) {
     setMapLayers(prev =>
@@ -474,6 +481,11 @@ export default function FarmMapPage() {
     map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 50 });
   }
 
+  function handleAddField(opts?: { geometry?: GeoJSON.Geometry; areaHa?: number }) {
+    setNewFieldSeed(opts ?? {});
+    setNewFieldOpen(true);
+  }
+
   function handleFieldSelect(fieldId: string) {
     setSelectedFieldId(fieldId);
     // Zoom to field on the map — find it in geojson
@@ -501,8 +513,34 @@ export default function FarmMapPage() {
     map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 80 });
   }
 
+  const fieldsSidebar = (
+    <FieldsSidebar
+      farms={farms}
+      fields={fields}
+      enterprises={enterprises}
+      visibleEnterprises={visibleEnterprises ?? enterprises}
+      selectedFieldId={selectedFieldId}
+      onEnterpriseToggle={handleEnterpriseToggle}
+      onFarmSelect={handleFarmZoom}
+      onFieldSelect={handleFieldSelect}
+      onAddField={() => handleAddField()}
+    />
+  );
+
   return (
-    <div className="h-[calc(100vh-5rem)] md:h-screen relative overflow-hidden">
+    <div className="h-[calc(100vh-5rem)] md:h-screen flex min-h-0">
+      {/* Desktop: inline flex child sidebar */}
+      <div className="hidden md:block h-full">{fieldsSidebar}</div>
+
+      {/* Mobile: FluidSheet overlay */}
+      <div className="md:hidden">
+        <FluidSheet side="left" open={fieldsSidebarOpen} onDismiss={() => setFieldsSidebarOpen(false)}>
+          {fieldsSidebar}
+        </FluidSheet>
+      </div>
+
+      {/* Map area — fills remaining space */}
+      <div className="flex-1 relative min-h-0 overflow-hidden">
       {/* Map fills the full container */}
       {loading ? (
         <div className="w-full h-full bg-stone-200 flex items-center justify-center">
@@ -624,19 +662,20 @@ export default function FarmMapPage() {
         )}
       </AnimatePresence>
 
+      {/* Hamburger pill (mobile only) — opens FieldsSidebar sheet */}
+      <button
+        type="button"
+        className="md:hidden absolute top-3 left-3 z-10 glass-button rounded-full w-10 h-10 flex items-center justify-center"
+        aria-label="Open fields sidebar"
+        onClick={() => setFieldsSidebarOpen(true)}
+      >
+        <List size={18} />
+      </button>
+
       {/* Top-right rail: nav + layers + annotations toggle */}
       {!loading && (
         <MapOverlayRail position="tr">
           <MeasureToolbar terraDraw={terraDraw} currentMode={drawMode} />
-          <MapControls
-            farms={farms}
-            fields={fields}
-            enterprises={enterprises}
-            visibleEnterprises={visibleEnterprises ?? enterprises}
-            onEnterpriseToggle={handleEnterpriseToggle}
-            onFarmZoom={handleFarmZoom}
-            onFieldSelect={handleFieldSelect}
-          />
           <BasemapSwitcher
             current={basemapId}
             onChange={(id) => { setBasemapId(id); saveBasemapPreference(id); }}
@@ -805,6 +844,7 @@ export default function FarmMapPage() {
         fieldId={selectedFieldId}
         onClose={() => setSelectedFieldId(null)}
       />
+      </div> {/* end map area flex-1 */}
     </div>
   );
 }
