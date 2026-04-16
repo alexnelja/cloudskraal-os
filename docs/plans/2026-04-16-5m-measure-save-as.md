@@ -16,15 +16,16 @@
 
 ## Pre-flight
 
-- [ ] **Step 0.1: Confirm 5k is shipped**
+- [ ] **Step 0.1: Confirm 5k AND 5l are shipped**
 
 ```bash
 cd /Users/alexnelja/projects/cloudskraal-capex
-ls frontend/src/components/map/MeasureToolbar.tsx  # must exist
-git log --oneline -6 | grep -E "5k|MeasureToolbar"
+ls frontend/src/components/map/MeasureToolbar.tsx  # 5k artifact
+ls frontend/src/components/map/NewFieldModal.tsx   # 5l artifact — needed for FIELD branch
+git log --oneline -10 | grep -E "5k|5l"
 ```
 
-If `MeasureToolbar` doesn't exist, stop — ship 5k first.
+If either is missing, stop — ship 5k and 5l first. 5m's FIELD branch depends on `NewFieldModal` (shipped by 5l). Without it, the plan cannot complete.
 
 - [ ] **Step 0.2: Green baseline**
 
@@ -610,7 +611,7 @@ export function findEnclosingField(
 }
 ```
 
-In `FarmMapPage.tsx`'s `handleSaveAsPick`:
+In `FarmMapPage.tsx`'s `handleSaveAsPick`, open the `NewFieldModal` (shipped by 5l) pre-filled with the drawn polygon and its computed area:
 
 ```ts
 if (dest === 'field') {
@@ -620,14 +621,31 @@ if (dest === 'field') {
     clearFinished();
     return;
   }
-  // no existing field create flow yet (see 5l) — show a follow-up toast for now
-  toast.info('Field creation flow pending (tracked in handoff)');
-  clearFinished();
+  // Compute area_ha from the drawn polygon
+  const areaM2 = turf.area(turf.feature(finishedGeometry));
+  const areaHa = areaM2 / 10000;
+  setNewFieldSeed({ geometry: finishedGeometry, areaHa });
+  setNewFieldOpen(true);
+  // Don't clearFinished yet — only clear after the modal closes (success or cancel)
   return;
 }
 ```
 
-**Important:** since 5l also stubs `onAddField` (no real field-creation flow exists), the FIELD branch in 5m is ALSO a stub. The `turf.booleanContains` guard ships — the downstream "open the real field-create form" is deferred. Document this in the handoff.
+When `NewFieldModal.onClose` or `onCreated` fires, clear the drawn geometry:
+
+```tsx
+<NewFieldModal
+  open={newFieldOpen}
+  onClose={() => { setNewFieldOpen(false); clearFinished(); }}
+  onCreated={(field) => {
+    refetchFields();
+    refetchFieldsGeoJson();
+  }}
+  // ...
+/>
+```
+
+5l ships the modal and the `newFieldOpen` / `newFieldSeed` state; 5m only passes the `geometry` + `areaHa` to it. If 5m ships before 5l, this task cannot complete — `NewFieldModal` doesn't exist yet. Gate on 5l being shipped (pre-flight Step 0.1).
 
 ---
 
