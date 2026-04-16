@@ -40,13 +40,9 @@ const EXTRA_LAYERS = [
     source_type: 'xyz',
     category: 'infrastructure',
   },
-  {
-    name: 'NASA Blue Marble (Next Gen)',
-    source_url:
-      'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg',
-    source_type: 'xyz',
-    category: 'imagery',
-  },
+  // NASA Blue Marble (Next Gen) previously lived here; promoted to the
+  // frontend BASEMAPS registry as id 'bluemarble' — it behaves as a full
+  // basemap, not an overlay, so LayerControl was the wrong place.
 ];
 
 function migrateMapLayersExtra(db) {

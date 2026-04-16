@@ -106,6 +106,18 @@ export const BASEMAPS: BasemapDef[] = [
     thumbBg:
       'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 60%, #3a3a3a 100%)',
   },
+  {
+    id: 'bluemarble',
+    label: 'Blue Marble',
+    description: 'NASA Blue Marble Next Generation — true-colour global composite',
+    primary: {
+      url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg',
+      attribution: '&copy; NASA EOSDIS GIBS',
+      maxzoom: 8,
+    },
+    thumbBg:
+      'linear-gradient(135deg, #123c6b 0%, #1f6a4a 50%, #8c7238 100%)',
+  },
 ];
 
 export const DEFAULT_BASEMAP_ID = 'satellite';

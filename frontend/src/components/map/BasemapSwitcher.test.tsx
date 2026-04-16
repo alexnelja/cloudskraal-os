@@ -11,11 +11,15 @@ describe('BasemapSwitcher', () => {
   it('reveals all basemap tiles when opened', () => {
     render(<BasemapSwitcher current="satellite" onChange={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: /basemap/i }));
-    // Each tile button has title=description; Satellite also lives in the toggle.
-    const tiles = screen.getAllByRole('button').filter(b => b.hasAttribute('aria-current') || b.hasAttribute('title'));
-    // Toggle + 6 tiles = 7 buttons with a title attr
-    expect(tiles.length).toBeGreaterThanOrEqual(7);
-    for (const desc of [/esri world imagery/i, /road \+ place/i, /openstreetmap/i, /world topo/i, /opentopomap/i, /carto dark/i]) {
+    for (const desc of [
+      /esri world imagery/i,
+      /road \+ place/i,
+      /openstreetmap/i,
+      /world topo/i,
+      /opentopomap/i,
+      /carto dark/i,
+      /blue marble/i,
+    ]) {
       expect(screen.getByTitle(desc)).toBeInTheDocument();
     }
   });
