@@ -9,17 +9,22 @@ interface LayerControlProps {
 }
 
 const CATEGORY_ORDER = [
+  'imagery',
   'soils',
   'climate',
   'vegetation',
+  'land_cover',
   'geology',
   'topography',
+  'infrastructure',
   'boundaries',
   'agriculture',
 ];
 
 function prettyCategory(c: string): string {
-  return c.charAt(0).toUpperCase() + c.slice(1);
+  // 'land_cover' → 'Land cover'
+  const spaced = c.replace(/_/g, ' ');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 function groupByCategory(layers: MapLayer[]): Record<string, MapLayer[]> {
