@@ -17,10 +17,13 @@ export interface DrawFinishPayload {
 
 export type DrawMode = 'static' | 'linestring' | 'polygon' | 'point' | 'select' | 'render' | string;
 
+type TerraDraw = { setMode: (mode: string) => void; on: (event: string, cb: (...args: unknown[]) => void) => void; getSnapshot?: () => unknown[]; getMode?: () => string };
+
 interface AnnotateToolProps {
   map: maplibregl.Map | null;
   onFinish?: (payload: DrawFinishPayload) => void;
   onModeChange?: (mode: DrawMode) => void;
+  onReady?: (td: TerraDraw) => void;
 }
 
 function geometryToType(geom: GeoJSON.Geometry): AnnotationType | null {
@@ -30,12 +33,15 @@ function geometryToType(geom: GeoJSON.Geometry): AnnotationType | null {
   return null;
 }
 
-export default function AnnotateTool({ map, onFinish, onModeChange }: AnnotateToolProps) {
+export default function AnnotateTool({ map, onFinish, onModeChange, onReady }: AnnotateToolProps) {
   const controlRef = useRef<MaplibreMeasureControl | null>(null);
   const onFinishRef = useRef(onFinish);
   onFinishRef.current = onFinish;
   const onModeChangeRef = useRef(onModeChange);
   onModeChangeRef.current = onModeChange;
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  const readyFiredRef = useRef(false);
 
   useEffect(() => {
     if (!map) return;
@@ -71,7 +77,6 @@ export default function AnnotateTool({ map, onFinish, onModeChange }: AnnotateTo
     });
 
     controlRef.current = control;
-    map.addControl(control, 'top-left');
 
     const td = control.getTerraDrawInstance?.();
     if (td && typeof td.on === 'function') {
@@ -83,6 +88,11 @@ export default function AnnotateTool({ map, onFinish, onModeChange }: AnnotateTo
         if (!annType) return;
         onFinishRef.current?.({ type: annType, geometry: feature.geometry as GeoJSON.Geometry });
       });
+
+      if (!readyFiredRef.current) {
+        readyFiredRef.current = true;
+        onReadyRef.current?.(td as TerraDraw);
+      }
     }
 
     // terradraw has no mode-change event; poll getMode() cheaply and fire
@@ -99,10 +109,7 @@ export default function AnnotateTool({ map, onFinish, onModeChange }: AnnotateTo
 
     return () => {
       window.clearInterval(modePollId);
-      if (controlRef.current) {
-        map.removeControl(controlRef.current);
-        controlRef.current = null;
-      }
+      controlRef.current = null;
     };
   }, [map]);
 

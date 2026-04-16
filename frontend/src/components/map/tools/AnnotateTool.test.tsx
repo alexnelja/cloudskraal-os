@@ -59,11 +59,12 @@ describe('AnnotateTool', () => {
     expect(mockMeasureCtor).not.toHaveBeenCalled();
   });
 
-  it('adds a MaplibreMeasureControl to the map', () => {
+  it('instantiates a MaplibreMeasureControl (no longer registers it as a map control)', () => {
     const map = makeMockMap();
     render(<AnnotateTool map={map} />);
     expect(mockMeasureCtor).toHaveBeenCalledTimes(1);
-    expect(map.addControl).toHaveBeenCalledTimes(1);
+    // addControl is NOT called — the control is used only for TerraDraw instance access
+    expect(map.addControl).not.toHaveBeenCalled();
   });
 
   it('includes point mode in the configured modes list', () => {
@@ -81,10 +82,18 @@ describe('AnnotateTool', () => {
     expect(mockTerraDrawOn).toHaveBeenCalledWith('finish', expect.any(Function));
   });
 
-  it('removes the control on unmount', () => {
+  it('does not call removeControl on unmount (control not registered)', () => {
     const map = makeMockMap();
     const { unmount } = render(<AnnotateTool map={map} />);
     unmount();
-    expect(map.removeControl).toHaveBeenCalledTimes(1);
+    expect(map.removeControl).not.toHaveBeenCalled();
+  });
+
+  it('calls onReady with the TerraDraw instance once mounted', () => {
+    const map = makeMockMap();
+    const onReady = vi.fn();
+    render(<AnnotateTool map={map} onReady={onReady} />);
+    expect(onReady).toHaveBeenCalledTimes(1);
+    expect(onReady.mock.calls[0][0]).toHaveProperty('on');
   });
 });

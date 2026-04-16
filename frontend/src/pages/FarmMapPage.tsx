@@ -15,6 +15,7 @@ import CreateTaskModal, { type TaskContext } from '../components/map/CreateTaskM
 import MapContextMenu, { type MenuItem } from '../components/map/MapContextMenu';
 import MapOverlayRail from '../components/map/MapOverlayRail';
 import BasemapSwitcher from '../components/map/BasemapSwitcher';
+import MeasureToolbar from '../components/map/MeasureToolbar';
 import { loadBasemapPreference, saveBasemapPreference } from '../config/basemaps';
 import { useLongPress } from '../hooks/useLongPress';
 import type { MapContextMenuEvent } from '../components/map/FarmMap';
@@ -102,6 +103,7 @@ export default function FarmMapPage() {
   const [loadErrors, setLoadErrors] = useState<string[]>([]);
   const [loadNonce, setLoadNonce] = useState(0);
   const [drawMode, setDrawMode] = useState<DrawMode>('static');
+  const [terraDraw, setTerraDraw] = useState<{ setMode: (mode: string) => void } | null>(null);
   const [basemapId, setBasemapId] = useState<string>(() => loadBasemapPreference());
 
   useEffect(() => {
@@ -625,6 +627,7 @@ export default function FarmMapPage() {
       {/* Top-right rail: nav + layers + annotations toggle */}
       {!loading && (
         <MapOverlayRail position="tr">
+          <MeasureToolbar terraDraw={terraDraw} currentMode={drawMode} />
           <MapControls
             farms={farms}
             fields={fields}
@@ -747,7 +750,7 @@ export default function FarmMapPage() {
       })()}
 
       {/* Annotate tool — mounts terradraw controls on the map */}
-      <AnnotateTool map={mapInstance} onFinish={handleDrawFinish} onModeChange={setDrawMode} />
+      <AnnotateTool map={mapInstance} onFinish={handleDrawFinish} onModeChange={setDrawMode} onReady={setTerraDraw} />
 
       {/* Category icon markers overlay (QGIS-style) */}
       <AnnotationMarkers

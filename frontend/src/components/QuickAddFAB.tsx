@@ -108,26 +108,17 @@ export default function QuickAddFAB() {
         className="relative w-14 h-14 rounded-full flex items-center justify-center overflow-hidden"
         aria-label={open ? 'Close quick add menu' : 'Open quick add menu'}
         style={{
-          background: open
-            ? 'linear-gradient(135deg, #1f2937, #0f172a)'
-            : 'linear-gradient(135deg, #047857, #065f46)',
-          boxShadow: open
-            ? 'inset 0 1px 0 rgba(255,255,255,0.15), 0 14px 34px -10px rgba(15, 23, 42, 0.55)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.25), 0 14px 34px -10px rgba(4, 120, 87, 0.55)',
+          background: 'var(--glass-bg)',
+          border: '1px solid rgba(4,120,87,0.4)',
+          boxShadow:
+            '0 8px 20px rgba(4,120,87,0.18), inset 0 1px 0 rgba(255,255,255,0.25)',
+          backdropFilter: 'var(--glass-blur)',
         }}
       >
-        <span
-          aria-hidden
-          className="absolute inset-0 rounded-full pointer-events-none"
-          style={{
-            background:
-              'radial-gradient(circle at 30% 25%, rgba(255,255,255,0.45), transparent 55%)',
-          }}
-        />
         {open ? (
-          <X size={22} weight="bold" className="text-white relative z-10 -rotate-45" />
+          <X size={22} weight="bold" className="text-emerald-700 relative z-10 -rotate-45" />
         ) : (
-          <Plus size={24} weight="bold" className="text-white relative z-10" />
+          <Plus size={24} weight="bold" className="text-emerald-700 relative z-10" />
         )}
       </motion.button>
     </div>

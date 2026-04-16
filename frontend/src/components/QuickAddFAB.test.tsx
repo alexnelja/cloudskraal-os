@@ -38,4 +38,40 @@ describe('QuickAddFAB', () => {
     expect(screen.getByText(/new wiki page/i)).toBeInTheDocument();
     expect(screen.getByText(/new task/i)).toBeInTheDocument();
   });
+
+  it('closed FAB renders with glass background and no linear-gradient', () => {
+    render(
+      <MemoryRouter>
+        <QuickAddFAB />
+      </MemoryRouter>,
+    );
+    const button = screen.getByRole('button', { name: /open quick add menu/i });
+    expect(button.style.background).not.toMatch(/linear-gradient/);
+    expect(button.style.background).toMatch(/var\(--glass-bg\)|rgba\(255,\s*255,\s*255/);
+  });
+
+  it('open FAB also uses glass surface (no dark gradient swap)', () => {
+    render(
+      <MemoryRouter>
+        <QuickAddFAB />
+      </MemoryRouter>,
+    );
+    const button = screen.getByRole('button', { name: /open quick add menu/i });
+    fireEvent.click(button);
+    const close = screen.getByRole('button', { name: /close quick add menu/i });
+    expect(close.style.background).not.toMatch(/linear-gradient/);
+  });
+
+  it('plus icon has emerald-700 colour class', () => {
+    render(
+      <MemoryRouter>
+        <QuickAddFAB />
+      </MemoryRouter>,
+    );
+    const button = screen.getByRole('button', { name: /open quick add menu/i });
+    const icon = button.querySelector('svg');
+    expect(icon).not.toBeNull();
+    // Icon uses className so we check the rendered class
+    expect(icon!.getAttribute('class') || '').toMatch(/text-emerald-700/);
+  });
 });
