@@ -18,6 +18,7 @@ import CreateTaskModal, { type TaskContext } from '../components/map/CreateTaskM
 import MapContextMenu, { type MenuItem } from '../components/map/MapContextMenu';
 import MapOverlayRail from '../components/map/MapOverlayRail';
 import BasemapSwitcher from '../components/map/BasemapSwitcher';
+import EnterpriseFilterBar from '../components/map/EnterpriseFilterBar';
 import MeasureToolbar from '../components/map/MeasureToolbar';
 import ExportMapButton from '../components/map/ExportMapButton';
 import { loadBasemapPreference, saveBasemapPreference } from '../config/basemaps';
@@ -939,6 +940,20 @@ export default function FarmMapPage() {
       >
         <List size={18} />
       </button>
+
+      {/* Enterprise filter bar — top of map */}
+      {!loading && enterprises.length > 0 && (
+        <div className="absolute top-3 left-14 md:left-3 right-48 z-10 pointer-events-none">
+          <div className="pointer-events-auto inline-flex glass-panel rounded-xl px-2.5 py-1.5">
+            <EnterpriseFilterBar
+              enterprises={enterprises}
+              visibleEnterprises={visibleEnterprises ?? enterprises}
+              onToggle={handleEnterpriseToggle}
+              onShowAll={() => setVisibleEnterprises(undefined)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Top-right rail: nav + layers + annotations toggle */}
       {!loading && (
