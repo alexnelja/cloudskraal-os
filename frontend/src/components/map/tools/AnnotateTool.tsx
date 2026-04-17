@@ -55,6 +55,7 @@ export default function AnnotateTool({ map, onFinish, onModeChange, onReady, onG
       showCoordinatePoints: true,
       editable: true,
       keyEvents: { cancel: 'Escape', finish: 'Enter' },
+      snapping: { toCoordinate: true, toLine: true },
     };
 
     const control = new MaplibreMeasureControl({
@@ -64,8 +65,14 @@ export default function AnnotateTool({ map, onFinish, onModeChange, onReady, onG
       areaPrecision: 2,
       open: false,
       modeOptions: {
-        linestring: new TerraDrawLineStringMode(commonModeOptions),
-        polygon: new TerraDrawPolygonMode(commonModeOptions),
+        linestring: new TerraDrawLineStringMode({
+          ...commonModeOptions,
+          styles: { snappingPointColor: '#d97706', snappingPointWidth: 6, snappingPointOutlineColor: '#fff', snappingPointOutlineWidth: 2 },
+        }),
+        polygon: new TerraDrawPolygonMode({
+          ...commonModeOptions,
+          styles: { snappingPointColor: '#d97706', snappingPointWidth: 6, snappingPointOutlineColor: '#fff', snappingPointOutlineWidth: 2 },
+        }),
         point: new TerraDrawPointMode({ editable: true }),
         select: new TerraDrawSelectMode({
           flags: {
