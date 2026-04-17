@@ -13,6 +13,7 @@ interface AnnotationMarkersProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onContextMenu?: (annotationId: string, x: number, y: number) => void;
+  excludeId?: string | null;
 }
 
 function anchorCoord(ann: Annotation): [number, number] | null {
@@ -97,6 +98,7 @@ export default function AnnotationMarkers({
   selectedId,
   onSelect,
   onContextMenu,
+  excludeId,
 }: AnnotationMarkersProps) {
   const markersRef = useRef<Map<string, MarkerRecord>>(new Map());
   const onContextMenuRef = useRef(onContextMenu);
@@ -106,9 +108,11 @@ export default function AnnotationMarkers({
     if (!map) return;
     const current = markersRef.current;
 
-    // Build desired set
+    // Build desired set (exclude the annotation being edited in TerraDraw)
     const desired = new Map<string, Annotation>();
-    for (const ann of annotations) desired.set(ann.id, ann);
+    for (const ann of annotations) {
+      if (ann.id !== excludeId) desired.set(ann.id, ann);
+    }
 
     // Remove markers no longer desired
     for (const [id, rec] of current) {
@@ -153,7 +157,7 @@ export default function AnnotationMarkers({
     return () => {
       // no-op on deps change; full cleanup on unmount below
     };
-  }, [map, annotations, selectedId, onSelect]);
+  }, [map, annotations, selectedId, onSelect, excludeId]);
 
   // Final cleanup on unmount
   useEffect(() => {

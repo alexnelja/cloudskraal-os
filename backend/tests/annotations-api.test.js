@@ -128,14 +128,26 @@ describe('annotations API', () => {
     expect(data.notes).toBe('updated');
   });
 
-  it('PATCH rejects geometry change', async () => {
-    const id = created[0];
+  it('PATCH rejects geometry type mismatch', async () => {
+    const id = created[0]; // line annotation
     const { status, data } = await api(`/annotations/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ geometry: { type: 'Point', coordinates: [0, 0] } }),
     });
     expect(status).toBe(400);
-    expect(data.error).toBe('immutable_field');
+    expect(data.error).toBe('type_mismatch');
+  });
+
+  it('PATCH accepts same-type geometry update', async () => {
+    const id = created[0]; // line annotation
+    const newGeom = { type: 'LineString', coordinates: [[19.0, -31.3], [19.002, -31.3]] };
+    const { status, data } = await api(`/annotations/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ geometry: newGeom }),
+    });
+    expect(status).toBe(200);
+    expect(data.geometry.coordinates[1][0]).toBeCloseTo(19.002);
+    expect(data.length_m).toBeGreaterThan(0);
   });
 
   it('DELETE returns 204 and item is gone', async () => {

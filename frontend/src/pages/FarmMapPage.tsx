@@ -115,7 +115,11 @@ export default function FarmMapPage() {
   const [loadErrors, setLoadErrors] = useState<string[]>([]);
   const [loadNonce, setLoadNonce] = useState(0);
   const [drawMode, setDrawMode] = useState<DrawMode>('static');
-  const [terraDraw, setTerraDraw] = useState<{ setMode: (mode: string) => void } | null>(null);
+  const [terraDraw, setTerraDraw] = useState<{
+    setMode: (mode: string) => void;
+    addFeatures?: (features: GeoJSON.Feature[]) => void;
+    removeFeatures?: (ids: (string | number)[]) => void;
+  } | null>(null);
   const [basemapId, setBasemapId] = useState<string>(() => loadBasemapPreference());
   const [fieldsSidebarOpen, setFieldsSidebarOpen] = useState(false);
   const [fieldsSidebarCollapsed, setFieldsSidebarCollapsed] = useState(false);
@@ -596,13 +600,26 @@ export default function FarmMapPage() {
   }, [selectedAnnotationId, searchParams, setSearchParams]);
 
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
+  const preEditGeometryRef = useRef<GeoJSON.Geometry | null>(null);
 
   const handleAnnotationEdit = useCallback((id: string) => {
+    const ann = annotations.find(a => a.id === id);
+    if (!ann || !terraDraw) return;
+    preEditGeometryRef.current = ann.geometry;
     setEditingAnnotationId(id);
     setSelectedAnnotationId(id);
-    // Switch TerraDraw to select mode so the user can reshape the feature on-map
-    terraDraw?.setMode('select');
-  }, [terraDraw]);
+
+    const geomType = ann.geometry.type;
+    const mode = geomType === 'Polygon' ? 'polygon' : geomType === 'LineString' ? 'linestring' : 'point';
+    const feature: GeoJSON.Feature = {
+      id: ann.id,
+      type: 'Feature',
+      geometry: ann.geometry,
+      properties: { mode },
+    };
+    terraDraw.addFeatures?.([feature]);
+    terraDraw.setMode('select');
+  }, [annotations, terraDraw]);
 
   const handleGeometryChange = useCallback(async (_featureId: string | number, geometry: GeoJSON.Geometry) => {
     // Only persist geometry changes when we are actively editing an annotation
@@ -616,9 +633,13 @@ export default function FarmMapPage() {
   }, [editingAnnotationId]);
 
   const handleFinishEditing = useCallback(() => {
+    if (editingAnnotationId && terraDraw?.removeFeatures) {
+      terraDraw.removeFeatures([editingAnnotationId]);
+    }
+    preEditGeometryRef.current = null;
     setEditingAnnotationId(null);
     terraDraw?.setMode('render');
-  }, [terraDraw]);
+  }, [editingAnnotationId, terraDraw]);
 
   // Suppress unused warning in strict mode (reserved for future server refetch).
   void refreshAnnotations;
@@ -1057,6 +1078,7 @@ export default function FarmMapPage() {
         selectedId={selectedAnnotationId}
         onSelect={handleAnnotationSelect}
         onContextMenu={handleMarkerContextMenu}
+        excludeId={editingAnnotationId}
       />
 
       {/* Context menu on right-click */}
@@ -1101,7 +1123,19 @@ export default function FarmMapPage() {
           </button>
           <button
             type="button"
-            onClick={() => { setEditingAnnotationId(null); terraDraw?.setMode('render'); }}
+            onClick={() => {
+              if (editingAnnotationId) {
+                terraDraw?.removeFeatures?.([editingAnnotationId]);
+                if (preEditGeometryRef.current) {
+                  const origGeom = preEditGeometryRef.current;
+                  setAnnotations(prev => prev.map(a => a.id === editingAnnotationId ? { ...a, geometry: origGeom } : a));
+                  apiUpdateAnnotation(editingAnnotationId, { geometry: origGeom }).catch(() => {});
+                }
+              }
+              preEditGeometryRef.current = null;
+              setEditingAnnotationId(null);
+              terraDraw?.setMode('render');
+            }}
             className="px-3 py-1.5 text-sm text-stone-600 hover:text-stone-900 transition-colors"
           >
             Cancel

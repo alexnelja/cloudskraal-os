@@ -18,7 +18,7 @@ export interface DrawFinishPayload {
 
 export type DrawMode = 'static' | 'linestring' | 'polygon' | 'point' | 'select' | 'render' | string;
 
-type TerraDraw = { setMode: (mode: string) => void; on: (event: string, cb: (...args: unknown[]) => void) => void; getSnapshot?: () => unknown[]; getMode?: () => string; start?: () => void; enabled?: boolean; undo?: () => boolean; redo?: () => boolean };
+type TerraDraw = { setMode: (mode: string) => void; on: (event: string, cb: (...args: unknown[]) => void) => void; getSnapshot?: () => unknown[]; getMode?: () => string; start?: () => void; enabled?: boolean; undo?: () => boolean; redo?: () => boolean; addFeatures?: (features: GeoJSON.Feature[]) => void; removeFeatures?: (ids: (string | number)[]) => void };
 
 interface AnnotateToolProps {
   map: maplibregl.Map | null;

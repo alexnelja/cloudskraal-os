@@ -181,7 +181,11 @@ router.patch('/fields/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM fields WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Field not found' });
 
-  const allowed = ['name', 'enterprise', 'crop_type', 'area_ha', 'planted_year', 'status', 'soil_type', 'irrigation_type', 'notes'];
+  if (req.body.enterprise !== undefined) {
+    return res.status(400).json({ error: 'read_only', field: 'enterprise', reason: 'enterprise is derived from usage periods' });
+  }
+
+  const allowed = ['name', 'crop_type', 'area_ha', 'planted_year', 'status', 'soil_type', 'irrigation_type', 'notes'];
   const updates = {};
   for (const key of allowed) {
     if (req.body[key] !== undefined) updates[key] = req.body[key];
