@@ -24,7 +24,7 @@ import type { MapContextMenuEvent } from '../components/map/FarmMap';
 import { listTasks, createTask, type Task } from '../api/tasks';
 import { createAnnotation } from '../api/annotations';
 import { API_BASE_URL } from '../api/config';
-import { getMapGeoJSON, getFarmBoundaries, getFarms, getFields, getMapLayers, updateMapLayer } from '../api/farms';
+import { getMapGeoJSON, getFarmBoundaries, getFarms, getFields, getMapLayers, updateMapLayer, deleteField } from '../api/farms';
 import { findEnclosingField } from '../utils/fields';
 import { formatDistance, formatArea } from '../components/map/tools/metricFormat';
 import * as turf from '@turf/turf';
@@ -115,6 +115,7 @@ export default function FarmMapPage() {
   const [terraDraw, setTerraDraw] = useState<{ setMode: (mode: string) => void } | null>(null);
   const [basemapId, setBasemapId] = useState<string>(() => loadBasemapPreference());
   const [fieldsSidebarOpen, setFieldsSidebarOpen] = useState(false);
+  const [fieldsSidebarCollapsed, setFieldsSidebarCollapsed] = useState(false);
   const [newFieldOpen, setNewFieldOpen] = useState(false);
   const [newFieldSeed, setNewFieldSeed] = useState<{ geometry?: GeoJSON.Geometry; areaHa?: number }>({});
   // True while we're waiting for the user to draw a polygon for a new field.
@@ -674,6 +675,19 @@ export default function FarmMapPage() {
     map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 80 });
   }
 
+  const handleDeleteField = useCallback(async (fieldId: string) => {
+    const field = fields.find((f) => f.id === fieldId);
+    const label = field ? field.name : 'this field';
+    if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return;
+    try {
+      await deleteField(fieldId);
+      if (selectedFieldId === fieldId) setSelectedFieldId(null);
+      setLoadNonce((n) => n + 1);
+    } catch (err) {
+      console.error('Failed to delete field', err);
+    }
+  }, [fields, selectedFieldId]);
+
   const fieldsSidebar = (
     <FieldsSidebar
       farms={farms}
@@ -686,7 +700,10 @@ export default function FarmMapPage() {
       onFarmSelect={handleFarmZoom}
       onFieldSelect={handleFieldSelect}
       onAddField={() => handleAddField()}
+      onDeleteField={handleDeleteField}
       onColorChange={setEnterpriseColor}
+      collapsed={fieldsSidebarCollapsed}
+      onToggleCollapse={() => setFieldsSidebarCollapsed((v) => !v)}
     />
   );
 

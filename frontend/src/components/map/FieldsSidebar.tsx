@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, MagnifyingGlass as Search, Eye, EyeSlash, CaretDown, CaretRight } from '@phosphor-icons/react';
+import { Plus, MagnifyingGlass as Search, Eye, EyeSlash, CaretDown, CaretRight, CaretLeft, Trash } from '@phosphor-icons/react';
 import { ENTERPRISE_LABELS } from '../../types/farm';
 import type { Farm, Field } from '../../types/farm';
 
@@ -16,7 +16,11 @@ interface FieldsSidebarProps {
   onFarmSelect: (farmCode: string | null) => void;
   onFieldSelect: (fieldId: string) => void;
   onAddField: () => void;
+  onDeleteField?: (fieldId: string) => void;
   onColorChange?: (enterprise: string, color: string) => void;
+  /** When true the sidebar renders as a narrow collapsed strip. Controlled externally. */
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 const LS_KEY = 'capex.fields-sidebar';
@@ -71,8 +75,11 @@ export default function FieldsSidebar({
   onFarmSelect,
   onFieldSelect,
   onAddField,
+  onDeleteField,
   enterpriseColors,
   onColorChange,
+  collapsed: sidebarCollapsed = false,
+  onToggleCollapse,
 }: FieldsSidebarProps) {
   const [search, setSearch] = useState('');
   const persisted = loadPersisted();
@@ -140,10 +147,38 @@ export default function FieldsSidebar({
     );
   }
 
+  if (sidebarCollapsed) {
+    return (
+      <aside className="h-full w-10 flex-shrink-0 glass-panel rounded-r-2xl flex flex-col items-center py-3 gap-2">
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-label="Expand sidebar"
+            className="text-stone-500 hover:text-stone-800 p-1"
+          >
+            <CaretRight size={16} weight="bold" />
+          </button>
+        )}
+        <span className="text-[10px] text-stone-400 [writing-mode:vertical-lr] rotate-180 mt-2">Fields</span>
+      </aside>
+    );
+  }
+
   return (
     <aside className="h-full w-72 flex-shrink-0 glass-panel rounded-r-2xl flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-3 py-3 flex items-center gap-2 border-b border-[#f3f4f3]">
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-label="Collapse sidebar"
+            className="text-stone-400 hover:text-stone-800 p-0.5 -ml-1"
+          >
+            <CaretLeft size={14} weight="bold" />
+          </button>
+        )}
         <span className="flex-1 font-semibold text-stone-800 text-[13px]">Fields</span>
         <button
           type="button"
@@ -270,17 +305,31 @@ export default function FieldsSidebar({
                 </button>
               </div>
               {!isCollapsed && g.list.map((f) => (
-                <button
+                <div
                   key={f.id}
-                  type="button"
-                  onClick={() => onFieldSelect(f.id)}
-                  className={`field-row w-full pl-8 pr-3 py-1.5 flex items-center justify-between text-left border-b border-[#f7f6f5] hover:bg-stone-50 ${
+                  className={`field-row w-full pl-8 pr-2 py-1.5 flex items-center text-left border-b border-[#f7f6f5] hover:bg-stone-50 group/row ${
                     selectedFieldId === f.id ? 'bg-amber-50' : ''
                   }`}
                 >
-                  <span className="text-stone-800 truncate">{f.name}</span>
-                  <span className="text-stone-500 text-[10px] flex-shrink-0 ml-2">{Math.round(f.area_ha)} ha</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => onFieldSelect(f.id)}
+                    className="flex-1 flex items-center justify-between min-w-0"
+                  >
+                    <span className="text-stone-800 truncate text-[11px]">{f.name}</span>
+                    <span className="text-stone-500 text-[10px] flex-shrink-0 ml-2">{Math.round(f.area_ha)} ha</span>
+                  </button>
+                  {onDeleteField && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onDeleteField(f.id); }}
+                      aria-label={`Delete ${f.name}`}
+                      className="ml-1 p-0.5 text-stone-300 hover:text-red-600 opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0"
+                    >
+                      <Trash size={12} />
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           );
@@ -291,23 +340,37 @@ export default function FieldsSidebar({
           <p className="px-3 py-3 text-stone-400 italic">No fields.</p>
         )}
         {flatSorted?.map((f) => (
-          <button
+          <div
             key={f.id}
-            type="button"
-            onClick={() => onFieldSelect(f.id)}
-            className={`field-row w-full pl-3 pr-3 py-1.5 flex items-center justify-between text-left border-b border-[#f7f6f5] hover:bg-stone-50 ${
+            className={`field-row w-full pl-3 pr-2 py-1.5 flex items-center text-left border-b border-[#f7f6f5] hover:bg-stone-50 group/row ${
               selectedFieldId === f.id ? 'bg-amber-50' : ''
             }`}
           >
-            <div className="flex items-center gap-2 truncate">
-              <span
-                className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ backgroundColor: enterpriseColors[f.enterprise] ?? '#6b7280' }}
-              />
-              <span className="text-stone-800 truncate">{f.name}</span>
-            </div>
-            <span className="text-stone-500 text-[10px] flex-shrink-0 ml-2">{Math.round(f.area_ha)} ha</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => onFieldSelect(f.id)}
+              className="flex-1 flex items-center justify-between min-w-0"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <span
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: enterpriseColors[f.enterprise] ?? '#6b7280' }}
+                />
+                <span className="text-stone-800 truncate">{f.name}</span>
+              </div>
+              <span className="text-stone-500 text-[10px] flex-shrink-0 ml-2">{Math.round(f.area_ha)} ha</span>
+            </button>
+            {onDeleteField && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onDeleteField(f.id); }}
+                aria-label={`Delete ${f.name}`}
+                className="ml-1 p-0.5 text-stone-300 hover:text-red-600 opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0"
+              >
+                <Trash size={12} />
+              </button>
+            )}
+          </div>
         ))}
       </div>
     </aside>

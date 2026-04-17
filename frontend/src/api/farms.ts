@@ -79,3 +79,8 @@ export interface CreateFieldInput {
 export async function createField(input: CreateFieldInput): Promise<Field> {
   return request<Field>('/fields', { method: 'POST', body: JSON.stringify(input) });
 }
+
+export async function deleteField(id: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/fields/${id}`, { method: 'DELETE' });
+  if (!res.ok && res.status !== 404) throw new Error(`Delete failed: ${res.status}`);
+}

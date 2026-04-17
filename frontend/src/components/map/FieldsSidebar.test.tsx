@@ -36,6 +36,7 @@ const baseProps = {
   onFarmSelect: vi.fn(),
   onFieldSelect: vi.fn(),
   onAddField: vi.fn(),
+  onDeleteField: vi.fn(),
   enterpriseColors: { rooibos: '#047857', wine: '#7c3aed', sheep: '#d97706' },
 };
 
@@ -106,28 +107,28 @@ describe('FieldsSidebar', () => {
   });
 
   it('sorts fields by name (A→Z) when name sort selected', () => {
-    render(<FieldsSidebar {...baseProps} />);
+    const { container } = render(<FieldsSidebar {...baseProps} />);
     const sortSelect = screen.getByLabelText(/sort/i);
     fireEvent.change(sortSelect, { target: { value: 'name-asc' } });
-    const rows = screen.getAllByRole('button').filter(b => b.classList.contains('field-row'));
-    const names = rows.map(b => b.querySelector('.text-stone-800')?.textContent);
+    const rows = container.querySelectorAll('.field-row');
+    const names = Array.from(rows).map(r => r.querySelector('.text-stone-800')?.textContent);
     expect(names).toEqual(['Aloe Field', 'Blok 1', 'Blok 2', 'Vineyard N']);
   });
 
   it('sorts fields by area descending when area sort selected', () => {
-    render(<FieldsSidebar {...baseProps} />);
+    const { container } = render(<FieldsSidebar {...baseProps} />);
     const sortSelect = screen.getByLabelText(/sort/i);
     fireEvent.change(sortSelect, { target: { value: 'area-desc' } });
-    const rows = screen.getAllByRole('button').filter(b => b.classList.contains('field-row'));
-    const names = rows.map(b => b.querySelector('.text-stone-800')?.textContent);
+    const rows = container.querySelectorAll('.field-row');
+    const names = Array.from(rows).map(r => r.querySelector('.text-stone-800')?.textContent);
     // 60, 42, 38, 22
     expect(names).toEqual(['Aloe Field', 'Blok 1', 'Blok 2', 'Vineyard N']);
   });
 
   it('default sort is by enterprise (grouped by enterprise, then by name)', () => {
-    render(<FieldsSidebar {...baseProps} />);
-    const rows = screen.getAllByRole('button').filter(b => b.classList.contains('field-row'));
-    const names = rows.map(b => b.querySelector('.text-stone-800')?.textContent);
+    const { container } = render(<FieldsSidebar {...baseProps} />);
+    const rows = container.querySelectorAll('.field-row');
+    const names = Array.from(rows).map(r => r.querySelector('.text-stone-800')?.textContent);
     // rooibos group (largest total) first, then wine. Within group: alphabetical
     expect(names).toEqual(['Aloe Field', 'Blok 1', 'Blok 2', 'Vineyard N']);
   });
@@ -149,5 +150,45 @@ describe('FieldsSidebar', () => {
     expect(screen.getByText('10%')).toBeInTheDocument();
     // Bergplaas: 60/500 = 12%
     expect(screen.getByText('12%')).toBeInTheDocument();
+  });
+
+  // === Delete button ===
+
+  it('renders a delete button for each field row', () => {
+    render(<FieldsSidebar {...baseProps} />);
+    const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
+    expect(deleteButtons.length).toBe(4);
+  });
+
+  it('clicking delete button calls onDeleteField with the field id', () => {
+    render(<FieldsSidebar {...baseProps} />);
+    const deleteBtn = screen.getByRole('button', { name: /delete blok 1/i });
+    fireEvent.click(deleteBtn);
+    expect(baseProps.onDeleteField).toHaveBeenCalledWith('a');
+  });
+
+  it('does not render delete buttons when onDeleteField is not provided', () => {
+    const { onDeleteField: _, ...propsWithoutDelete } = baseProps;
+    render(<FieldsSidebar {...propsWithoutDelete} />);
+    expect(screen.queryAllByRole('button', { name: /delete/i })).toHaveLength(0);
+  });
+
+  // === Collapse toggle ===
+
+  it('renders collapse toggle when onToggleCollapse provided', () => {
+    const toggle = vi.fn();
+    render(<FieldsSidebar {...baseProps} onToggleCollapse={toggle} />);
+    const collapseBtn = screen.getByRole('button', { name: /collapse sidebar/i });
+    fireEvent.click(collapseBtn);
+    expect(toggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders collapsed strip when collapsed=true', () => {
+    const toggle = vi.fn();
+    render(<FieldsSidebar {...baseProps} collapsed={true} onToggleCollapse={toggle} />);
+    // Should show expand button, not collapse
+    expect(screen.getByRole('button', { name: /expand sidebar/i })).toBeInTheDocument();
+    // Should NOT show the full field list
+    expect(screen.queryByText('Blok 1')).toBeNull();
   });
 });
