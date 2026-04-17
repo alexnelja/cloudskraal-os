@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Ruler, Polygon as PolyIcon, MapPin, ArrowsOut as Line, Hand } from '@phosphor-icons/react';
+import { Ruler, Polygon as PolyIcon, MapPin, Hand } from '@phosphor-icons/react';
 import SaveAsChooserPopover from './SaveAsChooserPopover';
 
 type TerraDraw = { setMode: (mode: string) => void };
@@ -24,14 +24,10 @@ interface ModeDef {
   shape: 'line' | 'poly';
 }
 
-// Map four UX buttons onto three TerraDraw modes.
-// "Distance" and "Draw polygon" both use linestring/polygon draw modes,
-// "Area" is also polygon with a different intent label, "Drop pin" is point.
 const MODES: ModeDef[] = [
-  { id: 'distance', label: 'Measure distance', mode: 'linestring', icon: Line, shape: 'line' },
-  { id: 'area', label: 'Measure area', mode: 'polygon', icon: Ruler, shape: 'poly' },
+  { id: 'distance', label: 'Measure distance', mode: 'linestring', icon: Ruler, shape: 'line' },
+  { id: 'polygon', label: 'Draw polygon / area', mode: 'polygon', icon: PolyIcon, shape: 'poly' },
   { id: 'pin', label: 'Drop pin', mode: 'point', icon: MapPin, shape: 'line' },
-  { id: 'polygon', label: 'Draw polygon', mode: 'polygon', icon: PolyIcon, shape: 'poly' },
 ];
 
 export default function MeasureToolbar({

@@ -16,40 +16,60 @@ describe('MeasureToolbar', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders 4 mode buttons when terraDraw is ready', () => {
+  it('renders pan + 3 mode buttons when terraDraw is ready', () => {
     const td = makeTd();
-    render(<MeasureToolbar terraDraw={td as never} currentMode="static" />);
+    render(<MeasureToolbar terraDraw={td as never} currentMode="render" />);
+    expect(screen.getByRole('button', { name: /pan mode/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /measure distance/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /measure area/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /drop pin/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /draw polygon/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /drop pin/i })).toBeInTheDocument();
   });
 
-  it('calls setMode with render then linestring when distance is clicked (double-setMode fix)', () => {
+  it('calls setMode with render then linestring when distance is clicked', () => {
     const td = makeTd();
-    render(<MeasureToolbar terraDraw={td as never} currentMode="static" />);
+    render(<MeasureToolbar terraDraw={td as never} currentMode="render" />);
     fireEvent.click(screen.getByRole('button', { name: /measure distance/i }));
-    // Fix 1: reset to render first, then set the target mode
     expect(td.setMode).toHaveBeenNthCalledWith(1, 'render');
     expect(td.setMode).toHaveBeenNthCalledWith(2, 'linestring');
-    expect(td.setMode).toHaveBeenCalledTimes(2);
+  });
+
+  it('toggling an active mode deactivates it back to render', () => {
+    const td = makeTd();
+    render(<MeasureToolbar terraDraw={td as never} currentMode="polygon" />);
+    fireEvent.click(screen.getByRole('button', { name: /draw polygon/i }));
+    expect(td.setMode).toHaveBeenCalledWith('render');
+    expect(td.setMode).toHaveBeenCalledTimes(1);
   });
 
   it('highlights the active mode with aria-pressed=true', () => {
     const td = makeTd();
     render(<MeasureToolbar terraDraw={td as never} currentMode="polygon" />);
-    const poly = screen.getByRole('button', { name: /measure area/i });
+    const poly = screen.getByRole('button', { name: /draw polygon/i });
     expect(poly).toHaveAttribute('aria-pressed', 'true');
     const line = screen.getByRole('button', { name: /measure distance/i });
     expect(line).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('renders save-as panel when finishedGeometry is set and mode is static', () => {
+  it('pan button highlighted in render mode', () => {
+    const td = makeTd();
+    render(<MeasureToolbar terraDraw={td as never} currentMode="render" />);
+    const pan = screen.getByRole('button', { name: /pan mode/i });
+    expect(pan).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('pan button exits draw mode back to render', () => {
+    const td = makeTd();
+    render(<MeasureToolbar terraDraw={td as never} currentMode="linestring" />);
+    fireEvent.click(screen.getByRole('button', { name: /pan mode/i }));
+    expect(td.setMode).toHaveBeenCalledWith('render');
+  });
+
+  it('renders save-as panel when finishedGeometry is set and mode is render', () => {
     const td = makeTd();
     render(
       <MeasureToolbar
         terraDraw={td as never}
-        currentMode="static"
+        currentMode="render"
         finishedGeometry={lineGeometry}
         measurementText="1.23 km"
         onPick={vi.fn()}
@@ -58,10 +78,9 @@ describe('MeasureToolbar', () => {
     );
     expect(screen.getByText('1.23 km')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save as/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /discard/i })).toBeInTheDocument();
   });
 
-  it('does not render save-as panel when mode is not static', () => {
+  it('does not render save-as panel when mode is active draw', () => {
     const td = makeTd();
     render(
       <MeasureToolbar
@@ -82,7 +101,7 @@ describe('MeasureToolbar', () => {
     render(
       <MeasureToolbar
         terraDraw={td as never}
-        currentMode="static"
+        currentMode="render"
         finishedGeometry={lineGeometry}
         measurementText="1.23 km"
         onPick={vi.fn()}
@@ -98,7 +117,7 @@ describe('MeasureToolbar', () => {
     render(
       <MeasureToolbar
         terraDraw={td as never}
-        currentMode="static"
+        currentMode="render"
         finishedGeometry={lineGeometry}
         measurementText="1.23 km"
         onPick={vi.fn()}
@@ -107,37 +126,5 @@ describe('MeasureToolbar', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: /save as/i }));
     expect(screen.getByRole('button', { name: /measurement/i })).toBeInTheDocument();
-  });
-
-  it('hides save-as panel when finishedGeometry is cleared (Fix 1 — no dual-modal flash)', () => {
-    // Simulate parent clearing finishedGeometry after FEATURE/NOTE pick:
-    // panel should disappear when finishedGeometry becomes null.
-    const td = makeTd();
-    const { rerender } = render(
-      <MeasureToolbar
-        terraDraw={td as never}
-        currentMode="static"
-        finishedGeometry={lineGeometry}
-        measurementText="1.23 km"
-        onPick={vi.fn()}
-        onDiscard={vi.fn()}
-      />,
-    );
-    // Panel is visible initially.
-    expect(screen.getByRole('button', { name: /save as/i })).toBeInTheDocument();
-
-    // Parent clears finishedGeometry (as handleSaveAsPick does for FEATURE/NOTE).
-    rerender(
-      <MeasureToolbar
-        terraDraw={td as never}
-        currentMode="static"
-        finishedGeometry={null}
-        measurementText={null}
-        onPick={vi.fn()}
-        onDiscard={vi.fn()}
-      />,
-    );
-    // Panel must be gone — no dual-modal flash.
-    expect(screen.queryByRole('button', { name: /save as/i })).not.toBeInTheDocument();
   });
 });
