@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, MagnifyingGlass as Search, Eye, EyeSlash, CaretDown, CaretRight, CaretLeft, Trash } from '@phosphor-icons/react';
+import { Plus, MagnifyingGlass as Search, Eye, EyeSlash, CaretDown, CaretRight, CaretLeft, Trash, PencilSimple } from '@phosphor-icons/react';
 import { ENTERPRISE_LABELS } from '../../types/farm';
 import type { Farm, Field } from '../../types/farm';
 
@@ -17,6 +17,7 @@ interface FieldsSidebarProps {
   onFieldSelect: (fieldId: string) => void;
   onAddField: () => void;
   onDeleteField?: (fieldId: string) => void;
+  onEditField?: (fieldId: string) => void;
   onColorChange?: (enterprise: string, color: string) => void;
   /** When true the sidebar renders as a narrow collapsed strip. Controlled externally. */
   collapsed?: boolean;
@@ -76,6 +77,7 @@ export default function FieldsSidebar({
   onFieldSelect,
   onAddField,
   onDeleteField,
+  onEditField,
   enterpriseColors,
   onColorChange,
   collapsed: sidebarCollapsed = false,
@@ -321,16 +323,28 @@ export default function FieldsSidebar({
                     <span className="text-stone-800 truncate text-[11px]">{f.name}</span>
                     <span className="text-stone-500 text-[10px] flex-shrink-0 ml-2">{Math.round(f.area_ha)} ha</span>
                   </button>
-                  {onDeleteField && (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); onDeleteField(f.id); }}
-                      aria-label={`Delete ${f.name}`}
-                      className="ml-1 p-0.5 text-stone-300 hover:text-red-600 opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0"
-                    >
-                      <Trash size={12} />
-                    </button>
-                  )}
+                  <div className="flex items-center opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0">
+                    {onEditField && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onEditField(f.id); }}
+                        aria-label={`Edit ${f.name}`}
+                        className="p-0.5 text-stone-300 hover:text-emerald-600"
+                      >
+                        <PencilSimple size={12} />
+                      </button>
+                    )}
+                    {onDeleteField && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onDeleteField(f.id); }}
+                        aria-label={`Delete ${f.name}`}
+                        className="p-0.5 text-stone-300 hover:text-red-600"
+                      >
+                        <Trash size={12} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -364,16 +378,28 @@ export default function FieldsSidebar({
               </div>
               <span className="text-stone-500 text-[10px] flex-shrink-0 ml-2">{Math.round(f.area_ha)} ha</span>
             </button>
-            {onDeleteField && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onDeleteField(f.id); }}
-                aria-label={`Delete ${f.name}`}
-                className="ml-1 p-0.5 text-stone-300 hover:text-red-600 opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0"
-              >
-                <Trash size={12} />
-              </button>
-            )}
+            <div className="flex items-center opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0">
+              {onEditField && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onEditField(f.id); }}
+                  aria-label={`Edit ${f.name}`}
+                  className="p-0.5 text-stone-300 hover:text-emerald-600"
+                >
+                  <PencilSimple size={12} />
+                </button>
+              )}
+              {onDeleteField && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onDeleteField(f.id); }}
+                  aria-label={`Delete ${f.name}`}
+                  className="p-0.5 text-stone-300 hover:text-red-600"
+                >
+                  <Trash size={12} />
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

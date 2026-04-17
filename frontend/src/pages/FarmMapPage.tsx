@@ -5,6 +5,7 @@ import FarmMap from '../components/map/FarmMap';
 import FieldPanel from '../components/map/FieldPanel';
 import FieldsSidebar from '../components/map/FieldsSidebar';
 import NewFieldModal from '../components/map/NewFieldModal';
+import EditFieldModal from '../components/map/EditFieldModal';
 import LayerControl from '../components/map/LayerControl';
 import { AnimatePresence, motion } from 'motion/react';
 import { MapPinArea, ClipboardText, NotePencil, CheckSquare, MapPin, List, Polygon as PolyIcon } from '@phosphor-icons/react';
@@ -118,6 +119,7 @@ export default function FarmMapPage() {
   const [fieldsSidebarCollapsed, setFieldsSidebarCollapsed] = useState(false);
   const [newFieldOpen, setNewFieldOpen] = useState(false);
   const [newFieldSeed, setNewFieldSeed] = useState<{ geometry?: GeoJSON.Geometry; areaHa?: number }>({});
+  const [editFieldId, setEditFieldId] = useState<string | null>(null);
   // True while we're waiting for the user to draw a polygon for a new field.
   const [awaitingFieldDraw, setAwaitingFieldDraw] = useState(false);
 
@@ -688,6 +690,10 @@ export default function FarmMapPage() {
     }
   }, [fields, selectedFieldId]);
 
+  const handleEditField = useCallback((fieldId: string) => {
+    setEditFieldId(fieldId);
+  }, []);
+
   const fieldsSidebar = (
     <FieldsSidebar
       farms={farms}
@@ -701,6 +707,7 @@ export default function FarmMapPage() {
       onFieldSelect={handleFieldSelect}
       onAddField={() => handleAddField()}
       onDeleteField={handleDeleteField}
+      onEditField={handleEditField}
       onColorChange={setEnterpriseColor}
       collapsed={fieldsSidebarCollapsed}
       onToggleCollapse={() => setFieldsSidebarCollapsed((v) => !v)}
@@ -1090,6 +1097,19 @@ export default function FarmMapPage() {
         geometry={newFieldSeed.geometry}
         areaHa={newFieldSeed.areaHa}
         farmBoundaries={farmBoundaries}
+      />
+
+      {/* Edit field modal */}
+      <EditFieldModal
+        open={editFieldId !== null}
+        field={fields.find(f => f.id === editFieldId) ?? null}
+        onClose={() => setEditFieldId(null)}
+        onUpdated={() => {
+          setEditFieldId(null);
+          setLoadNonce((n) => n + 1);
+        }}
+        farms={farms}
+        enterprises={enterprises}
       />
 
       {/* Save measurement modal (5m) */}
