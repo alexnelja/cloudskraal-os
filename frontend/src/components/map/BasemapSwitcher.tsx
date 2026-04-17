@@ -57,7 +57,7 @@ export default function BasemapSwitcher({ current, onChange }: BasemapSwitcherPr
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 420, damping: 30 }}
-            className="absolute top-full right-0 mt-2 glass-panel rounded-2xl p-2 w-60 grid grid-cols-2 gap-2 z-20"
+            className="absolute top-full right-0 mt-2 glass-panel rounded-2xl p-2 w-60 grid grid-cols-2 gap-2 z-20 max-h-[60vh] overflow-y-auto"
           >
             {BASEMAPS.map((b) => {
               const isCurrent = b.id === current;

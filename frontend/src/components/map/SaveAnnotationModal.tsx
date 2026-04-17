@@ -146,7 +146,7 @@ export default function SaveAnnotationModal({
               Category
             </label>
             <div
-              className="grid grid-cols-4 gap-1.5"
+              className="grid grid-cols-3 sm:grid-cols-4 gap-1.5"
               role="radiogroup"
               aria-label="Category"
             >

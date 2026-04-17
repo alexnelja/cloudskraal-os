@@ -52,7 +52,7 @@ export default function FluidDialog({
           <motion.div
             role="dialog"
             aria-modal="true"
-            className={`relative w-full ${maxWidth} rounded-2xl overflow-hidden`}
+            className={`relative w-full ${maxWidth} rounded-2xl overflow-hidden max-h-[90vh] overflow-y-auto`}
             initial={{ opacity: 0, y: 12, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
