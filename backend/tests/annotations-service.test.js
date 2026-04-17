@@ -182,6 +182,43 @@ describe('annotations service', () => {
     expect(cleared.category).toBeNull();
   });
 
+  it('update with geometry recomputes metrics and persists new geometry', () => {
+    const row = createAnnotation(db, linePin);
+    const newGeometry = { type: 'LineString', coordinates: [[0.1, 0.1], [0.9, 0.9]] };
+    const updated = updateAnnotation(db, row.id, { geometry: newGeometry });
+    expect(updated.geometry).toEqual(newGeometry);
+    expect(updated.length_m).toBeGreaterThan(0);
+    // Length should differ from original since geometry changed
+    expect(updated.length_m).not.toBe(row.length_m);
+  });
+
+  it('update with geometry for polygon recomputes area_m2', () => {
+    const row = createAnnotation(db, {
+      type: 'polygon',
+      title: 'Patch',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[[0.2, 0.2], [0.4, 0.2], [0.4, 0.4], [0.2, 0.4], [0.2, 0.2]]],
+      },
+    });
+    const newGeometry = {
+      type: 'Polygon',
+      coordinates: [[[0.1, 0.1], [0.9, 0.1], [0.9, 0.9], [0.1, 0.9], [0.1, 0.1]]],
+    };
+    const updated = updateAnnotation(db, row.id, { geometry: newGeometry });
+    expect(updated.area_m2).toBeGreaterThan(row.area_m2);
+    expect(updated.geometry).toEqual(newGeometry);
+  });
+
+  it('update with mismatched geometry type throws type_mismatch', () => {
+    const row = createAnnotation(db, linePin);
+    expect(() =>
+      updateAnnotation(db, row.id, {
+        geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] },
+      }),
+    ).toThrow(/mismatch/i);
+  });
+
   it('create stores metadata_json when provided', () => {
     const row = createAnnotation(db, {
       type: 'pin',

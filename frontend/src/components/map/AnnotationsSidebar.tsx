@@ -15,6 +15,7 @@ interface AnnotationsSidebarProps {
   onToggle: () => void;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit?: (id: string) => void;
   taskCountById?: Record<string, number>;
   onMeasurementZoom?: (m: Measurement) => void;
 }
@@ -46,6 +47,7 @@ export default function AnnotationsSidebar({
   onToggle,
   onSelect,
   onDelete,
+  onEdit,
   taskCountById = {},
   onMeasurementZoom,
 }: AnnotationsSidebarProps) {
@@ -247,17 +249,32 @@ export default function AnnotationsSidebar({
                             {formatDate(a.created_at)}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          aria-label="Delete annotation"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm(`Delete "${a.title}"?`)) onDelete(a.id);
-                          }}
-                          className="text-stone-400 hover:text-red-600 text-[11px] transition-colors"
-                        >
-                          Delete
-                        </button>
+                        <div className="flex items-center gap-1">
+                          {onEdit && (
+                            <button
+                              type="button"
+                              aria-label="Edit annotation"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEdit(a.id);
+                              }}
+                              className="text-stone-400 hover:text-amber-700 text-[11px] transition-colors"
+                            >
+                              Edit
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            aria-label="Delete annotation"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Delete "${a.title}"?`)) onDelete(a.id);
+                            }}
+                            className="text-stone-400 hover:text-red-600 text-[11px] transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     </motion.li>
                   );

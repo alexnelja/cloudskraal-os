@@ -95,6 +95,9 @@ function updateAnnotation(db, id, patch) {
     err.code = 'invalid_category';
     throw err;
   }
+  if (patch.geometry !== undefined) {
+    assertTypeMatches(row.type, patch.geometry);
+  }
   const now = new Date().toISOString();
   const fields = [];
   const params = [];
@@ -105,6 +108,18 @@ function updateAnnotation(db, id, patch) {
   if (patch.metadata !== undefined) {
     fields.push('metadata_json = ?');
     params.push(patch.metadata == null ? null : JSON.stringify(patch.metadata));
+  }
+  if (patch.geometry !== undefined) {
+    const geojson = JSON.stringify(patch.geometry);
+    fields.push('geometry_json = ?'); params.push(geojson);
+    const metrics = computeMetrics(patch.geometry);
+    if (metrics.length_m !== undefined) { fields.push('length_m = ?'); params.push(metrics.length_m); }
+    if (metrics.area_m2 !== undefined) { fields.push('area_m2 = ?'); params.push(metrics.area_m2); }
+    // Re-resolve field assignment based on new geometry
+    const allFields = loadFields(db);
+    const { field_id, farm_id } = resolveFieldId(patch.geometry, allFields);
+    fields.push('field_id = ?'); params.push(field_id);
+    fields.push('farm_id = ?'); params.push(farm_id);
   }
   fields.push('updated_at = ?'); params.push(now);
   params.push(id);

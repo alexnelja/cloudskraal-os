@@ -146,6 +146,26 @@ describe('AnnotationsSidebar', () => {
     const fenceRow = screen.getByText('Fence').closest('[data-annotation-row]')!;
     expect(fenceRow).toHaveAttribute('data-selected', 'true');
   });
+
+  it('shows Edit button when onEdit is provided', () => {
+    renderSidebar({ onEdit: vi.fn() });
+    const editButtons = screen.getAllByRole('button', { name: /edit annotation/i });
+    expect(editButtons.length).toBe(items.length);
+  });
+
+  it('does not show Edit button when onEdit is not provided', () => {
+    renderSidebar();
+    expect(screen.queryByRole('button', { name: /edit annotation/i })).not.toBeInTheDocument();
+  });
+
+  it('edit button fires onEdit with the annotation id', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    renderSidebar({ onEdit });
+    const row = screen.getByText('Gate').closest('[data-annotation-row]')!;
+    await user.click(within(row as HTMLElement).getByRole('button', { name: /edit annotation/i }));
+    expect(onEdit).toHaveBeenCalledWith('a1');
+  });
 });
 
 describe('AnnotationsSidebar — Measurements tab', () => {

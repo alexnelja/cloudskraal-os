@@ -5,6 +5,7 @@ import {
   TerraDrawLineStringMode,
   TerraDrawPolygonMode,
   TerraDrawPointMode,
+  TerraDrawSelectMode,
   TerraDrawUndoRedoKeyboardShortcuts,
 } from 'terra-draw';
 import '@watergis/maplibre-gl-terradraw/dist/maplibre-gl-terradraw.css';
@@ -24,6 +25,7 @@ interface AnnotateToolProps {
   onFinish?: (payload: DrawFinishPayload) => void;
   onModeChange?: (mode: DrawMode) => void;
   onReady?: (td: TerraDraw) => void;
+  onGeometryChange?: (featureId: string | number, geometry: GeoJSON.Geometry) => void;
 }
 
 function geometryToType(geom: GeoJSON.Geometry): AnnotationType | null {
@@ -33,7 +35,7 @@ function geometryToType(geom: GeoJSON.Geometry): AnnotationType | null {
   return null;
 }
 
-export default function AnnotateTool({ map, onFinish, onModeChange, onReady }: AnnotateToolProps) {
+export default function AnnotateTool({ map, onFinish, onModeChange, onReady, onGeometryChange }: AnnotateToolProps) {
   const controlRef = useRef<MaplibreMeasureControl | null>(null);
   const onFinishRef = useRef(onFinish);
   onFinishRef.current = onFinish;
@@ -41,6 +43,8 @@ export default function AnnotateTool({ map, onFinish, onModeChange, onReady }: A
   onModeChangeRef.current = onModeChange;
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
+  const onGeometryChangeRef = useRef(onGeometryChange);
+  onGeometryChangeRef.current = onGeometryChange;
   const readyFiredRef = useRef(false);
 
   useEffect(() => {
@@ -54,7 +58,7 @@ export default function AnnotateTool({ map, onFinish, onModeChange, onReady }: A
     };
 
     const control = new MaplibreMeasureControl({
-      modes: ['render', 'linestring', 'polygon', 'point', 'delete-selection', 'delete'],
+      modes: ['render', 'linestring', 'polygon', 'point', 'select', 'delete-selection', 'delete'],
       measureUnitType: 'metric',
       distancePrecision: 2,
       areaPrecision: 2,
@@ -63,6 +67,27 @@ export default function AnnotateTool({ map, onFinish, onModeChange, onReady }: A
         linestring: new TerraDrawLineStringMode(commonModeOptions),
         polygon: new TerraDrawPolygonMode(commonModeOptions),
         point: new TerraDrawPointMode({ editable: true }),
+        select: new TerraDrawSelectMode({
+          flags: {
+            polygon: {
+              feature: {
+                draggable: true,
+                rotateable: true,
+                scaleable: true,
+                coordinates: { midpoints: true, draggable: true, deletable: true },
+              },
+            },
+            linestring: {
+              feature: {
+                draggable: true,
+                coordinates: { midpoints: true, draggable: true, deletable: true },
+              },
+            },
+            point: {
+              feature: { draggable: true },
+            },
+          },
+        }),
       },
       undoRedo: {
         keyboardShortcuts: new TerraDrawUndoRedoKeyboardShortcuts({
@@ -103,6 +128,18 @@ export default function AnnotateTool({ map, onFinish, onModeChange, onReady }: A
         const annType = geometryToType(feature.geometry as GeoJSON.Geometry);
         if (!annType) return;
         onFinishRef.current?.({ type: annType, geometry: feature.geometry as GeoJSON.Geometry });
+      });
+
+      td.on('change', (ids: (string | number)[], type: string) => {
+        if (type !== 'update') return;
+        const snapshot = typeof td.getSnapshot === 'function' ? td.getSnapshot() : [];
+        if (!snapshot) return;
+        for (const id of ids) {
+          const feature = snapshot.find((f) => f.id === id);
+          if (feature) {
+            onGeometryChangeRef.current?.(id, feature.geometry as GeoJSON.Geometry);
+          }
+        }
       });
 
       if (!readyFiredRef.current) {

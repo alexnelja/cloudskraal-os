@@ -31,4 +31,5 @@ export interface UpdateAnnotationInput {
   notes?: string | null;
   category?: string | null;
   metadata?: Record<string, unknown> | null;
+  geometry?: GeoJSON.Geometry;
 }

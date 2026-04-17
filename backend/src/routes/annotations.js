@@ -52,8 +52,12 @@ router.post('/annotations', (req, res) => {
 router.patch('/annotations/:id', (req, res) => {
   const db = getDb();
   const { title, notes, geometry, type, length_m, area_m2, category, metadata, wiki_page_id } = req.body || {};
-  if (geometry !== undefined || type !== undefined || length_m !== undefined || area_m2 !== undefined) {
-    return res.status(400).json({ error: 'immutable_field', message: 'geometry, type, and metrics are immutable; delete + recreate' });
+  // type and raw metrics are still immutable
+  if (type !== undefined || length_m !== undefined || area_m2 !== undefined) {
+    return res.status(400).json({ error: 'immutable_field', message: 'type and metrics are immutable; delete + recreate' });
+  }
+  if (geometry !== undefined && (typeof geometry !== 'object' || geometry === null)) {
+    return res.status(400).json({ error: 'invalid_geometry' });
   }
   if (title !== undefined && (typeof title !== 'string' || !title.trim())) {
     return res.status(400).json({ error: 'title_required' });
@@ -64,12 +68,14 @@ router.patch('/annotations/:id', (req, res) => {
   if (category !== undefined) patch.category = category;
   if (metadata !== undefined) patch.metadata = metadata;
   if (wiki_page_id !== undefined) patch.wiki_page_id = wiki_page_id;
+  if (geometry !== undefined) patch.geometry = geometry;
   try {
     const row = updateAnnotation(db, req.params.id, patch);
     if (!row) return res.status(404).json({ error: 'not_found' });
     res.json(row);
   } catch (e) {
     if (e.code === 'invalid_category') return res.status(400).json({ error: 'invalid_category' });
+    if (e.code === 'type_mismatch') return res.status(400).json({ error: 'type_mismatch' });
     throw e;
   }
 });

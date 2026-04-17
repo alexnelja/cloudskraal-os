@@ -30,6 +30,10 @@ vi.mock('terra-draw', () => ({
     opts: unknown;
     constructor(opts: unknown) { this.opts = opts; }
   },
+  TerraDrawSelectMode: class {
+    opts: unknown;
+    constructor(opts: unknown) { this.opts = opts; }
+  },
   TerraDrawUndoRedoKeyboardShortcuts: class {
     opts: unknown;
     constructor(opts: unknown) { this.opts = opts; }
@@ -74,6 +78,20 @@ describe('AnnotateTool', () => {
     expect(opts.modes).toContain('point');
     expect(opts.modes).toContain('linestring');
     expect(opts.modes).toContain('polygon');
+  });
+
+  it('includes select mode in the configured modes list', () => {
+    const map = makeMockMap();
+    render(<AnnotateTool map={map} />);
+    const opts = mockMeasureCtor.mock.calls[0][0] as { modes: string[] };
+    expect(opts.modes).toContain('select');
+  });
+
+  it('subscribes to the terradraw change event for geometry updates', () => {
+    const map = makeMockMap();
+    render(<AnnotateTool map={map} onGeometryChange={() => {}} />);
+    const changeCall = mockTerraDrawOn.mock.calls.find((c: unknown[]) => c[0] === 'change');
+    expect(changeCall).toBeDefined();
   });
 
   it('subscribes to the terradraw finish event', () => {

@@ -34,6 +34,7 @@ import {
   listAnnotations as apiListAnnotations,
   createAnnotation as apiCreateAnnotation,
   deleteAnnotation as apiDeleteAnnotation,
+  updateAnnotation as apiUpdateAnnotation,
 } from '../api/annotations';
 import type { Farm, Field, MapLayer } from '../types/farm';
 import type { Annotation, CreateAnnotationInput } from '../types/annotation';
@@ -594,6 +595,31 @@ export default function FarmMapPage() {
     }
   }, [selectedAnnotationId, searchParams, setSearchParams]);
 
+  const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
+
+  const handleAnnotationEdit = useCallback((id: string) => {
+    setEditingAnnotationId(id);
+    setSelectedAnnotationId(id);
+    // Switch TerraDraw to select mode so the user can reshape the feature on-map
+    terraDraw?.setMode('select');
+  }, [terraDraw]);
+
+  const handleGeometryChange = useCallback(async (_featureId: string | number, geometry: GeoJSON.Geometry) => {
+    // Only persist geometry changes when we are actively editing an annotation
+    if (!editingAnnotationId) return;
+    try {
+      const updated = await apiUpdateAnnotation(editingAnnotationId, { geometry });
+      setAnnotations((prev) => prev.map((a) => a.id === editingAnnotationId ? updated : a));
+    } catch (e) {
+      console.error('Failed to update annotation geometry:', e);
+    }
+  }, [editingAnnotationId]);
+
+  const handleFinishEditing = useCallback(() => {
+    setEditingAnnotationId(null);
+    terraDraw?.setMode('render');
+  }, [terraDraw]);
+
   // Suppress unused warning in strict mode (reserved for future server refetch).
   void refreshAnnotations;
 
@@ -1022,7 +1048,7 @@ export default function FarmMapPage() {
       </MapOverlayRail>
 
       {/* Annotate tool — mounts terradraw controls on the map */}
-      <AnnotateTool map={mapInstance} onFinish={handleDrawFinish} onModeChange={setDrawMode} onReady={setTerraDraw} />
+      <AnnotateTool map={mapInstance} onFinish={handleDrawFinish} onModeChange={setDrawMode} onReady={setTerraDraw} onGeometryChange={handleGeometryChange} />
 
       {/* Category icon markers overlay (QGIS-style) */}
       <AnnotationMarkers
@@ -1061,6 +1087,28 @@ export default function FarmMapPage() {
         onDiscard={handleDiscardAnnotation}
       />
 
+      {/* Editing bar — shown when user is editing an annotation's geometry */}
+      {editingAnnotationId && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white/95 backdrop-blur-sm shadow-lg rounded-xl px-5 py-3 border border-stone-200/60">
+          <span className="text-sm text-stone-700">Editing annotation geometry — drag to reshape</span>
+          <button
+            type="button"
+            onClick={handleFinishEditing}
+            className="px-4 py-1.5 text-sm font-medium text-white rounded-lg transition-colors"
+            style={{ background: 'linear-gradient(135deg, #d97706, #b45309)' }}
+          >
+            Done editing
+          </button>
+          <button
+            type="button"
+            onClick={() => { setEditingAnnotationId(null); terraDraw?.setMode('render'); }}
+            className="px-3 py-1.5 text-sm text-stone-600 hover:text-stone-900 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
       {/* Annotations sidebar */}
       <AnnotationsSidebar
         open={sidebarOpen}
@@ -1069,6 +1117,7 @@ export default function FarmMapPage() {
         onToggle={() => setSidebarOpen(false)}
         onSelect={handleAnnotationSelect}
         onDelete={handleAnnotationDelete}
+        onEdit={handleAnnotationEdit}
         taskCountById={taskCountByAnnotation}
         onMeasurementZoom={(m) => {
           try {
