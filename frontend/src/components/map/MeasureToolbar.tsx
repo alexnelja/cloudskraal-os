@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Ruler, Polygon as PolyIcon, MapPin, ArrowsOut as Line } from '@phosphor-icons/react';
+import { Ruler, Polygon as PolyIcon, MapPin, ArrowsOut as Line, Hand } from '@phosphor-icons/react';
 import SaveAsChooserPopover from './SaveAsChooserPopover';
 
 type TerraDraw = { setMode: (mode: string) => void };
@@ -46,7 +46,8 @@ export default function MeasureToolbar({
 
   if (!terraDraw) return null;
 
-  const showSavePanel = finishedGeometry != null && (currentMode === 'static' || currentMode === 'render');
+  const isPanMode = currentMode === 'render' || currentMode === 'static';
+  const showSavePanel = finishedGeometry != null && isPanMode;
 
   function handlePick(dest: SaveDestination) {
     setChooserOpen(false);
@@ -65,6 +66,20 @@ export default function MeasureToolbar({
         role="toolbar"
         aria-label="Measure tools"
       >
+        <button
+          type="button"
+          onClick={() => terraDraw.setMode('render')}
+          aria-label="Pan mode"
+          aria-pressed={isPanMode}
+          title="Pan mode (Esc)"
+          className={`w-[34px] h-[34px] rounded-[10px] flex items-center justify-center transition-colors ${
+            isPanMode
+              ? 'bg-emerald-50 text-emerald-700'
+              : 'bg-stone-50 text-stone-600 hover:bg-stone-100'
+          }`}
+        >
+          <Hand size={18} weight="regular" />
+        </button>
         {MODES.map((m) => {
           const active = currentMode === m.mode;
           const Icon = m.icon;
@@ -73,13 +88,12 @@ export default function MeasureToolbar({
               key={m.id}
               type="button"
               onClick={() => {
-                // Reset to render (default) mode first, then activate the target
-                // mode. The library's own button handlers do the same sequence
-                // internally (resetActiveMode → setMode). Without the reset step,
-                // the Proxy's handleModeChange path skips it and the map never
-                // enters active draw mode.
-                terraDraw.setMode('render');
-                terraDraw.setMode(m.mode);
+                if (active) {
+                  terraDraw.setMode('render');
+                } else {
+                  terraDraw.setMode('render');
+                  terraDraw.setMode(m.mode);
+                }
               }}
               aria-label={m.label}
               aria-pressed={active}

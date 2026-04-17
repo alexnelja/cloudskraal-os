@@ -234,6 +234,18 @@ export default function FarmMapPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [armedDropMode]);
 
+  // Esc exits active draw mode back to pan.
+  useEffect(() => {
+    if (!terraDraw) return;
+    const activeModes = ['linestring', 'polygon', 'point'];
+    if (!activeModes.includes(drawMode)) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') terraDraw.setMode('render');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [drawMode, terraDraw]);
+
   // Esc cancels awaiting-field-draw mode.
   useEffect(() => {
     if (!awaitingFieldDraw) return;
@@ -719,7 +731,11 @@ export default function FarmMapPage() {
           onAnnotationSelect={handleAnnotationSelect}
           onContextMenu={handleMapContextMenu}
           onMapClick={handleArmedMapClick}
-          cursor={armedDropMode || ['linestring', 'polygon', 'point'].includes(drawMode) ? 'crosshair' : undefined}
+          cursor={
+            armedDropMode || ['linestring', 'polygon', 'point'].includes(drawMode)
+              ? 'crosshair'
+              : 'grab'
+          }
           basemapId={basemapId}
           enterpriseColors={enterpriseColors}
         />

@@ -276,6 +276,11 @@ body {
     0 8px 22px -8px rgba(60, 40, 20, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
+/* Grab cursor for map pan mode */
+[data-cursor="grab"] { cursor: grab; }
+[data-cursor="grab"]:active { cursor: grabbing; }
+[data-cursor="grab"] .maplibregl-canvas { cursor: inherit !important; }
+
 .map-rail .glass-button {
   box-shadow:
     0 4px 14px -4px rgba(60, 40, 20, 0.18),

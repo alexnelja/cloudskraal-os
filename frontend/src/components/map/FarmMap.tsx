@@ -526,6 +526,7 @@ export default function FarmMap({
       ref={mapContainerRef}
       className="w-full h-full"
       style={cursor ? { cursor } : undefined}
+      data-cursor={cursor ?? 'grab'}
     />
   );
 }
