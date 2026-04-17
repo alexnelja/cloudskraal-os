@@ -48,6 +48,7 @@ const mockGetCacheTimestamp = vi.fn();
 vi.mock('../api/weather', () => ({
   fetchForecast: (...args: unknown[]) => mockFetchForecast(...args),
   getCacheTimestamp: (...args: unknown[]) => mockGetCacheTimestamp(...args),
+  clearForecastCache: vi.fn(),
 }));
 
 describe('WeatherForecastPanel', () => {
@@ -94,9 +95,10 @@ describe('WeatherForecastPanel', () => {
     });
   });
 
-  it('shows stale indicator when using cached data', async () => {
-    // Simulate stale cache: getCacheTimestamp returns old timestamp, fetchForecast returns data
-    mockGetCacheTimestamp.mockReturnValue(Date.now() - 4 * 60 * 60 * 1000);
+  it('shows stale indicator when using cached data after fetch failure', async () => {
+    // Simulate: cache timestamp unchanged before/after fetch = fetch failed, stale cache used
+    const staleTs = Date.now() - 4 * 60 * 60 * 1000;
+    mockGetCacheTimestamp.mockReturnValue(staleTs);
     mockFetchForecast.mockResolvedValue(makeForecast());
 
     render(<WeatherForecastPanel />);

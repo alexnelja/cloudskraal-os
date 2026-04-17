@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Warning, CloudSlash, ArrowClockwise } from '@phosphor-icons/react';
 import { getFarms } from '../api/farms';
-import { fetchForecast, getCacheTimestamp } from '../api/weather';
+import { fetchForecast, getCacheTimestamp, clearForecastCache } from '../api/weather';
 import type { WeatherForecast } from '../api/weather';
 import type { Farm } from '../types/farm';
 import { getWeatherInfo } from '../config/weather-codes';
 import HourlyStrip from './HourlyStrip';
-
-const CACHE_TTL_MS = 3 * 60 * 60 * 1000;
 
 function dayLabel(dateStr: string, index: number): string {
   if (index === 0) return 'Today';
@@ -31,32 +29,38 @@ export default function WeatherForecastPanel() {
   const [selectedDay, setSelectedDay] = useState(0);
   const [isStale, setIsStale] = useState(false);
   const [cacheTime, setCacheTime] = useState<number | null>(null);
+  const [showAllAlerts, setShowAllAlerts] = useState(false);
 
-  // Load farms
   useEffect(() => {
-    getFarms().then((f) => {
-      setFarms(f);
-      if (f.length > 0 && !selectedFarmId) {
-        setSelectedFarmId(f[0].id);
-      }
-    });
+    getFarms()
+      .then((f) => {
+        setFarms(f);
+        if (f.length > 0 && !selectedFarmId) {
+          setSelectedFarmId(f[0].id);
+        }
+      })
+      .catch(() => {
+        setLoading(false);
+      });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedFarm = farms.find((f) => f.id === selectedFarmId);
 
   const loadForecast = useCallback(async (farm: Farm) => {
     setLoading(true);
+    setIsStale(false);
+
+    const tsBefore = getCacheTimestamp(farm.id);
     const data = await fetchForecast(farm.lat, farm.lng, farm.id);
+    const tsAfter = getCacheTimestamp(farm.id);
+
     setForecast(data);
     setSelectedDay(0);
+    setCacheTime(tsAfter);
 
-    // Check staleness
-    const ts = getCacheTimestamp(farm.id);
-    setCacheTime(ts);
-    if (ts && Date.now() - ts > CACHE_TTL_MS) {
+    // Stale = we got data but the cache timestamp didn't change (fetch failed, used stale cache)
+    if (data && tsBefore !== null && tsAfter === tsBefore) {
       setIsStale(true);
-    } else {
-      setIsStale(false);
     }
 
     setLoading(false);
@@ -70,14 +74,13 @@ export default function WeatherForecastPanel() {
 
   const handleRetry = () => {
     if (selectedFarm) {
-      // Clear cache to force fresh fetch
-      localStorage.removeItem(`weather_forecast_${selectedFarm.id}`);
+      clearForecastCache(selectedFarm.id);
       loadForecast(selectedFarm);
     }
   };
 
   // No coordinates state
-  if (selectedFarm && (!selectedFarm.lat && !selectedFarm.lng)) {
+  if (selectedFarm && (selectedFarm.lat == null || selectedFarm.lng == null)) {
     return (
       <div className="bg-white rounded-2xl p-5">
         <p className="text-sm text-[#6e7a73]">
@@ -149,7 +152,7 @@ export default function WeatherForecastPanel() {
       )}
 
       {/* Alerts */}
-      {alerts.map((alert, i) => (
+      {(showAllAlerts ? alerts : alerts.slice(0, 2)).map((alert, i) => (
         <div
           key={i}
           className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg mb-2 ${
@@ -158,12 +161,20 @@ export default function WeatherForecastPanel() {
               : 'bg-red-50 text-red-800'
           }`}
         >
-          <Warning size={16} weight="bold" />
+          <Warning size={16} weight="regular" />
           {alert.type === 'frost'
             ? `Frost risk on ${alert.day}: ${alert.temp}\u00B0C low`
             : `Heat stress on ${alert.day}: ${alert.temp}\u00B0C high`}
         </div>
       ))}
+      {alerts.length > 2 && !showAllAlerts && (
+        <button
+          onClick={() => setShowAllAlerts(true)}
+          className="text-xs text-emerald-700 hover:text-emerald-800 font-medium mb-2"
+        >
+          Show all ({alerts.length} alerts)
+        </button>
+      )}
 
       {/* Loading */}
       {loading && (
@@ -205,6 +216,8 @@ export default function WeatherForecastPanel() {
                   key={date}
                   data-testid="day-card"
                   onClick={() => setSelectedDay(i)}
+                  aria-label={`${dayLabel(date, i)}: ${info.label}, ${high}° high, ${low}° low`}
+                  aria-pressed={isSelected}
                   className={`flex-shrink-0 flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl text-center min-w-[90px] transition-colors ${
                     isSelected
                       ? 'border-b-2 border-emerald-600 bg-emerald-50/50'

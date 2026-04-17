@@ -52,6 +52,10 @@ export function getCacheTimestamp(farmId: string): number | null {
   return cached ? cached.timestamp : null;
 }
 
+export function clearForecastCache(farmId: string): void {
+  localStorage.removeItem(cacheKey(farmId));
+}
+
 export async function fetchForecast(
   lat: number,
   lng: number,
@@ -85,9 +89,13 @@ export async function fetchForecast(
       throw new Error(`HTTP ${res.status}`);
     }
 
-    const json = (await res.json()) as WeatherForecast;
-    setCache(farmId, json);
-    return json;
+    const json = await res.json();
+    if (!json?.daily?.time || !Array.isArray(json.daily.time) || !json?.hourly?.time) {
+      throw new Error('Unexpected API response shape');
+    }
+    const forecast = json as WeatherForecast;
+    setCache(farmId, forecast);
+    return forecast;
   } catch (err) {
     console.error('Weather fetch failed:', err);
     // Fall back to stale cache
