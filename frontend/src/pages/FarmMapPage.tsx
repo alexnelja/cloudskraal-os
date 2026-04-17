@@ -19,6 +19,7 @@ import MapContextMenu, { type MenuItem } from '../components/map/MapContextMenu'
 import MapOverlayRail from '../components/map/MapOverlayRail';
 import BasemapSwitcher from '../components/map/BasemapSwitcher';
 import MeasureToolbar from '../components/map/MeasureToolbar';
+import ExportMapButton from '../components/map/ExportMapButton';
 import { loadBasemapPreference, saveBasemapPreference } from '../config/basemaps';
 import { useLongPress } from '../hooks/useLongPress';
 import type { MapContextMenuEvent } from '../components/map/FarmMap';
@@ -1014,6 +1015,11 @@ export default function FarmMapPage() {
           </MapOverlayRail>
         );
       })()}
+
+      {/* Export map button — bottom-left */}
+      <MapOverlayRail position="bl">
+        <ExportMapButton map={mapInstance} />
+      </MapOverlayRail>
 
       {/* Annotate tool — mounts terradraw controls on the map */}
       <AnnotateTool map={mapInstance} onFinish={handleDrawFinish} onModeChange={setDrawMode} onReady={setTerraDraw} />
