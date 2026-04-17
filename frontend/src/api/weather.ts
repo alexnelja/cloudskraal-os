@@ -56,15 +56,19 @@ export function clearForecastCache(farmId: string): void {
   localStorage.removeItem(cacheKey(farmId));
 }
 
+export interface ForecastResult {
+  data: WeatherForecast;
+  stale: boolean;
+}
+
 export async function fetchForecast(
   lat: number,
   lng: number,
   farmId: string,
-): Promise<WeatherForecast | null> {
-  // Return fresh cache without fetching
+): Promise<ForecastResult | null> {
   const cached = getCache(farmId);
   if (cached && isFresh(cached)) {
-    return cached.data;
+    return { data: cached.data, stale: false };
   }
 
   try {
@@ -95,12 +99,11 @@ export async function fetchForecast(
     }
     const forecast = json as WeatherForecast;
     setCache(farmId, forecast);
-    return forecast;
+    return { data: forecast, stale: false };
   } catch (err) {
     console.error('Weather fetch failed:', err);
-    // Fall back to stale cache
     if (cached) {
-      return cached.data;
+      return { data: cached.data, stale: true };
     }
     return null;
   }

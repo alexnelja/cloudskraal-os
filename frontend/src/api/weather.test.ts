@@ -55,8 +55,10 @@ describe('fetchForecast', () => {
     // Dynamic import to get fresh module with mocked globals
     const { fetchForecast } = await import('./weather');
     const result = await fetchForecast(-32.3, 19.0, 'farm-1');
-    expect(result).toEqual(mockForecast);
-    expect(result!.daily.time).toHaveLength(7);
+    expect(result).not.toBeNull();
+    expect(result!.data).toEqual(mockForecast);
+    expect(result!.stale).toBe(false);
+    expect(result!.data.daily.time).toHaveLength(7);
   });
 
   it('caches response in localStorage on success', async () => {
@@ -82,7 +84,9 @@ describe('fetchForecast', () => {
 
     const { fetchForecast } = await import('./weather');
     const result = await fetchForecast(-32.3, 19.0, 'farm-1');
-    expect(result).toEqual(mockForecast);
+    expect(result).not.toBeNull();
+    expect(result!.data).toEqual(mockForecast);
+    expect(result!.stale).toBe(true);
   });
 
   it('returns null when fetch throws and no cache exists', async () => {
@@ -103,7 +107,9 @@ describe('fetchForecast', () => {
 
     const { fetchForecast } = await import('./weather');
     const result = await fetchForecast(-32.3, 19.0, 'farm-1');
-    expect(result).toEqual(mockForecast);
+    expect(result).not.toBeNull();
+    expect(result!.data).toEqual(mockForecast);
+    expect(result!.stale).toBe(false);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 

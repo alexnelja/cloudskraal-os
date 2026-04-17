@@ -58,7 +58,7 @@ describe('WeatherForecastPanel', () => {
   });
 
   it('renders 7 day cards when data is loaded', async () => {
-    mockFetchForecast.mockResolvedValue(makeForecast());
+    mockFetchForecast.mockResolvedValue({ data: makeForecast(), stale: false });
 
     render(<WeatherForecastPanel />);
 
@@ -73,7 +73,7 @@ describe('WeatherForecastPanel', () => {
 
   it('shows frost alert banner when min temp < 2', async () => {
     mockFetchForecast.mockResolvedValue(
-      makeForecast({ minTemps: [10, 1, 9, 8, 7, 10, 12] }),
+      { data: makeForecast({ minTemps: [10, 1, 9, 8, 7, 10, 12] }), stale: false },
     );
 
     render(<WeatherForecastPanel />);
@@ -85,7 +85,7 @@ describe('WeatherForecastPanel', () => {
 
   it('shows heat alert banner when max temp > 38', async () => {
     mockFetchForecast.mockResolvedValue(
-      makeForecast({ maxTemps: [25, 40, 24, 22, 20, 23, 27] }),
+      { data: makeForecast({ maxTemps: [25, 40, 24, 22, 20, 23, 27] }), stale: false },
     );
 
     render(<WeatherForecastPanel />);
@@ -96,10 +96,8 @@ describe('WeatherForecastPanel', () => {
   });
 
   it('shows stale indicator when using cached data after fetch failure', async () => {
-    // Simulate: cache timestamp unchanged before/after fetch = fetch failed, stale cache used
-    const staleTs = Date.now() - 4 * 60 * 60 * 1000;
-    mockGetCacheTimestamp.mockReturnValue(staleTs);
-    mockFetchForecast.mockResolvedValue(makeForecast());
+    mockGetCacheTimestamp.mockReturnValue(Date.now() - 4 * 60 * 60 * 1000);
+    mockFetchForecast.mockResolvedValue({ data: makeForecast(), stale: true });
 
     render(<WeatherForecastPanel />);
 
@@ -122,7 +120,7 @@ describe('WeatherForecastPanel', () => {
   });
 
   it('farm selector calls fetchForecast with new farm coordinates on change', async () => {
-    mockFetchForecast.mockResolvedValue(makeForecast());
+    mockFetchForecast.mockResolvedValue({ data: makeForecast(), stale: false });
 
     render(<WeatherForecastPanel />);
 

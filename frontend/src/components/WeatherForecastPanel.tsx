@@ -50,18 +50,12 @@ export default function WeatherForecastPanel() {
     setLoading(true);
     setIsStale(false);
 
-    const tsBefore = getCacheTimestamp(farm.id);
-    const data = await fetchForecast(farm.lat, farm.lng, farm.id);
-    const tsAfter = getCacheTimestamp(farm.id);
+    const result = await fetchForecast(farm.lat, farm.lng, farm.id);
 
-    setForecast(data);
+    setForecast(result?.data ?? null);
     setSelectedDay(0);
-    setCacheTime(tsAfter);
-
-    // Stale = we got data but the cache timestamp didn't change (fetch failed, used stale cache)
-    if (data && tsBefore !== null && tsAfter === tsBefore) {
-      setIsStale(true);
-    }
+    setIsStale(result?.stale ?? false);
+    setCacheTime(result?.stale ? getCacheTimestamp(farm.id) : null);
 
     setLoading(false);
   }, []);
