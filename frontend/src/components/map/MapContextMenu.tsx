@@ -145,7 +145,7 @@ export default function MapContextMenu({
                     }}
                     whileHover={{ x: 2 }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-stone-800 hover:bg-stone-100/60 transition-colors"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 min-h-[44px] text-sm text-stone-800 hover:bg-stone-100/60 transition-colors"
                   >
                     <span
                       className={`flex items-center justify-center w-6 h-6 rounded-md ${TINT_FG[item.tint]}`}

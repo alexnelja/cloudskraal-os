@@ -62,6 +62,7 @@ export function useLongPress({
         timerRef.current = null;
         originRef.current = null;
         onProgress?.({ active: false });
+        navigator.vibrate?.(15);
         onLongPress({ clientX: x, clientY: y });
       }, durationMs);
     },
