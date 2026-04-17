@@ -181,17 +181,7 @@ router.patch('/fields/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM fields WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Field not found' });
 
-  const readOnly = ['enterprise', 'crop_type', 'planted_year'];
-  const blocked = Object.keys(req.body || {}).filter(k => readOnly.includes(k));
-  if (blocked.length > 0) {
-    return res.status(400).json({
-      error: 'read_only',
-      fields: blocked,
-      managed_by: 'field_usage_period',
-      use: 'POST /api/fields/:id/usage-periods',
-    });
-  }
-  const allowed = ['status', 'soil_type', 'irrigation_type', 'notes'];
+  const allowed = ['name', 'enterprise', 'crop_type', 'area_ha', 'planted_year', 'status', 'soil_type', 'irrigation_type', 'notes'];
   const updates = {};
   for (const key of allowed) {
     if (req.body[key] !== undefined) updates[key] = req.body[key];
@@ -211,6 +201,15 @@ router.patch('/fields/:id', (req, res) => {
   `).get(req.params.id);
 
   res.json(field);
+});
+
+// DELETE /api/fields/:id
+router.delete('/fields/:id', (req, res) => {
+  const db = getDb();
+  const existing = db.prepare('SELECT id FROM fields WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Field not found' });
+  db.prepare('DELETE FROM fields WHERE id = ?').run(req.params.id);
+  res.status(204).end();
 });
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import type { Measurement } from '../types/measurement';
+import { API_BASE_URL } from './config';
 
-const API = '/api/measurements';
+const API = `${API_BASE_URL}/measurements`;
 
 export async function listMeasurements(): Promise<Measurement[]> {
   const res = await fetch(API);
