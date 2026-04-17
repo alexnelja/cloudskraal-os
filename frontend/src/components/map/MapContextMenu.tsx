@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { IconProps } from '@phosphor-icons/react';
 
@@ -33,30 +33,75 @@ const TINT_FG: Record<MenuItem['tint'], string> = {
 };
 
 export default function MapContextMenu({
-  open,
-  x,
-  y,
-  title,
-  items,
-  onDismiss,
+  open, x, y, title, items, onDismiss,
 }: MapContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const focusedIndexRef = useRef<number>(-1);
+
+  const focusItem = useCallback((index: number) => {
+    const btn = itemRefs.current[index];
+    if (btn) {
+      btn.focus();
+      focusedIndexRef.current = index;
+    }
+  }, []);
+
+  // Focus first item when menu opens
+  useEffect(() => {
+    if (!open) {
+      focusedIndexRef.current = -1;
+      return;
+    }
+    // Defer so AnimatePresence has rendered the items
+    const id = requestAnimationFrame(() => {
+      focusItem(0);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open, focusItem]);
 
   useEffect(() => {
     if (!open) return;
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onDismiss();
+      if (e.key === 'Escape') {
+        onDismiss();
+        return;
+      }
+
+      const count = items.length;
+      if (count === 0) return;
+
+      const current = focusedIndexRef.current;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = current < count - 1 ? current + 1 : 0;
+        focusItem(next);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = current > 0 ? current - 1 : count - 1;
+        focusItem(prev);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        focusItem(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        focusItem(count - 1);
+      }
     };
-    const onClick = (e: MouseEvent) => {
+
+    const onMouseDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onDismiss();
     };
+
     document.addEventListener('keydown', onKey);
-    document.addEventListener('mousedown', onClick);
+    document.addEventListener('mousedown', onMouseDown);
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('mousedown', onMouseDown);
     };
-  }, [open, onDismiss]);
+  }, [open, onDismiss, items.length, focusItem]);
 
   // Flip so menu never runs off the viewport
   const padX = 180;
@@ -85,12 +130,15 @@ export default function MapContextMenu({
             </div>
           )}
           <ul>
-            {items.map((item) => {
+            {items.map((item, index) => {
               const Icon = item.Icon;
               return (
                 <li key={item.id}>
                   <motion.button
+                    ref={(el) => { itemRefs.current[index] = el; }}
                     type="button"
+                    role="menuitem"
+                    tabIndex={-1}
                     onClick={() => {
                       item.onClick();
                       onDismiss();
