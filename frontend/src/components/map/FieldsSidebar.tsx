@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, MagnifyingGlass as Search, Eye, EyeSlash, CaretDown, CaretRight } from '@phosphor-icons/react';
-import { ENTERPRISE_COLORS, ENTERPRISE_LABELS } from '../../types/farm';
+import { ENTERPRISE_LABELS } from '../../types/farm';
 import type { Farm, Field } from '../../types/farm';
 
 interface FieldsSidebarProps {
@@ -9,10 +9,13 @@ interface FieldsSidebarProps {
   enterprises: string[];
   visibleEnterprises: string[];
   selectedFieldId: string | null;
+  /** Merged enterprise colours (defaults + overrides from useEnterpriseColors). */
+  enterpriseColors: Record<string, string>;
   onEnterpriseToggle: (enterprise: string) => void;
   onFarmSelect: (farmCode: string | null) => void;
   onFieldSelect: (fieldId: string) => void;
   onAddField: () => void;
+  onColorChange?: (enterprise: string, color: string) => void;
 }
 
 const LS_KEY = 'capex.fields-sidebar';
@@ -50,6 +53,8 @@ export default function FieldsSidebar({
   onFarmSelect,
   onFieldSelect,
   onAddField,
+  enterpriseColors,
+  onColorChange,
 }: FieldsSidebarProps) {
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<string[]>(() => loadPersisted().collapsed);
@@ -146,7 +151,7 @@ export default function FieldsSidebar({
           <p className="px-3 py-3 text-stone-400 italic">No fields.</p>
         )}
         {groups.map((g) => {
-          const color = ENTERPRISE_COLORS[g.ent] ?? '#6b7280';
+          const color = enterpriseColors[g.ent] ?? '#6b7280';
           const label = ENTERPRISE_LABELS[g.ent] ?? g.ent;
           const isCollapsed = collapsed.includes(g.ent);
           const isVisible = visibleEnterprises.includes(g.ent);
@@ -168,6 +173,21 @@ export default function FieldsSidebar({
                 <span className="text-[10px] font-medium text-stone-600">
                   {Math.round(g.totalHa)} ha · {g.list.length}
                 </span>
+                {onColorChange && (
+                  <label className="relative cursor-pointer" title={`Change ${label} colour`}>
+                    <span
+                      className="block w-3.5 h-3.5 rounded-full border border-white/60"
+                      style={{ backgroundColor: color }}
+                    />
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={(e) => onColorChange(g.ent, e.target.value)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      aria-label={`Pick ${label} colour`}
+                    />
+                  </label>
+                )}
                 <button
                   type="button"
                   onClick={() => onEnterpriseToggle(g.ent)}

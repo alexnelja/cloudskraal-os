@@ -37,7 +37,8 @@ import type { Farm, Field, MapLayer } from '../types/farm';
 import type { Annotation, CreateAnnotationInput } from '../types/annotation';
 import type { Measurement } from '../types/measurement';
 import SaveMeasurementModal from '../components/map/SaveMeasurementModal';
-import { ENTERPRISE_COLORS, ENTERPRISE_LABELS } from '../types/farm';
+import { ENTERPRISE_LABELS } from '../types/farm';
+import { useEnterpriseColors } from '../hooks/useEnterpriseColors';
 
 function getBoundsForFarm(
   geojson: GeoJSON.FeatureCollection,
@@ -83,6 +84,7 @@ export default function FarmMapPage() {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [fields, setFields] = useState<Field[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(fieldId || null);
+  const { colors: enterpriseColors, setColor: setEnterpriseColor } = useEnterpriseColors();
   const [loading, setLoading] = useState(true);
   const [visibleEnterprises, setVisibleEnterprises] = useState<string[] | undefined>(undefined);
   const [enterprises, setEnterprises] = useState<string[]>([]);
@@ -667,10 +669,12 @@ export default function FarmMapPage() {
       enterprises={enterprises}
       visibleEnterprises={visibleEnterprises ?? enterprises}
       selectedFieldId={selectedFieldId}
+      enterpriseColors={enterpriseColors}
       onEnterpriseToggle={handleEnterpriseToggle}
       onFarmSelect={handleFarmZoom}
       onFieldSelect={handleFieldSelect}
       onAddField={() => handleAddField()}
+      onColorChange={setEnterpriseColor}
     />
   );
 
@@ -717,6 +721,7 @@ export default function FarmMapPage() {
           onMapClick={handleArmedMapClick}
           cursor={armedDropMode ? 'crosshair' : undefined}
           basemapId={basemapId}
+          enterpriseColors={enterpriseColors}
         />
         </div>
       )}
@@ -913,7 +918,7 @@ export default function FarmMapPage() {
                         style={{
                           width: 10,
                           height: 10,
-                          backgroundColor: ENTERPRISE_COLORS[ent] ?? '#d1d5db',
+                          backgroundColor: enterpriseColors[ent] ?? '#d1d5db',
                         }}
                       />
                       <span className="text-xs text-stone-700">
@@ -942,7 +947,7 @@ export default function FarmMapPage() {
                       style={{
                         width: 10,
                         height: 10,
-                        backgroundColor: ENTERPRISE_COLORS[ent] ?? '#d1d5db',
+                        backgroundColor: enterpriseColors[ent] ?? '#d1d5db',
                       }}
                     />
                     <span className="text-xs text-stone-700">

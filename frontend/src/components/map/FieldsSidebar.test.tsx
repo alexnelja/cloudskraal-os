@@ -34,6 +34,7 @@ const baseProps = {
   onFarmSelect: vi.fn(),
   onFieldSelect: vi.fn(),
   onAddField: vi.fn(),
+  enterpriseColors: { rooibos: '#047857', wine: '#7c3aed', sheep: '#d97706' },
 };
 
 beforeEach(() => {

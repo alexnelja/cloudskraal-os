@@ -40,6 +40,24 @@ interface FarmMapProps {
   cursor?: string;
   /** Basemap id from config/basemaps. Changes swap raster source/layer in place. */
   basemapId?: string;
+  /** Enterprise colours (from useEnterpriseColors). Updates map paint live. */
+  enterpriseColors?: Record<string, string>;
+}
+
+function buildFillColorExpr(colors?: Record<string, string>): maplibregl.ExpressionSpecification {
+  const c = colors ?? {};
+  return [
+    'match', ['get', 'enterprise'],
+    'rooibos', c.rooibos ?? '#047857',
+    'wine', c.wine ?? '#7c3aed',
+    'sheep', c.sheep ?? '#d97706',
+    'buchu', c.buchu ?? '#0d9488',
+    'sceletium', c.sceletium ?? '#059669',
+    'grazing', c.grazing ?? '#a16207',
+    'fallow', c.fallow ?? '#9ca3af',
+    'other', c.other ?? '#6b7280',
+    c.unclassified ?? '#d1d5db',
+  ] as maplibregl.ExpressionSpecification;
 }
 
 function getWmsLayerName(url: string): string {
@@ -185,7 +203,7 @@ export default function FarmMap({
   geojson, farmBoundaries, selectedFieldId, onFieldSelect,
   visibleEnterprises, showFarmBoundaries = true, onMapReady, gisLayers,
   annotations, selectedAnnotationId, onAnnotationSelect, onContextMenu,
-  onMapClick, cursor, basemapId = DEFAULT_BASEMAP_ID,
+  onMapClick, cursor, basemapId = DEFAULT_BASEMAP_ID, enterpriseColors,
 }: FarmMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -247,6 +265,17 @@ export default function FarmMap({
       );
     }
   }, [basemapId]);
+
+  // Live-update field polygon colours when enterprise colour overrides change.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoadedRef.current || !enterpriseColors) return;
+    try {
+      if (map.getLayer('fields-fill')) {
+        map.setPaintProperty('fields-fill', 'fill-color', buildFillColorExpr(enterpriseColors));
+      }
+    } catch { /* layer not yet added — ignore */ }
+  }, [enterpriseColors]);
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
