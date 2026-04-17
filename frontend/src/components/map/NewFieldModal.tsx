@@ -4,6 +4,7 @@ import { createField } from '../../api/farms';
 import { ENTERPRISE_LABELS } from '../../types/farm';
 import type { Farm, Field } from '../../types/farm';
 import { findContainingFarm } from '../../utils/farms';
+import * as turf from '@turf/turf';
 
 interface NewFieldModalProps {
   open: boolean;
@@ -66,6 +67,12 @@ export default function NewFieldModal({
     const normalised = area.replace(',', '.');
     const areaNum = Number(normalised);
     if (!Number.isFinite(areaNum) || areaNum <= 0) { setError('Area must be a positive number'); return; }
+    if (geometry && geometry.type === 'Polygon') {
+      try {
+        const kinked = turf.kinks(turf.polygon((geometry as GeoJSON.Polygon).coordinates));
+        if (kinked.features.length > 0) { setError('Polygon has self-intersections. Please redraw.'); return; }
+      } catch { /* skip validation if turf fails */ }
+    }
     setSaving(true);
     setError(null);
     try {

@@ -307,6 +307,8 @@ export default function FieldsSidebar({
               {!isCollapsed && g.list.map((f) => (
                 <div
                   key={f.id}
+                  role="option"
+                  aria-selected={selectedFieldId === f.id}
                   className={`field-row w-full pl-8 pr-2 py-1.5 flex items-center text-left border-b border-[#f7f6f5] hover:bg-stone-50 group/row ${
                     selectedFieldId === f.id ? 'bg-amber-50' : ''
                   }`}
@@ -342,6 +344,8 @@ export default function FieldsSidebar({
         {flatSorted?.map((f) => (
           <div
             key={f.id}
+            role="option"
+            aria-selected={selectedFieldId === f.id}
             className={`field-row w-full pl-3 pr-2 py-1.5 flex items-center text-left border-b border-[#f7f6f5] hover:bg-stone-50 group/row ${
               selectedFieldId === f.id ? 'bg-amber-50' : ''
             }`}

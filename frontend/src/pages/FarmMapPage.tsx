@@ -709,6 +709,9 @@ export default function FarmMapPage() {
 
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex min-h-0">
+      <a href="#map-container" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg">
+        Skip to map
+      </a>
       {/* Desktop: inline flex child sidebar */}
       <div className="hidden md:block h-full">{fieldsSidebar}</div>
 
@@ -720,10 +723,9 @@ export default function FarmMapPage() {
       </div>
 
       {/* Map area — fills remaining space */}
-      <div className="flex-1 relative min-h-0 overflow-hidden">
-      {/* Map fills the full container */}
+      <div id="map-container" className="flex-1 relative min-h-0 overflow-hidden">
       {loading ? (
-        <div className="w-full h-full bg-stone-200 flex items-center justify-center">
+        <div className="w-full h-full bg-stone-200 flex items-center justify-center" aria-live="polite" aria-busy="true">
           <p className="text-stone-500 text-sm">Loading map...</p>
         </div>
       ) : (

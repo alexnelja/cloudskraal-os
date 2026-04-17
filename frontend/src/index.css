@@ -287,6 +287,12 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
+/* Focus-visible for keyboard users */
+:focus-visible {
+  outline: 2px solid var(--accent-500, #047857);
+  outline-offset: 2px;
+}
+
 /* Long-press affordance — pulsing amber ring */
 .longpress-ring {
   position: fixed;
