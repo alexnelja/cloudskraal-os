@@ -27,6 +27,7 @@ import {
 } from 'recharts';
 import MetricCard from '../components/MetricCard';
 import EnterprisePriceCurve from '../components/EnterprisePriceCurve';
+import WeatherForecastPanel from '../components/WeatherForecastPanel';
 import ProjectModal from '../components/ProjectModal';
 import { StatusCycle } from '../components/EditableCell';
 import { getProjects, getDashboardStats, createProject, updateProject } from '../api/client';
@@ -341,6 +342,11 @@ export default function Dashboard() {
       {/* Price forecasts */}
       <div className="mb-6">
         <EnterprisePriceCurve enterprise="rooibos" />
+      </div>
+
+      {/* Weather forecast */}
+      <div className="mb-6">
+        <WeatherForecastPanel />
       </div>
 
       {/* Tasks Section */}
