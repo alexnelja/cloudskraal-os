@@ -719,7 +719,7 @@ export default function FarmMapPage() {
           onAnnotationSelect={handleAnnotationSelect}
           onContextMenu={handleMapContextMenu}
           onMapClick={handleArmedMapClick}
-          cursor={armedDropMode ? 'crosshair' : undefined}
+          cursor={armedDropMode || ['linestring', 'polygon', 'point'].includes(drawMode) ? 'crosshair' : undefined}
           basemapId={basemapId}
           enterpriseColors={enterpriseColors}
         />

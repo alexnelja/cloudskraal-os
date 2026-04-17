@@ -46,7 +46,7 @@ export default function MeasureToolbar({
 
   if (!terraDraw) return null;
 
-  const showSavePanel = finishedGeometry != null && currentMode === 'static';
+  const showSavePanel = finishedGeometry != null && (currentMode === 'static' || currentMode === 'render');
 
   function handlePick(dest: SaveDestination) {
     setChooserOpen(false);

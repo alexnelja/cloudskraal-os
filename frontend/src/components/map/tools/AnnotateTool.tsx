@@ -17,7 +17,7 @@ export interface DrawFinishPayload {
 
 export type DrawMode = 'static' | 'linestring' | 'polygon' | 'point' | 'select' | 'render' | string;
 
-type TerraDraw = { setMode: (mode: string) => void; on: (event: string, cb: (...args: unknown[]) => void) => void; getSnapshot?: () => unknown[]; getMode?: () => string };
+type TerraDraw = { setMode: (mode: string) => void; on: (event: string, cb: (...args: unknown[]) => void) => void; getSnapshot?: () => unknown[]; getMode?: () => string; start?: () => void; enabled?: boolean };
 
 interface AnnotateToolProps {
   map: maplibregl.Map | null;
@@ -88,6 +88,11 @@ export default function AnnotateTool({ map, onFinish, onModeChange, onReady }: A
 
     const td = control.getTerraDrawInstance?.();
     if (td && typeof td.on === 'function') {
+      // The library's own UI calls td.start() lazily when a button is clicked.
+      // Since we hide that UI and use our own MeasureToolbar, we must start it here.
+      if (typeof td.start === 'function' && !td.enabled) {
+        td.start();
+      }
       td.on('finish', (featureId: string | number) => {
         // Guard: skip re-trigger from clicking an already-saved feature (pin bug fix)
         const mode = typeof td.getMode === 'function' ? td.getMode() : null;
