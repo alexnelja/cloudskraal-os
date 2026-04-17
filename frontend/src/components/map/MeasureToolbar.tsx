@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Ruler, Polygon as PolyIcon, MapPin, Hand } from '@phosphor-icons/react';
+import { Ruler, Polygon as PolyIcon, MapPin, Hand, ArrowUUpLeft, ArrowUUpRight } from '@phosphor-icons/react';
 import SaveAsChooserPopover from './SaveAsChooserPopover';
 
-type TerraDraw = { setMode: (mode: string) => void };
+type TerraDraw = { setMode: (mode: string) => void; undo?: () => boolean; redo?: () => boolean };
 type SaveDestination = 'field' | 'feature' | 'measurement' | 'note';
 
 interface MeasureToolbarProps {
@@ -104,6 +104,29 @@ export default function MeasureToolbar({
             </button>
           );
         })}
+        {!isPanMode && terraDraw.undo && (
+          <>
+            <div className="w-px h-5 bg-stone-200" />
+            <button
+              type="button"
+              onClick={() => terraDraw.undo?.()}
+              aria-label="Undo"
+              title="Undo (⌘Z)"
+              className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center bg-stone-50 text-stone-600 hover:bg-stone-100 transition-colors"
+            >
+              <ArrowUUpLeft size={16} weight="regular" />
+            </button>
+            <button
+              type="button"
+              onClick={() => terraDraw.redo?.()}
+              aria-label="Redo"
+              title="Redo (⇧⌘Z)"
+              className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center bg-stone-50 text-stone-600 hover:bg-stone-100 transition-colors"
+            >
+              <ArrowUUpRight size={16} weight="regular" />
+            </button>
+          </>
+        )}
       </div>
 
       {showSavePanel && (
