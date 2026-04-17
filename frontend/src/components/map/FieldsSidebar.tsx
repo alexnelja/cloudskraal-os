@@ -3,13 +3,14 @@ import { Plus, MagnifyingGlass as Search, Eye, EyeSlash, CaretDown, CaretRight }
 import { ENTERPRISE_LABELS } from '../../types/farm';
 import type { Farm, Field } from '../../types/farm';
 
+type SortMode = 'enterprise' | 'name-asc' | 'area-desc';
+
 interface FieldsSidebarProps {
   farms: Farm[];
   fields: Field[];
   enterprises: string[];
   visibleEnterprises: string[];
   selectedFieldId: string | null;
-  /** Merged enterprise colours (defaults + overrides from useEnterpriseColors). */
   enterpriseColors: Record<string, string>;
   onEnterpriseToggle: (enterprise: string) => void;
   onFarmSelect: (farmCode: string | null) => void;
@@ -21,17 +22,21 @@ interface FieldsSidebarProps {
 const LS_KEY = 'capex.fields-sidebar';
 
 interface PersistedState {
-  collapsed: string[]; // enterprise keys currently collapsed
+  collapsed: string[];
+  sortMode: SortMode;
 }
 
 function loadPersisted(): PersistedState {
   try {
     const raw = window.localStorage.getItem(LS_KEY);
-    if (!raw) return { collapsed: [] };
+    if (!raw) return { collapsed: [], sortMode: 'enterprise' };
     const parsed = JSON.parse(raw);
-    return { collapsed: Array.isArray(parsed.collapsed) ? parsed.collapsed : [] };
+    return {
+      collapsed: Array.isArray(parsed.collapsed) ? parsed.collapsed : [],
+      sortMode: parsed.sortMode ?? 'enterprise',
+    };
   } catch {
-    return { collapsed: [] };
+    return { collapsed: [], sortMode: 'enterprise' };
   }
 }
 
@@ -40,6 +45,19 @@ function savePersisted(state: PersistedState) {
     window.localStorage.setItem(LS_KEY, JSON.stringify(state));
   } catch {
     // SSR / private mode — no-op
+  }
+}
+
+function sortFields(fields: Field[], mode: SortMode): Field[] {
+  const sorted = [...fields];
+  switch (mode) {
+    case 'name-asc':
+      return sorted.sort((a, b) => a.name.localeCompare(b.name));
+    case 'area-desc':
+      return sorted.sort((a, b) => b.area_ha - a.area_ha || a.name.localeCompare(b.name));
+    case 'enterprise':
+    default:
+      return sorted.sort((a, b) => a.name.localeCompare(b.name));
   }
 }
 
@@ -57,11 +75,13 @@ export default function FieldsSidebar({
   onColorChange,
 }: FieldsSidebarProps) {
   const [search, setSearch] = useState('');
-  const [collapsed, setCollapsed] = useState<string[]>(() => loadPersisted().collapsed);
+  const persisted = loadPersisted();
+  const [collapsed, setCollapsed] = useState<string[]>(() => persisted.collapsed);
+  const [sortMode, setSortMode] = useState<SortMode>(() => persisted.sortMode);
 
   useEffect(() => {
-    savePersisted({ collapsed });
-  }, [collapsed]);
+    savePersisted({ collapsed, sortMode });
+  }, [collapsed, sortMode]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -75,23 +95,44 @@ export default function FieldsSidebar({
   }, [fields, search]);
 
   const groups = useMemo(() => {
+    if (sortMode !== 'enterprise') return null;
     const byEnt = new Map<string, Field[]>();
     for (const f of filtered) {
       const list = byEnt.get(f.enterprise) ?? [];
       list.push(f);
       byEnt.set(f.enterprise, list);
     }
-    // hide groups with no fields, sort by total area descending
     return Array.from(byEnt.entries())
       .map(([ent, list]) => ({
         ent,
-        list,
+        list: list.sort((a, b) => a.name.localeCompare(b.name)),
         totalHa: list.reduce((s, f) => s + (f.area_ha ?? 0), 0),
       }))
       .sort((a, b) => b.totalHa - a.totalHa);
-  }, [filtered]);
+  }, [filtered, sortMode]);
+
+  const flatSorted = useMemo(() => {
+    if (sortMode === 'enterprise') return null;
+    return sortFields(filtered, sortMode);
+  }, [filtered, sortMode]);
 
   const totalHa = filtered.reduce((s, f) => s + (f.area_ha ?? 0), 0);
+
+  const farmAggregates = useMemo(() => {
+    const farmMap = new Map<string, Farm>();
+    for (const farm of farms) farmMap.set(farm.id, farm);
+
+    const byFarmId = new Map<string, { farm: Farm; fieldsHa: number; fieldCount: number }>();
+    for (const f of filtered) {
+      const farm = farmMap.get(f.farm_id);
+      if (!farm) continue;
+      const agg = byFarmId.get(f.farm_id) ?? { farm, fieldsHa: 0, fieldCount: 0 };
+      agg.fieldsHa += f.area_ha ?? 0;
+      agg.fieldCount += 1;
+      byFarmId.set(f.farm_id, agg);
+    }
+    return Array.from(byFarmId.values()).sort((a, b) => a.farm.name.localeCompare(b.farm.name));
+  }, [filtered, farms]);
 
   function toggleGroup(ent: string) {
     setCollapsed((prev) =>
@@ -121,7 +162,25 @@ export default function FieldsSidebar({
         <span className="text-[11px] text-stone-500 ml-auto">{filtered.length} fields</span>
       </div>
 
-      {/* Farm + search */}
+      {/* Farm-level aggregates */}
+      {farmAggregates.length > 0 && (
+        <div className="px-3 py-2 border-b border-[#f3f4f3] space-y-1">
+          {farmAggregates.map((agg) => {
+            const pct = agg.farm.total_ha > 0
+              ? Math.round((agg.fieldsHa / agg.farm.total_ha) * 100)
+              : 0;
+            return (
+              <div key={agg.farm.id} className="flex items-center gap-2 text-[10px] text-stone-600">
+                <span className="font-medium text-stone-700 truncate flex-1">{agg.farm.name}</span>
+                <span>{Math.round(agg.fieldsHa)}/{Math.round(agg.farm.total_ha).toLocaleString()} ha</span>
+                <span className="text-stone-400">{pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Farm filter + search + sort */}
       <div className="px-3 py-2 border-b border-[#f3f4f3] space-y-2">
         <select
           className="w-full glass-input rounded-lg px-2 py-1.5 text-[12px] text-stone-800"
@@ -133,24 +192,37 @@ export default function FieldsSidebar({
             <option key={f.code} value={f.code}>{f.name}</option>
           ))}
         </select>
-        <div className="relative">
-          <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-stone-400" />
-          <input
-            type="text"
-            placeholder="Search fields..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full glass-input rounded-lg pl-7 pr-2 py-1.5 text-[12px]"
-          />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-stone-400" />
+            <input
+              type="text"
+              placeholder="Search fields..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full glass-input rounded-lg pl-7 pr-2 py-1.5 text-[12px]"
+            />
+          </div>
+          <select
+            aria-label="Sort fields"
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as SortMode)}
+            className="glass-input rounded-lg px-1.5 py-1.5 text-[11px] text-stone-600"
+          >
+            <option value="enterprise">Enterprise</option>
+            <option value="name-asc">Name A→Z</option>
+            <option value="area-desc">Area ↓</option>
+          </select>
         </div>
       </div>
 
-      {/* Groups */}
+      {/* Field list */}
       <div className="flex-1 overflow-y-auto text-[11px]">
-        {groups.length === 0 && (
+        {/* Enterprise-grouped view */}
+        {groups && groups.length === 0 && (
           <p className="px-3 py-3 text-stone-400 italic">No fields.</p>
         )}
-        {groups.map((g) => {
+        {groups?.map((g) => {
           const color = enterpriseColors[g.ent] ?? '#6b7280';
           const label = ENTERPRISE_LABELS[g.ent] ?? g.ent;
           const isCollapsed = collapsed.includes(g.ent);
@@ -202,7 +274,7 @@ export default function FieldsSidebar({
                   key={f.id}
                   type="button"
                   onClick={() => onFieldSelect(f.id)}
-                  className={`w-full pl-8 pr-3 py-1.5 flex items-center justify-between text-left border-b border-[#f7f6f5] hover:bg-stone-50 ${
+                  className={`field-row w-full pl-8 pr-3 py-1.5 flex items-center justify-between text-left border-b border-[#f7f6f5] hover:bg-stone-50 ${
                     selectedFieldId === f.id ? 'bg-amber-50' : ''
                   }`}
                 >
@@ -213,6 +285,30 @@ export default function FieldsSidebar({
             </div>
           );
         })}
+
+        {/* Flat sorted view (name or area) */}
+        {flatSorted && flatSorted.length === 0 && (
+          <p className="px-3 py-3 text-stone-400 italic">No fields.</p>
+        )}
+        {flatSorted?.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => onFieldSelect(f.id)}
+            className={`field-row w-full pl-3 pr-3 py-1.5 flex items-center justify-between text-left border-b border-[#f7f6f5] hover:bg-stone-50 ${
+              selectedFieldId === f.id ? 'bg-amber-50' : ''
+            }`}
+          >
+            <div className="flex items-center gap-2 truncate">
+              <span
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: enterpriseColors[f.enterprise] ?? '#6b7280' }}
+              />
+              <span className="text-stone-800 truncate">{f.name}</span>
+            </div>
+            <span className="text-stone-500 text-[10px] flex-shrink-0 ml-2">{Math.round(f.area_ha)} ha</span>
+          </button>
+        ))}
       </div>
     </aside>
   );
