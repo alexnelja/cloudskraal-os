@@ -5,6 +5,22 @@ import SaveAsChooserPopover from './SaveAsChooserPopover';
 type TerraDraw = { setMode: (mode: string) => void; undo?: () => boolean; redo?: () => boolean };
 type SaveDestination = 'field' | 'feature' | 'measurement' | 'note';
 
+function getDefaultDestination(geometry: GeoJSON.Geometry): { dest: SaveDestination; label: string } {
+  switch (geometry.type) {
+    case 'Polygon':
+    case 'MultiPolygon':
+      return { dest: 'field', label: 'Save as Field' };
+    case 'LineString':
+    case 'MultiLineString':
+      return { dest: 'measurement', label: 'Save as Measurement' };
+    case 'Point':
+    case 'MultiPoint':
+      return { dest: 'note', label: 'Save as Note' };
+    default:
+      return { dest: 'feature', label: 'Save as Feature' };
+  }
+}
+
 interface MeasureToolbarProps {
   terraDraw: TerraDraw | null;
   currentMode: string;
@@ -143,14 +159,24 @@ export default function MeasureToolbar({
             </button>
           </div>
           <div className="flex gap-1.5">
-            <button
-              type="button"
-              aria-label="Save as"
-              onClick={() => setChooserOpen((v) => !v)}
-              className="flex-1 bg-amber-600 text-white rounded-lg px-2 py-1.5 text-[11px] font-medium hover:bg-amber-700 transition-colors"
-            >
-              + Save as ▾
-            </button>
+            <div className="flex gap-0.5 flex-1">
+              <button
+                type="button"
+                aria-label={getDefaultDestination(finishedGeometry).label}
+                onClick={() => handlePick(getDefaultDestination(finishedGeometry).dest)}
+                className="flex-1 bg-amber-600 text-white rounded-l-lg px-2 py-1.5 text-[11px] font-medium hover:bg-amber-700 transition-colors"
+              >
+                + {getDefaultDestination(finishedGeometry).label}
+              </button>
+              <button
+                type="button"
+                aria-label="More save options"
+                onClick={() => setChooserOpen((v) => !v)}
+                className="bg-amber-600 text-white rounded-r-lg px-2 py-1.5 text-[11px] font-medium hover:bg-amber-700 transition-colors"
+              >
+                ▾
+              </button>
+            </div>
             <button
               type="button"
               aria-label="Discard"

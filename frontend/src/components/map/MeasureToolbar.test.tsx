@@ -9,6 +9,11 @@ function makeTd(): MockTerraDraw {
 }
 
 const lineGeometry: GeoJSON.Geometry = { type: 'LineString', coordinates: [[0, 0], [1, 1]] };
+const polygonGeometry: GeoJSON.Geometry = {
+  type: 'Polygon',
+  coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
+};
+const pointGeometry: GeoJSON.Geometry = { type: 'Point', coordinates: [0, 0] };
 
 describe('MeasureToolbar', () => {
   it('renders nothing when terraDraw is null', () => {
@@ -77,7 +82,7 @@ describe('MeasureToolbar', () => {
       />,
     );
     expect(screen.getByText('1.23 km')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /save as/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save as measurement/i })).toBeInTheDocument();
   });
 
   it('does not render save-as panel when mode is active draw', () => {
@@ -112,7 +117,7 @@ describe('MeasureToolbar', () => {
     expect(onDiscard).toHaveBeenCalled();
   });
 
-  it('opens chooser popover when SAVE AS is clicked', () => {
+  it('opens chooser popover when dropdown arrow is clicked', () => {
     const td = makeTd();
     render(
       <MeasureToolbar
@@ -124,7 +129,82 @@ describe('MeasureToolbar', () => {
         onDiscard={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /save as/i }));
-    expect(screen.getByRole('button', { name: /measurement/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /more save options/i }));
+    // SaveAsChooserPopover renders destination buttons; Measurement is one of them
+    expect(screen.getByRole('button', { name: /^measurement$/i })).toBeInTheDocument();
+  });
+
+  it('primary button shows "Save as Field" for polygon geometry', () => {
+    const td = makeTd();
+    render(
+      <MeasureToolbar
+        terraDraw={td as never}
+        currentMode="render"
+        finishedGeometry={polygonGeometry}
+        onPick={vi.fn()}
+        onDiscard={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /save as field/i })).toBeInTheDocument();
+  });
+
+  it('primary button shows "Save as Measurement" for line geometry', () => {
+    const td = makeTd();
+    render(
+      <MeasureToolbar
+        terraDraw={td as never}
+        currentMode="render"
+        finishedGeometry={lineGeometry}
+        onPick={vi.fn()}
+        onDiscard={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /save as measurement/i })).toBeInTheDocument();
+  });
+
+  it('primary button shows "Save as Note" for point geometry', () => {
+    const td = makeTd();
+    render(
+      <MeasureToolbar
+        terraDraw={td as never}
+        currentMode="render"
+        finishedGeometry={pointGeometry}
+        onPick={vi.fn()}
+        onDiscard={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /save as note/i })).toBeInTheDocument();
+  });
+
+  it('clicking primary button fires onPick with field for polygon', () => {
+    const td = makeTd();
+    const onPick = vi.fn();
+    render(
+      <MeasureToolbar
+        terraDraw={td as never}
+        currentMode="render"
+        finishedGeometry={polygonGeometry}
+        onPick={onPick}
+        onDiscard={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /save as field/i }));
+    expect(onPick).toHaveBeenCalledWith('field');
+  });
+
+  it('clicking primary button fires onPick with measurement for line', () => {
+    const td = makeTd();
+    const onPick = vi.fn();
+    render(
+      <MeasureToolbar
+        terraDraw={td as never}
+        currentMode="render"
+        finishedGeometry={lineGeometry}
+        onPick={onPick}
+        onDiscard={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /save as measurement/i }));
+    expect(onPick).toHaveBeenCalledWith('measurement');
   });
 });
