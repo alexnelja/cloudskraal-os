@@ -600,6 +600,18 @@ export default function FarmMapPage() {
     }
   }, [selectedAnnotationId, searchParams, setSearchParams]);
 
+  const handleBatchDelete = useCallback(async (ids: string[]) => {
+    try {
+      await Promise.all(ids.map(id => apiDeleteAnnotation(id)));
+      setAnnotations(prev => prev.filter(a => !ids.includes(a.id)));
+      if (selectedAnnotationId && ids.includes(selectedAnnotationId)) {
+        setSelectedAnnotationId(null);
+      }
+    } catch (e) {
+      console.error('Batch delete failed:', e);
+    }
+  }, [selectedAnnotationId]);
+
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
   const preEditGeometryRef = useRef<GeoJSON.Geometry | null>(null);
 
@@ -1167,6 +1179,7 @@ export default function FarmMapPage() {
         onSelect={handleAnnotationSelect}
         onDelete={handleAnnotationDelete}
         onEdit={handleAnnotationEdit}
+        onBatchDelete={handleBatchDelete}
         taskCountById={taskCountByAnnotation}
         onMeasurementZoom={(m) => {
           try {

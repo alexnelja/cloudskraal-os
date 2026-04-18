@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'motion/react';
-import { X } from '@phosphor-icons/react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { X, CheckSquareOffset } from '@phosphor-icons/react';
 import type { Annotation, AnnotationType } from '../../types/annotation';
 import type { Measurement } from '../../types/measurement';
 import { listMeasurements, deleteMeasurement } from '../../api/measurements';
@@ -16,6 +16,7 @@ interface AnnotationsSidebarProps {
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit?: (id: string) => void;
+  onBatchDelete?: (ids: string[]) => void;
   taskCountById?: Record<string, number>;
   onMeasurementZoom?: (m: Measurement) => void;
 }
@@ -48,6 +49,7 @@ export default function AnnotationsSidebar({
   onSelect,
   onDelete,
   onEdit,
+  onBatchDelete,
   taskCountById = {},
   onMeasurementZoom,
 }: AnnotationsSidebarProps) {
@@ -55,6 +57,23 @@ export default function AnnotationsSidebar({
   const [filter, setFilter] = useState<FilterValue>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
+  const [multiSelect, setMultiSelect] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleMultiSelect = useCallback(() => {
+    setMultiSelect(v => {
+      if (v) setSelectedIds(new Set());
+      return !v;
+    });
+  }, []);
+
+  const toggleId = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -91,14 +110,27 @@ export default function AnnotationsSidebar({
             {activeTab === 'measurements' ? measurements.length : annotations.length}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={onToggle}
-          className="text-stone-500 hover:text-stone-900 hover:bg-stone-100/60 rounded-md p-1 transition"
-          aria-label="Close sidebar"
-        >
-          <X size={16} weight="bold" />
-        </button>
+        <div className="flex items-center gap-1">
+          {onBatchDelete && activeTab === 'annotations' && (
+            <button
+              type="button"
+              onClick={toggleMultiSelect}
+              className={`rounded-md p-1 transition ${multiSelect ? 'text-amber-700 bg-amber-100/60' : 'text-stone-500 hover:text-stone-900 hover:bg-stone-100/60'}`}
+              aria-label={multiSelect ? 'Exit multi-select' : 'Multi-select'}
+              aria-pressed={multiSelect}
+            >
+              <CheckSquareOffset size={16} weight={multiSelect ? 'duotone' : 'regular'} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onToggle}
+            className="text-stone-500 hover:text-stone-900 hover:bg-stone-100/60 rounded-md p-1 transition"
+            aria-label="Close sidebar"
+          >
+            <X size={16} weight="bold" />
+          </button>
+        </div>
       </div>
 
       {/* Tab switcher */}
@@ -211,9 +243,19 @@ export default function AnnotationsSidebar({
                           ? '2px solid #d97706'
                           : '2px solid transparent',
                       }}
-                      onClick={() => onSelect(a.id)}
+                      onClick={() => multiSelect ? toggleId(a.id) : onSelect(a.id)}
                     >
                       <div className="flex items-start justify-between gap-2">
+                        {multiSelect && (
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(a.id)}
+                            onChange={() => toggleId(a.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-1 shrink-0 accent-amber-600"
+                            aria-label={`Select ${a.title}`}
+                          />
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span
@@ -282,6 +324,50 @@ export default function AnnotationsSidebar({
               </ul>
             )}
           </div>
+
+          {/* Batch action bar */}
+          <AnimatePresence>
+            {multiSelect && (
+              <motion.div
+                initial={{ y: 40, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 40, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="border-t border-stone-200/60 px-4 py-2.5 flex items-center justify-between gap-2 bg-white/95 backdrop-blur-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedIds.size === filtered.length) setSelectedIds(new Set());
+                      else setSelectedIds(new Set(filtered.map(a => a.id)));
+                    }}
+                    className="text-[11px] text-stone-600 hover:text-stone-900 transition-colors"
+                  >
+                    {selectedIds.size === filtered.length ? 'Deselect all' : 'Select all'}
+                  </button>
+                  <span className="text-[11px] text-stone-400 font-mono">
+                    {selectedIds.size} selected
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  disabled={selectedIds.size === 0}
+                  onClick={() => {
+                    const ids = Array.from(selectedIds);
+                    if (window.confirm(`Delete ${ids.length} annotation${ids.length === 1 ? '' : 's'}?`)) {
+                      onBatchDelete?.(ids);
+                      setSelectedIds(new Set());
+                      setMultiSelect(false);
+                    }
+                  }}
+                  className="px-3 py-1 text-[11px] font-medium rounded-lg transition-colors disabled:opacity-40 text-red-700 bg-red-50 hover:bg-red-100 disabled:hover:bg-red-50"
+                >
+                  Delete selected
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
 

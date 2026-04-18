@@ -166,6 +166,47 @@ describe('AnnotationsSidebar', () => {
     await user.click(within(row as HTMLElement).getByRole('button', { name: /edit annotation/i }));
     expect(onEdit).toHaveBeenCalledWith('a1');
   });
+
+  it('shows multi-select button when onBatchDelete is provided', () => {
+    renderSidebar({ onBatchDelete: vi.fn() });
+    expect(screen.getByRole('button', { name: /multi-select/i })).toBeInTheDocument();
+  });
+
+  it('does not show multi-select button without onBatchDelete', () => {
+    renderSidebar();
+    expect(screen.queryByRole('button', { name: /multi-select/i })).not.toBeInTheDocument();
+  });
+
+  it('entering multi-select mode shows checkboxes', async () => {
+    const user = userEvent.setup();
+    renderSidebar({ onBatchDelete: vi.fn() });
+    await user.click(screen.getByRole('button', { name: /multi-select/i }));
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes.length).toBe(3);
+  });
+
+  it('selecting items and clicking delete calls onBatchDelete', async () => {
+    const user = userEvent.setup();
+    const onBatchDelete = vi.fn();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderSidebar({ onBatchDelete });
+    await user.click(screen.getByRole('button', { name: /multi-select/i }));
+    const checkboxes = screen.getAllByRole('checkbox');
+    await user.click(checkboxes[0]);
+    await user.click(checkboxes[1]);
+    await user.click(screen.getByRole('button', { name: /delete selected/i }));
+    expect(onBatchDelete).toHaveBeenCalledWith(expect.arrayContaining(['a1', 'a2']));
+    confirmSpy.mockRestore();
+  });
+
+  it('select all toggles all checkboxes', async () => {
+    const user = userEvent.setup();
+    renderSidebar({ onBatchDelete: vi.fn() });
+    await user.click(screen.getByRole('button', { name: /multi-select/i }));
+    await user.click(screen.getByText(/select all/i));
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes.every(cb => (cb as HTMLInputElement).checked)).toBe(true);
+  });
 });
 
 describe('AnnotationsSidebar — Measurements tab', () => {
