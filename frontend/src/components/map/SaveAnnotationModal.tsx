@@ -58,6 +58,7 @@ export default function SaveAnnotationModal({
       setNotes('');
       setCategory('generic');
       setTitleDirty(false);
+      setCategorySearch('');
     }
   }, [open]);
 
@@ -69,7 +70,12 @@ export default function SaveAnnotationModal({
   }, [type, category, titleDirty]);
 
   const metric = useMemo(() => computeMetricLabel(type, geometry), [type, geometry]);
-  const categories = CATEGORIES[type] ?? [];
+  const allCategories = CATEGORIES[type] ?? [];
+  const [categorySearch, setCategorySearch] = useState('');
+  const showCategorySearch = allCategories.length > 10;
+  const categories = showCategorySearch && categorySearch.trim()
+    ? allCategories.filter(c => c.label.toLowerCase().includes(categorySearch.trim().toLowerCase()))
+    : allCategories;
   const selectedDef = getCategoryDef(type, category);
   const SelectedIcon = selectedDef.Icon;
 
@@ -145,6 +151,15 @@ export default function SaveAnnotationModal({
             <label className="block text-[11px] uppercase tracking-[0.08em] font-semibold text-stone-600 mb-2">
               Category
             </label>
+            {showCategorySearch && (
+              <input
+                type="text"
+                value={categorySearch}
+                onChange={(e) => setCategorySearch(e.target.value)}
+                placeholder="Search categories…"
+                className="w-full bg-white/60 border border-stone-300/80 rounded-lg px-3 py-1.5 text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 transition mb-2"
+              />
+            )}
             <div
               className="grid grid-cols-3 sm:grid-cols-4 gap-1.5"
               role="radiogroup"

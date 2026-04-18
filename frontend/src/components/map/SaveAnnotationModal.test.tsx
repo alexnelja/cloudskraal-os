@@ -124,6 +124,26 @@ describe('SaveAnnotationModal', () => {
     expect(onDiscard).toHaveBeenCalledTimes(1);
   });
 
+  it('shows category search input for pin type (18 categories)', () => {
+    renderModal({ type: 'pin' });
+    expect(screen.getByPlaceholderText(/search categories/i)).toBeInTheDocument();
+  });
+
+  it('hides category search for line type (8 categories)', () => {
+    renderModal({ type: 'line', geometry: { type: 'LineString', coordinates: [[0,0],[1,1]] } as GeoJSON.Geometry });
+    expect(screen.queryByPlaceholderText(/search categories/i)).not.toBeInTheDocument();
+  });
+
+  it('category search filters displayed categories', async () => {
+    const user = userEvent.setup();
+    renderModal({ type: 'pin' });
+    expect(document.querySelector('[data-category="pump"]')).toBeTruthy();
+    expect(document.querySelector('[data-category="gate"]')).toBeTruthy();
+    await user.type(screen.getByPlaceholderText(/search categories/i), 'pump');
+    expect(document.querySelector('[data-category="pump"]')).toBeTruthy();
+    expect(document.querySelector('[data-category="gate"]')).toBeFalsy();
+  });
+
   it('renders nothing when open=false', () => {
     const { container } = renderModal({ open: false });
     expect(container.firstChild).toBeNull();
