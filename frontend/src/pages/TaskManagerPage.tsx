@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { getTasks, completeTask } from '../api/calendar';
-import { listTags, listStatuses } from '../api/taskManager';
+import { Plus } from '@phosphor-icons/react';
+import { getTasks, completeTask, createTask } from '../api/calendar';
+import { listTags, listStatuses, addTagToTask } from '../api/taskManager';
+import { getFields } from '../api/farms';
 import type { Task } from '../types/calendar';
 import type { Tag, TaskStatusConfig } from '../types/taskManager';
 import TodayView from '../components/tasks/TodayView';
+import TaskCreateForm from '../components/tasks/TaskCreateForm';
 
 type TabId = 'today' | 'board' | 'list';
 
@@ -21,6 +24,8 @@ export default function TaskManagerPage() {
   const [statuses, setStatuses] = useState<TaskStatusConfig[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [fields, setFields] = useState<Array<{ id: string; name: string }>>([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -29,14 +34,16 @@ export default function TaskManagerPage() {
       tomorrow.setDate(tomorrow.getDate() + 2);
       const dueBefore = tomorrow.toISOString().slice(0, 10);
 
-      const [taskData, tagData, statusData] = await Promise.all([
+      const [taskData, tagData, statusData, fieldData] = await Promise.all([
         getTasks({ due_before: dueBefore }),
         listTags(),
         listStatuses(),
+        getFields(),
       ]);
       setTasks(taskData);
       setTags(tagData);
       setStatuses(statusData);
+      setFields(fieldData.map((f) => ({ id: f.id, name: f.name })));
     } catch (err) {
       console.error('Failed to load task data:', err);
     } finally {
@@ -55,6 +62,36 @@ export default function TaskManagerPage() {
         await fetchData();
       } catch (err) {
         console.error('Failed to complete task:', err);
+      }
+    },
+    [fetchData],
+  );
+
+  const handleCreate = useCallback(
+    async (data: any) => {
+      try {
+        const { tag_ids, ...taskData } = data;
+        const newTask = await createTask({
+          ...taskData,
+          type: 'manual',
+          enterprise: null,
+          recurrence_rule: null,
+          calendar_event_id: null,
+          notes: null,
+          actual_minutes: null,
+          blocked_reason: null,
+          blocked_until: null,
+          sort_order: 0,
+          verified_by: null,
+          verified_at: null,
+        });
+        if (tag_ids?.length) {
+          await Promise.all(tag_ids.map((tagId: string) => addTagToTask(newTask.id, tagId)));
+        }
+        await fetchData();
+        setCreateOpen(false);
+      } catch (err) {
+        console.error('Failed to create task:', err);
       }
     },
     [fetchData],
@@ -116,6 +153,31 @@ export default function TaskManagerPage() {
           </div>
         )}
       </div>
+
+      {/* Floating "+" button */}
+      <motion.button
+        type="button"
+        whileTap={{ scale: 0.9 }}
+        onClick={() => setCreateOpen(true)}
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white text-2xl"
+        style={{
+          background: 'linear-gradient(135deg, #d97706, #b45309)',
+          boxShadow: '0 4px 14px -3px rgba(180, 83, 9, 0.5)',
+        }}
+        aria-label="Create task"
+      >
+        <Plus weight="bold" size={24} />
+      </motion.button>
+
+      {/* Task creation form */}
+      <TaskCreateForm
+        open={createOpen}
+        tags={tags}
+        statuses={statuses}
+        fields={fields}
+        onSave={handleCreate}
+        onDismiss={() => setCreateOpen(false)}
+      />
     </div>
   );
 }
