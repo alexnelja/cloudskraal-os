@@ -14,6 +14,7 @@ import EmployeesPage from './pages/EmployeesPage';
 import InventoryPage from './pages/InventoryPage';
 import FinancialsPage from './pages/FinancialsPage';
 import AnnotationsPage from './pages/AnnotationsPage';
+import TaskManagerPage from './pages/TaskManagerPage';
 
 function PageWrapper({ children }: { children: React.ReactNode }) {
   return <div className="p-4 md:p-8"><div className="max-w-7xl mx-auto">{children}</div></div>;
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/calendar/tasks" element={<CalendarPage />} />
           <Route path="/calendar/tasks/:taskId" element={<CalendarPage />} />
+          <Route path="/tasks" element={<TaskManagerPage />} />
           <Route path="/wiki/*" element={<WikiPage />} />
           <Route path="/projects" element={<PageWrapper><ProjectsList /></PageWrapper>} />
           <Route path="/projects/:id" element={<PageWrapper><ProjectDetail /></PageWrapper>} />
