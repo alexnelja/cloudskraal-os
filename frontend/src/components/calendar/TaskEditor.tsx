@@ -146,6 +146,14 @@ export default function TaskEditor({ task, open, onClose, onSave }: TaskEditorPr
       field_id: task?.field_id ?? null,
       recurrence_rule: task?.recurrence_rule ?? null,
       calendar_event_id: task?.calendar_event_id ?? null,
+      status_id: task?.status_id ?? null,
+      estimated_minutes: task?.estimated_minutes ?? null,
+      actual_minutes: task?.actual_minutes ?? null,
+      blocked_reason: task?.blocked_reason ?? null,
+      blocked_until: task?.blocked_until ?? null,
+      sort_order: task?.sort_order ?? 0,
+      verified_by: task?.verified_by ?? null,
+      verified_at: task?.verified_at ?? null,
     };
 
     try {

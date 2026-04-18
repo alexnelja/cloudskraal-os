@@ -33,6 +33,18 @@ export interface Task {
   recurrence_rule: string | null;
   calendar_event_id: string | null;
   notes: string | null;
+  status_id: string | null;
+  status_name?: string;
+  status_color?: string;
+  status_category?: string;
+  estimated_minutes: number | null;
+  actual_minutes: number | null;
+  blocked_reason: string | null;
+  blocked_until: string | null;
+  sort_order: number;
+  verified_by: string | null;
+  verified_at: string | null;
+  tags?: Array<{ id: string; name: string; color: string; group: string }>;
   inputs?: TaskInput[];
   checklists?: TaskChecklist[];
 }
