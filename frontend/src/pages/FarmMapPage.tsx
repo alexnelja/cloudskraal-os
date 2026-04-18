@@ -23,6 +23,9 @@ import MeasureToolbar from '../components/map/MeasureToolbar';
 import ExportMapButton from '../components/map/ExportMapButton';
 import { loadBasemapPreference, saveBasemapPreference } from '../config/basemaps';
 import { useLongPress } from '../hooks/useLongPress';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { flushQueue, getQueue } from '../lib/syncQueue';
+import { WifiSlash } from '@phosphor-icons/react';
 import type { MapContextMenuEvent } from '../components/map/FarmMap';
 import { listTasks, createTask, type Task } from '../api/tasks';
 import { createAnnotation } from '../api/annotations';
@@ -89,6 +92,16 @@ export default function FarmMapPage() {
   const [fields, setFields] = useState<Field[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(fieldId || null);
   const { colors: enterpriseColors, setColor: setEnterpriseColor } = useEnterpriseColors();
+  const isOnline = useOnlineStatus();
+  const [syncPending, setSyncPending] = useState(getQueue().length);
+
+  // Flush sync queue when coming back online
+  useEffect(() => {
+    if (!isOnline) return;
+    if (getQueue().length === 0) return;
+    flushQueue().then(() => setSyncPending(getQueue().length));
+  }, [isOnline]);
+
   const [loading, setLoading] = useState(true);
   const [visibleEnterprises, setVisibleEnterprises] = useState<string[] | undefined>(undefined);
   const [enterprises, setEnterprises] = useState<string[]>([]);
@@ -864,6 +877,26 @@ export default function FarmMapPage() {
             >
               Retry
             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Offline indicator */}
+      <AnimatePresence>
+        {!isOnline && (
+          <motion.div
+            key="offline-banner"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="absolute top-3 left-1/2 -translate-x-1/2 z-30 glass-panel rounded-full px-4 py-2 flex items-center gap-2"
+          >
+            <WifiSlash size={14} weight="duotone" className="text-stone-500" />
+            <span className="text-[11px] text-stone-600">
+              Offline — changes will sync when reconnected
+              {syncPending > 0 && <span className="font-mono ml-1">({syncPending} pending)</span>}
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
