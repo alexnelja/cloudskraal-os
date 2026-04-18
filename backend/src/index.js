@@ -31,6 +31,7 @@ const enterprisePricesRoutes = require('./routes/enterprise-prices');
 const { seedEnterprisePrices } = require('./db/seed-enterprise-prices');
 const annotationsRoutes = require('./routes/annotations');
 const measurementsRoutes = require('./routes/measurements');
+const taskManagerRoutes = require('./routes/tasks');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -69,6 +70,7 @@ app.use('/api', conversionFactorsRoutes);
 app.use('/api', enterprisePricesRoutes);
 app.use('/api', annotationsRoutes);
 app.use('/api/measurements', measurementsRoutes);
+app.use('/api', taskManagerRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

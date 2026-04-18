@@ -319,6 +319,20 @@ router.get('/tasks/:id', (req, res) => {
   const inputs = db.prepare('SELECT * FROM task_inputs WHERE task_id = ?').all(req.params.id);
   const checklists = db.prepare('SELECT * FROM task_checklists WHERE task_id = ? ORDER BY sort_order').all(req.params.id);
 
+  const tags = db.prepare(
+    'SELECT t.* FROM tags t JOIN task_tags tt ON t.id = tt.tag_id WHERE tt.task_id = ?'
+  ).all(req.params.id);
+  task.tags = tags;
+
+  if (task.status_id) {
+    const statusRow = db.prepare('SELECT name, color, category FROM task_statuses WHERE id = ?').get(task.status_id);
+    if (statusRow) {
+      task.status_name = statusRow.name;
+      task.status_color = statusRow.color;
+      task.status_category = statusRow.category;
+    }
+  }
+
   let depends_on_task = null;
   if (task.depends_on_task_id) {
     depends_on_task = db.prepare('SELECT id, title, status FROM tasks WHERE id = ?').get(task.depends_on_task_id);
