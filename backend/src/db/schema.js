@@ -19,6 +19,7 @@ const { migrateWikiPageLinks } = require('./migrate-wiki-page-links');
 const { migrateMeasurements } = require('./migrate-measurements');
 const { migrateReclassifyLargeFields } = require('./migrate-reclassify-large-fields');
 const { initTaskManagerSchema, seedDefaultTags, seedDefaultStatuses } = require('./schema-tasks');
+const { migrateTaskStatusId } = require('./migrate-task-status-id');
 
 const DB_PATH = process.env.CAPEX_DB_PATH ?? path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -51,6 +52,7 @@ function getDb() {
     initTaskManagerSchema(db);
     seedDefaultTags(db);
     seedDefaultStatuses(db);
+    migrateTaskStatusId(db);
   }
   return db;
 }
