@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { Plus, GearSix } from '@phosphor-icons/react';
+import { Plus, GearSix, Bell, BellSlash, Crosshair } from '@phosphor-icons/react';
+import { useFieldDetection } from '../hooks/useFieldDetection';
 import { getTasks, completeTask, uncompleteTask, createTask, updateTask, deleteTask } from '../api/calendar';
 import { listTags, listStatuses, addTagToTask } from '../api/taskManager';
 import { getFields, getFarms, getMapGeoJSON } from '../api/farms';
@@ -8,6 +9,9 @@ import { fetchForecast, clearForecastCache } from '../api/weather';
 import type { Task } from '../types/calendar';
 import type { Tag, TaskStatusConfig } from '../types/taskManager';
 import { evaluateWeatherBlocks, type WeatherBlock, type WeatherData } from '../lib/weatherBlocking';
+import { requestNotificationPermission, isNotificationEnabled, notifyOverdueTasks, notifyWeatherUnblock } from '../lib/notifications';
+import { checkTransitionTriggers, type TransitionSuggestion } from '../lib/usagePeriodTriggers';
+import TransitionBanner from '../components/tasks/TransitionBanner';
 import TodayView from '../components/tasks/TodayView';
 import BoardView from '../components/tasks/BoardView';
 import ListView from '../components/tasks/ListView';
@@ -34,12 +38,41 @@ export default function TaskManagerPage() {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
-  const [fields, setFields] = useState<Array<{ id: string; name: string }>>([]);
+  const [fields, setFields] = useState<Array<{ id: string; name: string; enterprise: string }>>([]);
   const [geojson, setGeojson] = useState<GeoJSON.FeatureCollection | null>(null);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [weatherBlocks, setWeatherBlocks] = useState<WeatherBlock[]>([]);
   const [weatherToday, setWeatherToday] = useState<WeatherData | null>(null);
   const [copToast, setCopToast] = useState<{ costsLogged: Array<{ id: string; product_name: string; total_cost: number }>; taskTitle: string; taskId: string } | null>(null);
+  const [transitionSuggestions, setTransitionSuggestions] = useState<TransitionSuggestion[]>([]);
+  const [notificationsOn, setNotificationsOn] = useState(() =>
+    localStorage.getItem('capex.notifications-enabled') === 'true' && isNotificationEnabled(),
+  );
+  const prevBlockedIdsRef = useRef<Set<string>>(new Set());
+  const [gpsEnabled, setGpsEnabled] = useState(() =>
+    localStorage.getItem('capex.gps-field-detection') === 'true',
+  );
+  const detectedField = useFieldDetection(geojson, gpsEnabled);
+
+  const detectedFieldTaskCount = useMemo(() => {
+    if (!detectedField) return 0;
+    return tasks.filter((t) => t.field_id === detectedField.fieldId).length;
+  }, [tasks, detectedField]);
+
+  const handleGpsToggle = useCallback(() => {
+    setGpsEnabled((prev) => {
+      const next = !prev;
+      localStorage.setItem('capex.gps-field-detection', String(next));
+      return next;
+    });
+  }, []);
+
+  const handleGpsShow = useCallback(() => {
+    if (detectedField) {
+      setSelectedFieldId(detectedField.fieldId);
+      setActiveTab('today');
+    }
+  }, [detectedField]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -53,7 +86,7 @@ export default function TaskManagerPage() {
       setTasks(taskData);
       setTags(tagData);
       setStatuses(statusData);
-      setFields(fieldData.map((f) => ({ id: f.id, name: f.name })));
+      setFields(fieldData.map((f) => ({ id: f.id, name: f.name, enterprise: f.enterprise })));
       setGeojson(geoData);
     } catch (err) {
       console.error('Failed to load task data:', err);
@@ -117,6 +150,55 @@ export default function TaskManagerPage() {
     }
   }, [loading, tasks, loadWeather]);
 
+  // Notify overdue tasks once per session
+  useEffect(() => {
+    if (loading || !notificationsOn) return;
+    if (sessionStorage.getItem('capex.overdue-notified')) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const overdue = tasks.filter(
+      (t) => t.due_date && t.due_date < today && t.status !== 'completed' && t.status !== 'skipped',
+    );
+    if (overdue.length > 0) {
+      notifyOverdueTasks(overdue.length);
+      sessionStorage.setItem('capex.overdue-notified', '1');
+    }
+  }, [loading, tasks, notificationsOn]);
+
+  // Detect weather unblocks and notify
+  useEffect(() => {
+    if (!notificationsOn) return;
+    const currentBlockedIds = new Set(
+      weatherBlocks.filter((b) => b.severity === 'blocked').map((b) => b.taskId),
+    );
+    const prev = prevBlockedIdsRef.current;
+    if (prev.size > 0) {
+      for (const taskId of prev) {
+        if (!currentBlockedIds.has(taskId)) {
+          const task = tasks.find((t) => t.id === taskId);
+          if (task) {
+            const fieldName = task.field_name || 'Field';
+            notifyWeatherUnblock(fieldName, 'Conditions improved');
+          }
+        }
+      }
+    }
+    prevBlockedIdsRef.current = currentBlockedIds;
+  }, [weatherBlocks, tasks, notificationsOn]);
+
+  // Toggle notification preference
+  const handleToggleNotifications = useCallback(async () => {
+    if (notificationsOn) {
+      setNotificationsOn(false);
+      localStorage.setItem('capex.notifications-enabled', 'false');
+    } else {
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        setNotificationsOn(true);
+        localStorage.setItem('capex.notifications-enabled', 'true');
+      }
+    }
+  }, [notificationsOn]);
+
   const handleWeatherRefresh = useCallback(async () => {
     try {
       const farms = await getFarms();
@@ -126,6 +208,72 @@ export default function TaskManagerPage() {
     } catch { /* ignore */ }
     loadWeather(tasks);
   }, [tasks, loadWeather]);
+
+  // Check for usage period transition suggestions
+  useEffect(() => {
+    if (loading || fields.length === 0) return;
+
+    const dismissed: string[] = JSON.parse(
+      localStorage.getItem('transition_dismissed') || '[]',
+    );
+    const all = checkTransitionTriggers(fields, tasks);
+    setTransitionSuggestions(all.filter((s) => !dismissed.includes(s.fieldId)));
+  }, [loading, fields, tasks]);
+
+  const handleTransitionGenerate = useCallback(
+    async (fieldId: string) => {
+      const field = fields.find((f) => f.id === fieldId);
+      if (!field) return;
+      try {
+        await createTask({
+          title: `Set up ${field.enterprise} for ${field.name}`,
+          description: `Transition task: configure ${field.enterprise} tasks for this field.`,
+          enterprise: field.enterprise,
+          field_id: fieldId,
+          type: 'triggered' as const,
+          status: 'pending' as const,
+          priority: 'medium' as const,
+          due_date: new Date().toISOString().slice(0, 10),
+          assigned_to: null,
+          depends_on_task_id: null,
+          recurrence_rule: null,
+          calendar_event_id: null,
+          notes: null,
+          status_id: null,
+          estimated_minutes: null,
+          actual_minutes: null,
+          blocked_reason: null,
+          blocked_until: null,
+          sort_order: 0,
+          verified_by: null,
+          verified_at: null,
+        });
+        const dismissed: string[] = JSON.parse(
+          localStorage.getItem('transition_dismissed') || '[]',
+        );
+        localStorage.setItem(
+          'transition_dismissed',
+          JSON.stringify([...dismissed, fieldId]),
+        );
+        setTransitionSuggestions((prev) => prev.filter((s) => s.fieldId !== fieldId));
+        await fetchData();
+      } catch (err) {
+        console.error('Failed to generate transition task:', err);
+      }
+    },
+    [fields, fetchData],
+  );
+
+  const handleTransitionDismiss = useCallback((fieldId: string) => {
+    const dismissed: string[] = JSON.parse(
+      localStorage.getItem('transition_dismissed') || '[]',
+    );
+    localStorage.setItem(
+      'transition_dismissed',
+      JSON.stringify([...dismissed, fieldId]),
+    );
+    setTransitionSuggestions((prev) => prev.filter((s) => s.fieldId !== fieldId));
+  }, []);
 
   const handleComplete = useCallback(
     async (id: string) => {
@@ -307,6 +455,19 @@ export default function TaskManagerPage() {
         <div className="flex-1" />
         <button
           type="button"
+          onClick={handleToggleNotifications}
+          className={`p-1.5 rounded-full transition-colors ${
+            notificationsOn
+              ? 'text-amber-600 hover:text-amber-800 hover:bg-amber-50'
+              : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
+          }`}
+          aria-label={notificationsOn ? 'Disable notifications' : 'Enable notifications'}
+          title={notificationsOn ? 'Notifications on' : 'Notifications off'}
+        >
+          {notificationsOn ? <Bell size={18} weight="fill" /> : <BellSlash size={18} />}
+        </button>
+        <button
+          type="button"
           onClick={() => setTagManagerOpen(true)}
           className="p-1.5 rounded-full text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-colors"
           aria-label="Manage tags and statuses"
@@ -318,6 +479,15 @@ export default function TaskManagerPage() {
       {/* Quick input bar */}
       {activeTab === 'today' && !loading && (
         <QuickInput tags={tags} fields={fields} onSubmit={handleQuickCreate} />
+      )}
+
+      {/* Transition suggestions banner */}
+      {activeTab === 'today' && transitionSuggestions.length > 0 && (
+        <TransitionBanner
+          suggestions={transitionSuggestions}
+          onGenerate={handleTransitionGenerate}
+          onDismiss={handleTransitionDismiss}
+        />
       )}
 
       {/* Content */}
@@ -344,6 +514,11 @@ export default function TaskManagerPage() {
             weatherTemp={weatherToday?.temperature_max}
             weatherRain={weatherToday?.precipitation_sum}
             onWeatherRefresh={handleWeatherRefresh}
+            detectedField={detectedField}
+            detectedFieldTaskCount={detectedFieldTaskCount}
+            onGpsShow={handleGpsShow}
+            gpsEnabled={gpsEnabled}
+            onGpsToggle={handleGpsToggle}
           />
         ) : activeTab === 'board' ? (
           <BoardView
