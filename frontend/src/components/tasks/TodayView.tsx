@@ -7,6 +7,7 @@ import type { Task } from '../../types/calendar';
 import type { Tag, TaskStatusConfig } from '../../types/taskManager';
 import TaskRow from './TaskRow';
 import DailyProgress from './DailyProgress';
+import TaskStats from './TaskStats';
 
 interface TodayViewProps {
   tasks: Task[];
@@ -201,6 +202,7 @@ export default function TodayView({
       {/* Daily progress */}
       <div className="border-t border-stone-200/60">
         <DailyProgress total={todayTasks.length} completed={todayCompleted} />
+        <TaskStats tasks={tasks} completedToday={todayCompleted} totalToday={todayTasks.length} />
       </div>
     </div>
   );

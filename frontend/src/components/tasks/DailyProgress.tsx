@@ -14,7 +14,15 @@ export default function DailyProgress({ total, completed }: DailyProgressProps) 
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-sm text-stone-600">
           {allDone ? (
-            <span className="text-amber-700 font-medium">All done</span>
+            <motion.span
+              className="text-amber-700 font-medium"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              data-testid="all-done-message"
+            >
+              All done for today
+            </motion.span>
           ) : (
             `${completed} of ${total} done`
           )}
@@ -27,9 +35,9 @@ export default function DailyProgress({ total, completed }: DailyProgressProps) 
           className="h-full rounded-full"
           style={{
             background: allDone
-              ? 'linear-gradient(90deg, #f59e0b, #d97706, #b45309)'
+              ? 'linear-gradient(90deg, #d97706, #f59e0b, #fbbf24)'
               : 'linear-gradient(90deg, #fbbf24, #d97706)',
-            boxShadow: allDone ? '0 0 8px rgba(217, 119, 6, 0.4)' : 'none',
+            boxShadow: allDone ? '0 0 20px rgba(251, 191, 36, 0.4)' : 'none',
           }}
           initial={{ width: '0%' }}
           animate={{ width: `${pct}%` }}
