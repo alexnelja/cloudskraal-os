@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { Plus } from '@phosphor-icons/react';
-import { getTasks, completeTask, createTask } from '../api/calendar';
+import { getTasks, completeTask, createTask, updateTask } from '../api/calendar';
 import { listTags, listStatuses, addTagToTask } from '../api/taskManager';
 import { getFields } from '../api/farms';
 import type { Task } from '../types/calendar';
 import type { Tag, TaskStatusConfig } from '../types/taskManager';
 import TodayView from '../components/tasks/TodayView';
+import BoardView from '../components/tasks/BoardView';
 import TaskCreateForm from '../components/tasks/TaskCreateForm';
 import QuickInput from '../components/tasks/QuickInput';
 import type { ParsedTaskInput } from '../components/tasks/QuickInput';
@@ -31,13 +32,8 @@ export default function TaskManagerPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const today = new Date();
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 2);
-      const dueBefore = tomorrow.toISOString().slice(0, 10);
-
       const [taskData, tagData, statusData, fieldData] = await Promise.all([
-        getTasks({ due_before: dueBefore }),
+        getTasks(),
         listTags(),
         listStatuses(),
         getFields(),
@@ -94,6 +90,18 @@ export default function TaskManagerPage() {
         setCreateOpen(false);
       } catch (err) {
         console.error('Failed to create task:', err);
+      }
+    },
+    [fetchData],
+  );
+
+  const handleStatusChange = useCallback(
+    async (taskId: string, newStatusId: string) => {
+      try {
+        await updateTask(taskId, { status_id: newStatusId });
+        await fetchData();
+      } catch (err) {
+        console.error('Failed to update task status:', err);
       }
     },
     [fetchData],
@@ -192,6 +200,13 @@ export default function TaskManagerPage() {
             onComplete={handleComplete}
             onSelectTask={setSelectedTaskId}
             selectedTaskId={selectedTaskId}
+          />
+        ) : activeTab === 'board' ? (
+          <BoardView
+            tasks={tasks}
+            statuses={statuses}
+            onStatusChange={handleStatusChange}
+            onSelectTask={setSelectedTaskId}
           />
         ) : (
           <div className="flex items-center justify-center h-full">
