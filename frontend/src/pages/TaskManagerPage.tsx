@@ -8,6 +8,8 @@ import type { Task } from '../types/calendar';
 import type { Tag, TaskStatusConfig } from '../types/taskManager';
 import TodayView from '../components/tasks/TodayView';
 import TaskCreateForm from '../components/tasks/TaskCreateForm';
+import QuickInput from '../components/tasks/QuickInput';
+import type { ParsedTaskInput } from '../components/tasks/QuickInput';
 
 type TabId = 'today' | 'board' | 'list';
 
@@ -97,6 +99,45 @@ export default function TaskManagerPage() {
     [fetchData],
   );
 
+  const handleQuickCreate = useCallback(
+    async (parsed: ParsedTaskInput) => {
+      try {
+        const newTask = await createTask({
+          title: parsed.title,
+          description: null,
+          enterprise: null,
+          field_id: parsed.field_id,
+          type: 'manual',
+          status: 'pending',
+          priority: (parsed.priority as any) || 'medium',
+          due_date: parsed.due_date,
+          assigned_to: null,
+          depends_on_task_id: null,
+          recurrence_rule: null,
+          calendar_event_id: null,
+          notes: null,
+          status_id: null,
+          estimated_minutes: null,
+          actual_minutes: null,
+          blocked_reason: null,
+          blocked_until: null,
+          sort_order: 0,
+          verified_by: null,
+          verified_at: null,
+        });
+        if (parsed.tag_ids.length) {
+          await Promise.all(
+            parsed.tag_ids.map((tagId) => addTagToTask(newTask.id, tagId)),
+          );
+        }
+        await fetchData();
+      } catch (err) {
+        console.error('Failed to quick-create task:', err);
+      }
+    },
+    [fetchData],
+  );
+
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col">
       {/* Header */}
@@ -131,6 +172,11 @@ export default function TaskManagerPage() {
           );
         })}
       </div>
+
+      {/* Quick input bar */}
+      {activeTab === 'today' && !loading && (
+        <QuickInput tags={tags} fields={fields} onSubmit={handleQuickCreate} />
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
