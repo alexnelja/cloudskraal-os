@@ -5,9 +5,12 @@ import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { Task } from '../../types/calendar';
 import type { Tag, TaskStatusConfig } from '../../types/taskManager';
+import type { WeatherBlock } from '../../lib/weatherBlocking';
 import TaskRow from './TaskRow';
 import DailyProgress from './DailyProgress';
 import TaskStats from './TaskStats';
+import WeatherStrip from './WeatherStrip';
+import TaskMiniMap from './TaskMiniMap';
 
 interface TodayViewProps {
   tasks: Task[];
@@ -17,6 +20,15 @@ interface TodayViewProps {
   onSelectTask: (id: string) => void;
   selectedTaskId: string | null;
   onReorder?: (taskId: string, newIndex: number) => void;
+  weatherBlocks?: WeatherBlock[];
+  weatherWind?: number;
+  weatherTemp?: number;
+  weatherRain?: number;
+  onWeatherRefresh?: () => void;
+  geojson?: GeoJSON.FeatureCollection | null;
+  fields?: Array<{ id: string; name: string }>;
+  selectedFieldId?: string | null;
+  onFieldSelect?: (fieldId: string | null) => void;
 }
 
 type TimeGroup = 'Overdue' | 'Today' | 'Tomorrow';
@@ -48,15 +60,30 @@ export default function TodayView({
   onSelectTask,
   selectedTaskId,
   onReorder,
+  weatherBlocks,
+  weatherWind,
+  weatherTemp,
+  weatherRain,
+  onWeatherRefresh,
+  geojson,
+  fields: fieldsList,
+  selectedFieldId,
+  onFieldSelect,
 }: TodayViewProps) {
   const [activeTagIds, setActiveTagIds] = useState<Set<string>>(new Set());
 
   const filteredTasks = useMemo(() => {
-    if (activeTagIds.size === 0) return tasks;
-    return tasks.filter((t) =>
-      t.tags?.some((tag) => activeTagIds.has(tag.id)),
-    );
-  }, [tasks, activeTagIds]);
+    let result = tasks;
+    if (activeTagIds.size > 0) {
+      result = result.filter((t) =>
+        t.tags?.some((tag) => activeTagIds.has(tag.id)),
+      );
+    }
+    if (selectedFieldId) {
+      result = result.filter((t) => t.field_id === selectedFieldId);
+    }
+    return result;
+  }, [tasks, activeTagIds, selectedFieldId]);
 
   const groups = useMemo(() => {
     const map: Record<TimeGroup, Task[]> = { Overdue: [], Today: [], Tomorrow: [] };
@@ -102,6 +129,30 @@ export default function TodayView({
 
   return (
     <div className="flex flex-col h-full">
+      {/* Weather strip */}
+      {weatherTemp != null && (
+        <div className="px-4 pt-3 pb-1">
+          <WeatherStrip
+            blocks={weatherBlocks ?? []}
+            wind={weatherWind ?? 0}
+            temp={weatherTemp}
+            rain={weatherRain ?? 0}
+            onRefresh={onWeatherRefresh}
+          />
+        </div>
+      )}
+
+      {/* Mini-map strip */}
+      {onFieldSelect && (
+        <TaskMiniMap
+          geojson={geojson ?? null}
+          tasks={tasks}
+          fields={fieldsList ?? []}
+          onFieldSelect={onFieldSelect}
+          selectedFieldId={selectedFieldId ?? null}
+        />
+      )}
+
       {/* Tag filter pills */}
       <div className="flex gap-1 px-4 py-2 border-b border-stone-200/60 overflow-x-auto">
         <motion.button

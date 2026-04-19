@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { Plus, GearSix } from '@phosphor-icons/react';
-import { getTasks, completeTask, createTask, updateTask, deleteTask } from '../api/calendar';
+import { getTasks, completeTask, uncompleteTask, createTask, updateTask, deleteTask } from '../api/calendar';
 import { listTags, listStatuses, addTagToTask } from '../api/taskManager';
-import { getFields } from '../api/farms';
+import { getFields, getFarms, getMapGeoJSON } from '../api/farms';
+import { fetchForecast, clearForecastCache } from '../api/weather';
 import type { Task } from '../types/calendar';
 import type { Tag, TaskStatusConfig } from '../types/taskManager';
+import { evaluateWeatherBlocks, type WeatherBlock, type WeatherData } from '../lib/weatherBlocking';
 import TodayView from '../components/tasks/TodayView';
 import BoardView from '../components/tasks/BoardView';
 import ListView from '../components/tasks/ListView';
@@ -13,6 +15,7 @@ import TaskCreateForm from '../components/tasks/TaskCreateForm';
 import QuickInput from '../components/tasks/QuickInput';
 import type { ParsedTaskInput } from '../components/tasks/QuickInput';
 import TagManager from '../components/tasks/TagManager';
+import CopToast from '../components/tasks/CopToast';
 
 type TabId = 'today' | 'board' | 'list';
 
@@ -32,19 +35,26 @@ export default function TaskManagerPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [fields, setFields] = useState<Array<{ id: string; name: string }>>([]);
+  const [geojson, setGeojson] = useState<GeoJSON.FeatureCollection | null>(null);
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  const [weatherBlocks, setWeatherBlocks] = useState<WeatherBlock[]>([]);
+  const [weatherToday, setWeatherToday] = useState<WeatherData | null>(null);
+  const [copToast, setCopToast] = useState<{ costsLogged: Array<{ id: string; product_name: string; total_cost: number }>; taskTitle: string; taskId: string } | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [taskData, tagData, statusData, fieldData] = await Promise.all([
+      const [taskData, tagData, statusData, fieldData, geoData] = await Promise.all([
         getTasks(),
         listTags(),
         listStatuses(),
         getFields(),
+        getMapGeoJSON().catch(() => null),
       ]);
       setTasks(taskData);
       setTags(tagData);
       setStatuses(statusData);
       setFields(fieldData.map((f) => ({ id: f.id, name: f.name })));
+      setGeojson(geoData);
     } catch (err) {
       console.error('Failed to load task data:', err);
     } finally {
@@ -56,16 +66,98 @@ export default function TaskManagerPage() {
     fetchData();
   }, [fetchData]);
 
+  // Fetch weather and evaluate blocks
+  const loadWeather = useCallback(
+    async (taskList: Task[]) => {
+      try {
+        const farms = await getFarms();
+        if (farms.length === 0 || farms[0].lat == null || farms[0].lng == null) return;
+        const farm = farms[0];
+        const result = await fetchForecast(farm.lat, farm.lng, farm.id);
+        if (!result) return;
+
+        const { daily } = result.data;
+        const todayData: WeatherData = {
+          wind_speed_max: daily.windspeed_10m_max[0] ?? 0,
+          precipitation_sum: daily.precipitation_sum[0] ?? 0,
+          temperature_min: daily.temperature_2m_min[0] ?? 10,
+          temperature_max: daily.temperature_2m_max[0] ?? 25,
+        };
+        setWeatherToday(todayData);
+
+        const forecast: WeatherData[] = daily.time.slice(1).map((_, i) => ({
+          wind_speed_max: daily.windspeed_10m_max[i + 1] ?? 0,
+          precipitation_sum: daily.precipitation_sum[i + 1] ?? 0,
+          temperature_min: daily.temperature_2m_min[i + 1] ?? 10,
+          temperature_max: daily.temperature_2m_max[i + 1] ?? 25,
+        }));
+
+        const blocks = evaluateWeatherBlocks(taskList, todayData, forecast);
+        setWeatherBlocks(blocks);
+
+        // PATCH blocked tasks
+        for (const block of blocks) {
+          if (block.severity === 'blocked') {
+            await updateTask(block.taskId, {
+              blocked_reason: block.message,
+              blocked_until: block.clearsAt,
+            }).catch(() => {});
+          }
+        }
+      } catch (err) {
+        console.error('Weather fetch failed:', err);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!loading && tasks.length > 0) {
+      loadWeather(tasks);
+    }
+  }, [loading, tasks, loadWeather]);
+
+  const handleWeatherRefresh = useCallback(async () => {
+    try {
+      const farms = await getFarms();
+      if (farms.length > 0) {
+        clearForecastCache(farms[0].id);
+      }
+    } catch { /* ignore */ }
+    loadWeather(tasks);
+  }, [tasks, loadWeather]);
+
   const handleComplete = useCallback(
     async (id: string) => {
       try {
-        await completeTask(id);
+        const result = await completeTask(id);
         await fetchData();
+        if (result.costs_logged && result.costs_logged.length > 0) {
+          setCopToast({
+            costsLogged: result.costs_logged,
+            taskTitle: result.title,
+            taskId: id,
+          });
+        }
       } catch (err) {
         console.error('Failed to complete task:', err);
       }
     },
     [fetchData],
+  );
+
+  const handleUndoComplete = useCallback(
+    async () => {
+      if (!copToast) return;
+      try {
+        await uncompleteTask(copToast.taskId);
+        setCopToast(null);
+        await fetchData();
+      } catch (err) {
+        console.error('Failed to undo task completion:', err);
+      }
+    },
+    [copToast, fetchData],
   );
 
   const handleCreate = useCallback(
@@ -243,6 +335,15 @@ export default function TaskManagerPage() {
             onSelectTask={setSelectedTaskId}
             selectedTaskId={selectedTaskId}
             onReorder={handleReorder}
+            geojson={geojson}
+            fields={fields}
+            selectedFieldId={selectedFieldId}
+            onFieldSelect={setSelectedFieldId}
+            weatherBlocks={weatherBlocks}
+            weatherWind={weatherToday?.wind_speed_max}
+            weatherTemp={weatherToday?.temperature_max}
+            weatherRain={weatherToday?.precipitation_sum}
+            onWeatherRefresh={handleWeatherRefresh}
           />
         ) : activeTab === 'board' ? (
           <BoardView
@@ -298,6 +399,16 @@ export default function TaskManagerPage() {
           fetchData();
         }}
       />
+
+      {/* COP auto-log toast */}
+      {copToast && (
+        <CopToast
+          costsLogged={copToast.costsLogged}
+          taskTitle={copToast.taskTitle}
+          onUndo={handleUndoComplete}
+          onDismiss={() => setCopToast(null)}
+        />
+      )}
     </div>
   );
 }
