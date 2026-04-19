@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { Plus } from '@phosphor-icons/react';
-import { getTasks, completeTask, createTask, updateTask } from '../api/calendar';
+import { getTasks, completeTask, createTask, updateTask, deleteTask } from '../api/calendar';
 import { listTags, listStatuses, addTagToTask } from '../api/taskManager';
 import { getFields } from '../api/farms';
 import type { Task } from '../types/calendar';
 import type { Tag, TaskStatusConfig } from '../types/taskManager';
 import TodayView from '../components/tasks/TodayView';
 import BoardView from '../components/tasks/BoardView';
+import ListView from '../components/tasks/ListView';
 import TaskCreateForm from '../components/tasks/TaskCreateForm';
 import QuickInput from '../components/tasks/QuickInput';
 import type { ParsedTaskInput } from '../components/tasks/QuickInput';
@@ -107,6 +108,36 @@ export default function TaskManagerPage() {
     [fetchData],
   );
 
+  const handleDelete = useCallback(
+    async (taskId: string) => {
+      try {
+        await deleteTask(taskId);
+        await fetchData();
+      } catch (err) {
+        console.error('Failed to delete task:', err);
+      }
+    },
+    [fetchData],
+  );
+
+  const handleReorder = useCallback(
+    async (taskId: string, newIndex: number) => {
+      try {
+        await updateTask(taskId, { sort_order: newIndex });
+        setTasks((prev) => {
+          const idx = prev.findIndex((t) => t.id === taskId);
+          if (idx === -1) return prev;
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], sort_order: newIndex };
+          return updated;
+        });
+      } catch (err) {
+        console.error('Failed to reorder task:', err);
+      }
+    },
+    [],
+  );
+
   const handleQuickCreate = useCallback(
     async (parsed: ParsedTaskInput) => {
       try {
@@ -200,6 +231,7 @@ export default function TaskManagerPage() {
             onComplete={handleComplete}
             onSelectTask={setSelectedTaskId}
             selectedTaskId={selectedTaskId}
+            onReorder={handleReorder}
           />
         ) : activeTab === 'board' ? (
           <BoardView
@@ -209,9 +241,14 @@ export default function TaskManagerPage() {
             onSelectTask={setSelectedTaskId}
           />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-stone-400">Coming soon</p>
-          </div>
+          <ListView
+            tasks={tasks}
+            statuses={statuses}
+            tags={tags}
+            onStatusChange={handleStatusChange}
+            onDelete={handleDelete}
+            onSelectTask={setSelectedTaskId}
+          />
         )}
       </div>
 
