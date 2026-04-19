@@ -1,5 +1,7 @@
 import { motion } from 'motion/react';
-import { Check } from '@phosphor-icons/react';
+import { Check, DotsSixVertical } from '@phosphor-icons/react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { Task } from '../../types/calendar';
 import { PRIORITY_COLORS } from '../../types/calendar';
 import type { TaskStatusConfig } from '../../types/taskManager';
@@ -10,6 +12,7 @@ interface TaskRowProps {
   onComplete: (id: string) => void;
   onSelect: (id: string) => void;
   selected?: boolean;
+  sortableId?: string;
 }
 
 function formatDueLabel(dueDate: string | null): string {
@@ -31,6 +34,7 @@ export default function TaskRow({
   onComplete,
   onSelect,
   selected = false,
+  sortableId,
 }: TaskRowProps) {
   const isCompleted = task.status === 'completed';
   const priorityColor = PRIORITY_COLORS[task.priority] ?? '#9ca3af';
@@ -38,14 +42,33 @@ export default function TaskRow({
   const statusColor = matchedStatus?.color ?? task.status_color ?? '#9ca3af';
   const statusName = matchedStatus?.name ?? task.status_name ?? task.status;
 
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: sortableId ?? task.id, disabled: !sortableId });
+
+  const sortableStyle = sortableId
+    ? {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : undefined,
+      }
+    : {};
+
   return (
     <motion.li
+      ref={sortableId ? setNodeRef : undefined}
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ x: 2 }}
       transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
       className="border-b border-stone-200/50 px-4 py-3 cursor-pointer transition-colors list-none"
       style={{
+        ...sortableStyle,
         background: selected
           ? 'linear-gradient(90deg, rgba(254, 243, 199, 0.7), rgba(254, 243, 199, 0))'
           : undefined,
@@ -54,6 +77,20 @@ export default function TaskRow({
       onClick={() => onSelect(task.id)}
     >
       <div className="flex items-start gap-3">
+        {/* Drag handle */}
+        {sortableId && (
+          <button
+            type="button"
+            aria-label="Drag to reorder"
+            className="mt-0.5 shrink-0 text-stone-300 hover:text-stone-500 cursor-grab active:cursor-grabbing touch-none"
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DotsSixVertical size={16} weight="bold" />
+          </button>
+        )}
+
         {/* Checkbox */}
         <button
           type="button"

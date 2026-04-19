@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { SunHorizon } from '@phosphor-icons/react';
+import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { Task } from '../../types/calendar';
 import type { Tag, TaskStatusConfig } from '../../types/taskManager';
 import TaskRow from './TaskRow';
@@ -13,6 +15,7 @@ interface TodayViewProps {
   onComplete: (id: string) => void;
   onSelectTask: (id: string) => void;
   selectedTaskId: string | null;
+  onReorder?: (taskId: string, newIndex: number) => void;
 }
 
 type TimeGroup = 'Overdue' | 'Today' | 'Tomorrow';
@@ -43,6 +46,7 @@ export default function TodayView({
   onComplete,
   onSelectTask,
   selectedTaskId,
+  onReorder,
 }: TodayViewProps) {
   const [activeTagIds, setActiveTagIds] = useState<Set<string>>(new Set());
 
@@ -78,6 +82,22 @@ export default function TodayView({
   };
 
   const hasAny = GROUP_ORDER.some((g) => groups[g].length > 0);
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !onReorder) return;
+
+    // Find which group the dragged task belongs to
+    for (const groupName of GROUP_ORDER) {
+      const groupTasks = groups[groupName];
+      const oldIndex = groupTasks.findIndex((t) => t.id === active.id);
+      const newIndex = groupTasks.findIndex((t) => t.id === over.id);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        onReorder(active.id as string, newIndex);
+        break;
+      }
+    }
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -124,51 +144,59 @@ export default function TodayView({
       </div>
 
       {/* Task groups */}
-      <div className="flex-1 overflow-y-auto">
-        {!hasAny ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
-            <SunHorizon size={40} weight="duotone" className="text-amber-300 mb-3" />
-            <p className="text-sm text-stone-500">No tasks for today — enjoy the quiet</p>
-          </div>
-        ) : (
-          <AnimatePresence>
-            {GROUP_ORDER.map((groupName) => {
-              const groupTasks = groups[groupName];
-              if (groupTasks.length === 0) return null;
-              const style = GROUP_STYLES[groupName];
-              return (
-                <motion.div
-                  key={groupName}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <div className="flex items-center gap-2 px-4 pt-4 pb-1">
-                    <span className={`font-serif text-sm font-medium ${style.header}`}>
-                      {groupName}
-                    </span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${style.accent}`}>
-                      {groupTasks.length}
-                    </span>
-                  </div>
-                  <ul>
-                    {groupTasks.map((task) => (
-                      <TaskRow
-                        key={task.id}
-                        task={task}
-                        statuses={statuses}
-                        onComplete={onComplete}
-                        onSelect={onSelectTask}
-                        selected={task.id === selectedTaskId}
-                      />
-                    ))}
-                  </ul>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        )}
-      </div>
+      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <div className="flex-1 overflow-y-auto">
+          {!hasAny ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
+              <SunHorizon size={40} weight="duotone" className="text-amber-300 mb-3" />
+              <p className="text-sm text-stone-500">No tasks for today — enjoy the quiet</p>
+            </div>
+          ) : (
+            <AnimatePresence>
+              {GROUP_ORDER.map((groupName) => {
+                const groupTasks = groups[groupName];
+                if (groupTasks.length === 0) return null;
+                const style = GROUP_STYLES[groupName];
+                return (
+                  <motion.div
+                    key={groupName}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="flex items-center gap-2 px-4 pt-4 pb-1">
+                      <span className={`font-serif text-sm font-medium ${style.header}`}>
+                        {groupName}
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${style.accent}`}>
+                        {groupTasks.length}
+                      </span>
+                    </div>
+                    <SortableContext
+                      items={groupTasks.map((t) => t.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <ul>
+                        {groupTasks.map((task) => (
+                          <TaskRow
+                            key={task.id}
+                            task={task}
+                            statuses={statuses}
+                            onComplete={onComplete}
+                            onSelect={onSelectTask}
+                            selected={task.id === selectedTaskId}
+                            sortableId={task.id}
+                          />
+                        ))}
+                      </ul>
+                    </SortableContext>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          )}
+        </div>
+      </DndContext>
 
       {/* Daily progress */}
       <div className="border-t border-stone-200/60">

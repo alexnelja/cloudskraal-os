@@ -16,6 +16,21 @@ vi.mock('motion/react', () => ({
 vi.mock('@phosphor-icons/react', () => ({
   Check: (props: any) => <svg data-testid="check-icon" {...props} />,
   SunHorizon: (props: any) => <svg data-testid="sun-icon" {...props} />,
+  DotsSixVertical: (props: any) => <svg data-testid="drag-handle-icon" {...props} />,
+}));
+
+vi.mock('@dnd-kit/core', () => ({
+  DndContext: ({ children }: any) => <div>{children}</div>,
+  closestCenter: vi.fn(),
+}));
+vi.mock('@dnd-kit/sortable', () => ({
+  SortableContext: ({ children }: any) => <div>{children}</div>,
+  verticalListSortingStrategy: {},
+  arrayMove: vi.fn(),
+  useSortable: () => ({ attributes: {}, listeners: {}, setNodeRef: vi.fn(), transform: null, transition: null, isDragging: false }),
+}));
+vi.mock('@dnd-kit/utilities', () => ({
+  CSS: { Transform: { toString: () => '' } },
 }));
 
 function localDateStr(offsetDays: number): string {
@@ -106,6 +121,26 @@ describe('TodayView', () => {
       />,
     );
     expect(screen.getByText(/no tasks for today/i)).toBeInTheDocument();
+  });
+
+  it('renders drag handles on task rows', () => {
+    const tasks = [
+      makeTask({ id: 't1', title: 'Task A', due_date: today }),
+      makeTask({ id: 't2', title: 'Task B', due_date: today }),
+    ];
+    render(
+      <TodayView
+        tasks={tasks}
+        statuses={statuses}
+        tags={tags}
+        onComplete={vi.fn()}
+        onSelectTask={vi.fn()}
+        selectedTaskId={null}
+        onReorder={vi.fn()}
+      />,
+    );
+    const handles = screen.getAllByLabelText('Drag to reorder');
+    expect(handles).toHaveLength(2);
   });
 
   it('tag filter pills filter displayed tasks', () => {
