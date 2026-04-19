@@ -103,8 +103,12 @@ export async function deleteTask(id: string): Promise<void> {
   await request<void>(`/tasks/${id}`, { method: 'DELETE' });
 }
 
-export async function completeTask(id: string): Promise<Task> {
-  return request<Task>(`/tasks/${id}/complete`, { method: 'POST' });
+export async function completeTask(id: string): Promise<Task & { costs_logged?: Array<{ id: string; product_name: string; category: string; total_cost: number }> }> {
+  return request<Task & { costs_logged?: Array<{ id: string; product_name: string; category: string; total_cost: number }> }>(`/tasks/${id}/complete`, { method: 'POST' });
+}
+
+export async function uncompleteTask(id: string): Promise<Task> {
+  return request<Task>(`/tasks/${id}/uncomplete`, { method: 'POST' });
 }
 
 // --- Task Inputs ---

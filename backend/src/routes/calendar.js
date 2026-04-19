@@ -460,11 +460,45 @@ router.post('/tasks/:id/complete', async (req, res) => {
     }
 
     const updated = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id);
-    res.json(updated);
+
+    // Auto-log: gather task inputs that contribute to COP
+    const costsLogged = [];
+    if (task.field_id) {
+      const inputs = db.prepare('SELECT * FROM task_inputs WHERE task_id = ?').all(req.params.id);
+      for (const input of inputs) {
+        if (input.total_cost && input.total_cost > 0) {
+          costsLogged.push({
+            id: input.id,
+            product_name: input.product_name,
+            category: input.category || 'other',
+            total_cost: input.total_cost,
+          });
+        }
+      }
+    }
+
+    res.json({ ...updated, costs_logged: costsLogged });
   } catch (err) {
     console.error('Error completing task:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// POST /api/tasks/:id/uncomplete — revert task to pending (undo completion)
+router.post('/tasks/:id/uncomplete', (req, res) => {
+  const db = getDb();
+  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+
+  if (task.status !== 'completed') {
+    return res.status(400).json({ error: 'Task is not completed' });
+  }
+
+  const now = new Date().toISOString();
+  db.prepare(`UPDATE tasks SET status = 'pending', completed_date = NULL, updated_at = ? WHERE id = ?`).run(now, req.params.id);
+
+  const updated = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id);
+  res.json(updated);
 });
 
 // ===========================================================================
