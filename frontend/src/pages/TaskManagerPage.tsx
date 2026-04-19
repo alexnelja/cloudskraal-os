@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { Plus } from '@phosphor-icons/react';
+import { Plus, GearSix } from '@phosphor-icons/react';
 import { getTasks, completeTask, createTask, updateTask, deleteTask } from '../api/calendar';
 import { listTags, listStatuses, addTagToTask } from '../api/taskManager';
 import { getFields } from '../api/farms';
@@ -12,6 +12,7 @@ import ListView from '../components/tasks/ListView';
 import TaskCreateForm from '../components/tasks/TaskCreateForm';
 import QuickInput from '../components/tasks/QuickInput';
 import type { ParsedTaskInput } from '../components/tasks/QuickInput';
+import TagManager from '../components/tasks/TagManager';
 
 type TabId = 'today' | 'board' | 'list';
 
@@ -29,6 +30,7 @@ export default function TaskManagerPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
+  const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [fields, setFields] = useState<Array<{ id: string; name: string }>>([]);
 
   const fetchData = useCallback(async () => {
@@ -185,7 +187,7 @@ export default function TaskManagerPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 px-6 py-2 border-b border-stone-200/60">
+      <div className="flex items-center gap-1 px-6 py-2 border-b border-stone-200/60">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -210,6 +212,15 @@ export default function TaskManagerPage() {
             </motion.button>
           );
         })}
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={() => setTagManagerOpen(true)}
+          className="p-1.5 rounded-full text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-colors"
+          aria-label="Manage tags and statuses"
+        >
+          <GearSix size={18} />
+        </button>
       </div>
 
       {/* Quick input bar */}
@@ -275,6 +286,17 @@ export default function TaskManagerPage() {
         fields={fields}
         onSave={handleCreate}
         onDismiss={() => setCreateOpen(false)}
+      />
+
+      {/* Tag & status manager */}
+      <TagManager
+        open={tagManagerOpen}
+        onDismiss={() => setTagManagerOpen(false)}
+        tags={tags}
+        statuses={statuses}
+        onTagsChanged={() => {
+          fetchData();
+        }}
       />
     </div>
   );
