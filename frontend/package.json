@@ -27,6 +27,7 @@
     "@hyperframes/core": "^0.4.9",
     "@hyperframes/engine": "^0.4.9",
     "@lezer/highlight": "^1.2.3",
+    "@material/web": "^2.4.1",
     "@phosphor-icons/core": "^2.1.1",
     "@phosphor-icons/react": "^2.1.10",
     "@tanstack/react-table": "^8.21.3",
