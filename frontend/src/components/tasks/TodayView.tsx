@@ -84,8 +84,18 @@ export default function TodayView({
 }: TodayViewProps) {
   const [activeTagIds, setActiveTagIds] = useState<Set<string>>(new Set());
 
+  const [showCompleted, setShowCompleted] = useState(false);
+
   const filteredTasks = useMemo(() => {
     let result = tasks;
+    // Hide completed/skipped tasks by default
+    if (!showCompleted) {
+      result = result.filter((t) =>
+        t.status !== 'completed' && t.status !== 'skipped' &&
+        t.status_name !== 'Completed' && t.status_name !== 'Skipped' &&
+        t.status_name !== 'Verified',
+      );
+    }
     if (activeTagIds.size > 0) {
       result = result.filter((t) =>
         t.tags?.some((tag) => activeTagIds.has(tag.id)),
@@ -95,7 +105,7 @@ export default function TodayView({
       result = result.filter((t) => t.field_id === selectedFieldId);
     }
     return result;
-  }, [tasks, activeTagIds, selectedFieldId]);
+  }, [tasks, activeTagIds, selectedFieldId, showCompleted]);
 
   const groups = useMemo(() => {
     const map: Record<TimeGroup, Task[]> = { Overdue: [], Today: [], Tomorrow: [] };
@@ -238,7 +248,20 @@ export default function TodayView({
           {!hasAny ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
               <SunHorizon size={40} weight="duotone" className="text-amber-300 mb-3" />
-              <p className="text-sm text-stone-500">No tasks for today — enjoy the quiet</p>
+              <p className="text-sm text-stone-500">
+                {activeTagIds.size > 0 || selectedFieldId
+                  ? 'No tasks match your filters'
+                  : 'No active tasks — enjoy the quiet'}
+              </p>
+              {(activeTagIds.size > 0 || selectedFieldId) && (
+                <button
+                  type="button"
+                  onClick={() => { setActiveTagIds(new Set()); onFieldSelect?.(null); }}
+                  className="mt-2 text-[11px] text-amber-600 hover:text-amber-800"
+                >
+                  Clear filters
+                </button>
+              )}
             </div>
           ) : (
             <AnimatePresence>
@@ -287,9 +310,27 @@ export default function TodayView({
         </div>
       </DndContext>
 
-      {/* Daily progress */}
+      {/* Daily progress + show completed toggle */}
       <div className="border-t border-stone-200/60">
         <DailyProgress total={todayTasks.length} completed={todayCompleted} />
+        <div className="flex items-center justify-between px-4 py-1.5">
+          <button
+            type="button"
+            onClick={() => setShowCompleted(v => !v)}
+            className="text-[11px] text-stone-400 hover:text-stone-600 transition-colors"
+          >
+            {showCompleted ? 'Hide completed' : `Show completed (${tasks.filter(t => t.status === 'completed' || t.status_name === 'Completed').length})`}
+          </button>
+          {selectedFieldId && (
+            <button
+              type="button"
+              onClick={() => onFieldSelect?.(null)}
+              className="text-[11px] text-amber-600 hover:text-amber-800 transition-colors"
+            >
+              Clear field filter
+            </button>
+          )}
+        </div>
         <TaskStats tasks={tasks} completedToday={todayCompleted} totalToday={todayTasks.length} />
       </div>
     </div>

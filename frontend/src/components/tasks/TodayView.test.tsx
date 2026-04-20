@@ -120,7 +120,7 @@ describe('TodayView', () => {
         selectedTaskId={null}
       />,
     );
-    expect(screen.getByText(/no tasks for today/i)).toBeInTheDocument();
+    expect(screen.getByText(/no active tasks/i)).toBeInTheDocument();
   });
 
   it('renders drag handles on task rows', () => {

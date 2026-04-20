@@ -10,7 +10,7 @@ interface CopToastProps {
 
 export default function CopToast({ costsLogged, taskTitle, onUndo, onDismiss }: CopToastProps) {
   const [visible, setVisible] = useState(true);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     timerRef.current = setTimeout(() => {

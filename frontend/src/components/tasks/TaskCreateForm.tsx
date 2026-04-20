@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import FluidDialog from '../map/FluidDialog';
 import type { Tag, TaskStatusConfig } from '../../types/taskManager';
 import type { TaskPriority } from '../../types/calendar';
@@ -60,8 +60,8 @@ export default function TaskCreateForm({
 
   const [statusId, setStatusId] = useState<string | null>(defaultStatusId);
 
-  // Sync default status when statuses change
-  useMemo(() => {
+  // Sync default status when statuses load
+  useEffect(() => {
     if (!statusId && defaultStatusId) setStatusId(defaultStatusId);
   }, [defaultStatusId]); // eslint-disable-line react-hooks/exhaustive-deps
 
