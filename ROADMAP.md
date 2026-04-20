@@ -32,6 +32,27 @@
 - **Spec 7 family** — Live position tracking (employees + vehicles) — POPIA-gated
 - **Spec 8 family (8a–8g)** — Weather & climate (ingest, overlays, correlation, forecasts, alerts, station)
 
+## v1.0.0 — Release Targets
+
+- [ ] Secret rotation (see `docs/security/SECRET-ROTATION-CHECKLIST.md`)
+- [ ] Authentication middleware (Bearer token / Supabase JWT)
+- [ ] Migrate xlsx dependency to exceljs
+- [ ] Split calendar.js routes (events vs tasks)
+- [ ] Normalize production_batches.source_field_ids
+
+## v2.0.0 — Material Design 3 Migration
+
+Full frontend redesign from Tailwind + glass-panel to Google Material Design 3.
+Branch: `feature/material-3` (fork from main after v1.0.0).
+See `CHANGELOG.md` for detailed scope and migration strategy.
+
+Key deliverables:
+- MD3 color system with dynamic color from Cloudskraal brand
+- MD3 components (FAB, nav rail, cards, chips, dialogs, sheets)
+- MD3 canonical layouts (list-detail, feed, supporting panel)
+- Automatic dark mode via MD3 color scheme
+- Module-by-module migration with feature flag
+
 ## Backlog (ideas, not yet spec'd)
 
 - Reverse-waterfall simulator: target NPV/IRR in → required CapEx/yield/price out

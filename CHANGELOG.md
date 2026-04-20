@@ -5,6 +5,60 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ---
 
+## [Unreleased] — v1.0.0 Targets
+
+### Security
+- [ ] S-C1: Rotate all secrets (see docs/security/SECRET-ROTATION-CHECKLIST.md)
+- [ ] S-H1: Add authentication middleware (Bearer token or Supabase JWT)
+- [ ] S-H2: Migrate xlsx → exceljs (unfixed CVEs)
+
+### Architecture
+- [ ] A-5: Split calendar.js routes into calendar-events.js + tasks-crud.js
+
+### Database
+- [ ] DB-8: Normalize production_batches.source_field_ids into join table
+- [ ] DB-11: Fix wiki migration probe ordering
+
+---
+
+## [v2.0.0] — Material Design 3 Migration (Future)
+
+### Overview
+Complete frontend redesign from the current Tailwind + custom glass-panel system to Google Material Design 3 (MD3). This is a fork-worthy change — create a `feature/material-3` branch.
+
+### Scope
+- Replace custom component library with `@material/web` (already installed)
+- Implement MD3 color system with dynamic color from farm brand
+- Replace glass-panel tokens with MD3 elevation system
+- MD3 typography scale (replacing custom font-serif + text-[Npx] patterns)
+- MD3 components: FAB, navigation rail, navigation drawer, cards, chips, dialogs, sheets, text fields, selects, switches, sliders
+- Responsive layout using MD3 canonical layouts (list-detail, feed, supporting panel)
+- Dark mode via MD3 color scheme (light/dark automatic)
+- Motion: MD3 easing and duration tokens (replacing motion/react springs where appropriate, keeping springs for completion animations)
+
+### Migration Strategy
+1. Create `feature/material-3` branch from `main`
+2. Install and configure `@material/web` + `@lit-labs/react` wrapper (for React compatibility)
+3. Create MD3 theme with Cloudskraal brand colors (emerald primary, amber tertiary)
+4. Migrate one module at a time: Sidebar → Tasks → Map → Calendar → Wiki → Financials
+5. Each module migration is a separate PR for review
+6. Run both designs in parallel during migration (feature flag)
+7. Merge when all modules complete + visual regression tests pass
+
+### Dependencies
+- `@material/web` (already installed)
+- `@lit-labs/react` (React wrapper for Lit-based MD3 components)
+- Material Symbols font (icons)
+- Consider: `@material/material-color-utilities` for dynamic color generation
+
+### Key Decisions
+- Keep Tailwind for layout utilities (flex, grid, spacing) — MD3 handles surfaces and components
+- Keep motion/react for task completion springs — MD3 motion is CSS-only
+- Keep MapLibre GL (no MD3 equivalent for maps)
+- Keep @phosphor-icons/react for domain-specific icons (farm, weather) — use Material Symbols for UI chrome
+
+---
+
 ## [0.9.0] — 2026-04-20
 
 ### Added
