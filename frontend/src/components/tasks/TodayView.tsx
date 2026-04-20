@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { SunHorizon } from '@phosphor-icons/react';
+import { SunHorizon, Crosshair } from '@phosphor-icons/react';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { Task } from '../../types/calendar';
@@ -11,6 +11,8 @@ import DailyProgress from './DailyProgress';
 import TaskStats from './TaskStats';
 import WeatherStrip from './WeatherStrip';
 import TaskMiniMap from './TaskMiniMap';
+import FieldBanner from './FieldBanner';
+import type { DetectedField } from '../../hooks/useFieldDetection';
 
 interface TodayViewProps {
   tasks: Task[];
@@ -29,6 +31,11 @@ interface TodayViewProps {
   fields?: Array<{ id: string; name: string }>;
   selectedFieldId?: string | null;
   onFieldSelect?: (fieldId: string | null) => void;
+  detectedField?: DetectedField | null;
+  detectedFieldTaskCount?: number;
+  onGpsShow?: () => void;
+  gpsEnabled?: boolean;
+  onGpsToggle?: () => void;
 }
 
 type TimeGroup = 'Overdue' | 'Today' | 'Tomorrow';
@@ -69,6 +76,11 @@ export default function TodayView({
   fields: fieldsList,
   selectedFieldId,
   onFieldSelect,
+  detectedField,
+  detectedFieldTaskCount,
+  onGpsShow,
+  gpsEnabled,
+  onGpsToggle,
 }: TodayViewProps) {
   const [activeTagIds, setActiveTagIds] = useState<Set<string>>(new Set());
 
@@ -142,6 +154,15 @@ export default function TodayView({
         </div>
       )}
 
+      {/* GPS field detection banner */}
+      {onGpsShow && (
+        <FieldBanner
+          field={detectedField ?? null}
+          taskCount={detectedFieldTaskCount ?? 0}
+          onShow={onGpsShow}
+        />
+      )}
+
       {/* Mini-map strip */}
       {onFieldSelect && (
         <TaskMiniMap
@@ -155,6 +176,22 @@ export default function TodayView({
 
       {/* Tag filter pills */}
       <div className="flex gap-1 px-4 py-2 border-b border-stone-200/60 overflow-x-auto">
+        {onGpsToggle && (
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.9 }}
+            onClick={onGpsToggle}
+            className={`p-1.5 rounded-full transition-colors shrink-0 ${
+              gpsEnabled
+                ? 'text-amber-700 bg-amber-100'
+                : 'text-stone-400 hover:text-stone-600 bg-stone-100/60'
+            }`}
+            aria-label={gpsEnabled ? 'Disable GPS field detection' : 'Enable GPS field detection'}
+            title={gpsEnabled ? 'GPS detection on' : 'GPS detection off'}
+          >
+            <Crosshair size={16} weight={gpsEnabled ? 'fill' : 'regular'} />
+          </motion.button>
+        )}
         <motion.button
           type="button"
           whileTap={{ scale: 0.94 }}

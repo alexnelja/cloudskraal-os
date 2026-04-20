@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { Plus, GearSix, Bell, BellSlash, Crosshair } from '@phosphor-icons/react';
+import { Plus, GearSix, Bell, BellSlash } from '@phosphor-icons/react';
 import { useFieldDetection } from '../hooks/useFieldDetection';
 import { getTasks, completeTask, uncompleteTask, createTask, updateTask, deleteTask } from '../api/calendar';
 import { listTags, listStatuses, addTagToTask } from '../api/taskManager';
