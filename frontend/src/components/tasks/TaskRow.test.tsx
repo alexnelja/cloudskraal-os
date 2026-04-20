@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import TaskRow from './TaskRow';
 import type { Task } from '../../types/calendar';
 import type { TaskStatusConfig } from '../../types/taskManager';
@@ -15,6 +16,7 @@ vi.mock('motion/react', () => ({
 
 vi.mock('@phosphor-icons/react', () => ({
   Check: (props: any) => <svg data-testid="check-icon" {...props} />,
+  CalendarBlank: (props: any) => <svg data-testid="calendar-link-icon" {...props} />,
 }));
 
 const baseTask: Task = {
@@ -60,24 +62,28 @@ const statuses: TaskStatusConfig[] = [
 describe('TaskRow', () => {
   it('renders the task title', () => {
     render(
-      <TaskRow
-        task={baseTask}
-        statuses={statuses}
-        onComplete={vi.fn()}
-        onSelect={vi.fn()}
-      />,
+      <MemoryRouter>
+        <TaskRow
+          task={baseTask}
+          statuses={statuses}
+          onComplete={vi.fn()}
+          onSelect={vi.fn()}
+        />
+      </MemoryRouter>,
     );
     expect(screen.getByText('Spray rooibos field')).toBeInTheDocument();
   });
 
   it('renders tags as comma-separated text in metadata line', () => {
     render(
-      <TaskRow
-        task={baseTask}
-        statuses={statuses}
-        onComplete={vi.fn()}
-        onSelect={vi.fn()}
-      />,
+      <MemoryRouter>
+        <TaskRow
+          task={baseTask}
+          statuses={statuses}
+          onComplete={vi.fn()}
+          onSelect={vi.fn()}
+        />
+      </MemoryRouter>,
     );
     // Tags now rendered as plain text in metadata line
     expect(screen.getByText(/Rooibos, Spraying/)).toBeInTheDocument();
@@ -87,12 +93,14 @@ describe('TaskRow', () => {
     vi.useFakeTimers();
     const onComplete = vi.fn();
     render(
-      <TaskRow
-        task={baseTask}
-        statuses={statuses}
-        onComplete={onComplete}
-        onSelect={vi.fn()}
-      />,
+      <MemoryRouter>
+        <TaskRow
+          task={baseTask}
+          statuses={statuses}
+          onComplete={onComplete}
+          onSelect={vi.fn()}
+        />
+      </MemoryRouter>,
     );
     const checkbox = screen.getByRole('button', { name: /complete task/i });
     fireEvent.click(checkbox);
@@ -104,12 +112,14 @@ describe('TaskRow', () => {
 
   it('shows priority indicator for high/urgent tasks', () => {
     render(
-      <TaskRow
-        task={baseTask}
-        statuses={statuses}
-        onComplete={vi.fn()}
-        onSelect={vi.fn()}
-      />,
+      <MemoryRouter>
+        <TaskRow
+          task={baseTask}
+          statuses={statuses}
+          onComplete={vi.fn()}
+          onSelect={vi.fn()}
+        />
+      </MemoryRouter>,
     );
     // Priority shown as "!" prefix for high/urgent
     const dot = screen.getByTestId('priority-dot');
@@ -124,12 +134,14 @@ describe('TaskRow', () => {
       completed_date: new Date().toISOString(),
     };
     render(
-      <TaskRow
-        task={completedTask}
-        statuses={statuses}
-        onComplete={vi.fn()}
-        onSelect={vi.fn()}
-      />,
+      <MemoryRouter>
+        <TaskRow
+          task={completedTask}
+          statuses={statuses}
+          onComplete={vi.fn()}
+          onSelect={vi.fn()}
+        />
+      </MemoryRouter>,
     );
     const title = screen.getByText('Spray rooibos field');
     expect(title.className).toContain('line-through');

@@ -4,8 +4,10 @@ interface CacheEntry<T> {
   key: string;
 }
 
+import { API_CACHE_TTL_MS } from '../constants';
+
 const cache = new Map<string, CacheEntry<unknown>>();
-const DEFAULT_TTL = 60_000; // 1 minute
+const DEFAULT_TTL = API_CACHE_TTL_MS;
 
 export function getCached<T>(key: string): T | null {
   const entry = cache.get(key);

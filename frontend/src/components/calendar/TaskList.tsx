@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Clock, Zap, Link, Hand, CheckCircle2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Clock, Zap, Link, Hand, CheckCircle2, ExternalLink } from 'lucide-react';
 import type { Task } from '../../types/calendar';
 import { PRIORITY_COLORS, STATUS_COLORS } from '../../types/calendar';
 import { ENTERPRISE_COLORS, ENTERPRISE_LABELS } from '../../types/farm';
@@ -38,6 +39,7 @@ function relativeDueDate(dueDate: string | null): { text: string; overdue: boole
 }
 
 export default function TaskList({ tasks, selectedTaskId, onSelect, onComplete }: TaskListProps) {
+  const navigate = useNavigate();
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
 
   const handleQuickComplete = (taskId: string) => {
@@ -150,6 +152,19 @@ export default function TaskList({ tasks, selectedTaskId, onSelect, onComplete }
                 >
                   {task.status.replace('_', ' ')}
                 </span>
+
+                {/* Link to task manager */}
+                <button
+                  type="button"
+                  aria-label="Open in tasks"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/tasks?detail=${task.id}`);
+                  }}
+                  className="text-stone-300 hover:text-emerald-600 transition-colors"
+                >
+                  <ExternalLink size={12} />
+                </button>
               </div>
             </div>
           </div>

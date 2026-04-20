@@ -1,5 +1,23 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
+
+// Ensure localStorage is available in test env
+if (typeof globalThis.localStorage === 'undefined') {
+  const store: Record<string, string> = {};
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: {
+      getItem: (key: string) => store[key] ?? null,
+      setItem: (key: string, val: string) => { store[key] = val; },
+      removeItem: (key: string) => { delete store[key]; },
+      clear: () => { Object.keys(store).forEach((k) => delete store[k]); },
+      get length() { return Object.keys(store).length; },
+      key: (i: number) => Object.keys(store)[i] ?? null,
+    },
+    writable: true,
+  });
+}
+
 import TodayView from './TodayView';
 import type { Task } from '../../types/calendar';
 import type { Tag, TaskStatusConfig } from '../../types/taskManager';
@@ -94,6 +112,19 @@ function makeTask(overrides: Partial<Task>): Task {
 }
 
 describe('TodayView', () => {
+  beforeEach(() => {
+    // Mock localStorage for GPS hint
+    const store: Record<string, string> = { 'capex.gps-hint-shown': '1' };
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => store[key] ?? null,
+      setItem: (key: string, val: string) => { store[key] = val; },
+      removeItem: (key: string) => { delete store[key]; },
+      clear: () => { Object.keys(store).forEach((k) => delete store[k]); },
+      length: 0,
+      key: () => null,
+    });
+  });
+
   it('renders task list grouped by date', () => {
     const tasks = [
       makeTask({ id: 'overdue1', title: 'Overdue task', due_date: yesterday }),
@@ -101,14 +132,16 @@ describe('TodayView', () => {
       makeTask({ id: 'tomorrow1', title: 'Tomorrow task', due_date: tomorrow }),
     ];
     render(
-      <TodayView
-        tasks={tasks}
-        statuses={statuses}
-        tags={tags}
-        onComplete={vi.fn()}
-        onSelectTask={vi.fn()}
-        selectedTaskId={null}
-      />,
+      <MemoryRouter>
+        <TodayView
+          tasks={tasks}
+          statuses={statuses}
+          tags={tags}
+          onComplete={vi.fn()}
+          onSelectTask={vi.fn()}
+          selectedTaskId={null}
+        />
+      </MemoryRouter>,
     );
     // Group headers are now uppercase
     expect(screen.getByText('Overdue')).toBeInTheDocument();
@@ -121,16 +154,18 @@ describe('TodayView', () => {
 
   it('shows empty state when no tasks', () => {
     render(
-      <TodayView
-        tasks={[]}
-        statuses={statuses}
-        tags={tags}
-        onComplete={vi.fn()}
-        onSelectTask={vi.fn()}
-        selectedTaskId={null}
-      />,
+      <MemoryRouter>
+        <TodayView
+          tasks={[]}
+          statuses={statuses}
+          tags={tags}
+          onComplete={vi.fn()}
+          onSelectTask={vi.fn()}
+          selectedTaskId={null}
+        />
+      </MemoryRouter>,
     );
-    expect(screen.getByText(/no active tasks/i)).toBeInTheDocument();
+    expect(screen.getByText(/all clear for today/i)).toBeInTheDocument();
   });
 
   it('tag filter works via filter popover', () => {
@@ -149,14 +184,16 @@ describe('TodayView', () => {
       }),
     ];
     render(
-      <TodayView
-        tasks={tasks}
-        statuses={statuses}
-        tags={tags}
-        onComplete={vi.fn()}
-        onSelectTask={vi.fn()}
-        selectedTaskId={null}
-      />,
+      <MemoryRouter>
+        <TodayView
+          tasks={tasks}
+          statuses={statuses}
+          tags={tags}
+          onComplete={vi.fn()}
+          onSelectTask={vi.fn()}
+          selectedTaskId={null}
+        />
+      </MemoryRouter>,
     );
     // Both visible initially
     expect(screen.getByText('Rooibos task')).toBeInTheDocument();
@@ -177,15 +214,17 @@ describe('TodayView', () => {
 
   it('shows inline add button when onQuickCreate provided', () => {
     render(
-      <TodayView
-        tasks={[makeTask({ id: 't1', title: 'Task A', due_date: today })]}
-        statuses={statuses}
-        tags={tags}
-        onComplete={vi.fn()}
-        onSelectTask={vi.fn()}
-        selectedTaskId={null}
-        onQuickCreate={vi.fn()}
-      />,
+      <MemoryRouter>
+        <TodayView
+          tasks={[makeTask({ id: 't1', title: 'Task A', due_date: today })]}
+          statuses={statuses}
+          tags={tags}
+          onComplete={vi.fn()}
+          onSelectTask={vi.fn()}
+          selectedTaskId={null}
+          onQuickCreate={vi.fn()}
+        />
+      </MemoryRouter>,
     );
     expect(screen.getByText('New Task')).toBeInTheDocument();
   });

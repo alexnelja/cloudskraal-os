@@ -98,6 +98,10 @@ export default function TodayView({
   const [showCompleted, setShowCompleted] = useState(filterMode === 'completed');
   const [showFilterPopover, setShowFilterPopover] = useState(false);
   const [showWeatherPopover, setShowWeatherPopover] = useState(false);
+  const [showGpsHint, setShowGpsHint] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('capex.gps-hint-shown');
+  });
 
   // Pre-activate tag filter when navigated from home tag click
   useEffect(() => {
@@ -272,6 +276,34 @@ export default function TodayView({
                           <p className="text-amber-600 font-medium mt-2">{blockedCount} task(s) weather-blocked</p>
                         )}
                       </div>
+                      {/* Blocked tasks list */}
+                      {weatherBlocks && weatherBlocks.filter((b) => b.severity === 'blocked').length > 0 && (
+                        <div className="mt-3 border-t border-stone-100 pt-2">
+                          <p className="text-[12px] font-medium text-stone-500 mb-1">Blocked tasks:</p>
+                          <ul className="space-y-0.5">
+                            {weatherBlocks
+                              .filter((b) => b.severity === 'blocked')
+                              .map((b) => {
+                                const blockedTask = tasks.find((t) => t.id === b.taskId);
+                                if (!blockedTask) return null;
+                                return (
+                                  <li key={b.taskId}>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        onSelectTask(blockedTask.id);
+                                        setShowWeatherPopover(false);
+                                      }}
+                                      className="text-[12px] text-amber-700 hover:text-amber-900 hover:underline truncate block w-full text-left"
+                                    >
+                                      {blockedTask.title}
+                                    </button>
+                                  </li>
+                                );
+                              })}
+                          </ul>
+                        </div>
+                      )}
                       {onWeatherRefresh && (
                         <button
                           type="button"
@@ -383,28 +415,83 @@ export default function TodayView({
         </p>
       </div>
 
+      {/* GPS onboarding hint */}
+      {showGpsHint && !gpsEnabled && (
+        <div className="mx-5 mb-2 px-4 py-3 bg-blue-50 border border-blue-200/60 rounded-2xl flex items-center gap-3">
+          <Crosshair size={18} className="text-blue-500 shrink-0" />
+          <p className="text-[13px] text-blue-800 flex-1">
+            Enable GPS to auto-filter tasks for your current field
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              onGpsToggle?.();
+              setShowGpsHint(false);
+              localStorage.setItem('capex.gps-hint-shown', '1');
+            }}
+            className="text-[12px] font-medium text-blue-600 hover:text-blue-800 px-2 py-1 rounded-lg hover:bg-blue-100 transition-colors"
+          >
+            Enable
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowGpsHint(false);
+              localStorage.setItem('capex.gps-hint-shown', '1');
+            }}
+            className="text-[12px] text-stone-400 hover:text-stone-600 px-1 py-1 transition-colors"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Task groups */}
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <div className="flex-1 overflow-y-auto">
           {!hasAny ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
-              <SunHorizon size={40} weight="duotone" className="text-stone-300 mb-3" />
-              <p className="text-[15px] text-stone-400">
-                {activeTagIds.size > 0 || selectedFieldId
-                  ? 'No tasks match your filters'
-                  : filterMode === 'completed'
-                    ? 'No completed tasks yet'
-                    : 'No active tasks -- enjoy the quiet'}
-              </p>
-              {(activeTagIds.size > 0 || selectedFieldId) && (
-                <button
-                  type="button"
-                  onClick={() => { setActiveTagIds(new Set()); onFieldSelect?.(null); }}
-                  className="mt-2 text-[13px] hover:underline"
-                  style={{ color: listColor }}
-                >
-                  Clear filters
-                </button>
+              {activeTagIds.size > 0 || selectedFieldId ? (
+                <>
+                  <SunHorizon size={40} weight="duotone" className="text-stone-300 mb-3" />
+                  <p className="text-[15px] text-stone-400">No tasks match your filters</p>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTagIds(new Set()); onFieldSelect?.(null); }}
+                    className="mt-2 text-[13px] hover:underline"
+                    style={{ color: listColor }}
+                  >
+                    Clear filters
+                  </button>
+                </>
+              ) : filterMode === 'completed' ? (
+                <>
+                  <SunHorizon size={40} weight="duotone" className="text-stone-300 mb-3" />
+                  <p className="text-[15px] text-stone-400">No completed tasks yet</p>
+                </>
+              ) : (
+                <>
+                  <SunHorizon size={40} weight="duotone" className="text-emerald-300 mb-3" />
+                  <p className="text-[15px] text-stone-600 font-medium">All clear for today</p>
+                  {weatherTemp != null && (
+                    <p className="text-[13px] text-stone-400 mt-1">
+                      {weatherTemp}&deg;C, wind {weatherWind} km/h
+                    </p>
+                  )}
+                  {onQuickCreate && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        /* Scroll to the inline add at bottom to plan for tomorrow */
+                        const addEl = document.querySelector('[data-inline-add]');
+                        addEl?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className="mt-4 text-[13px] font-medium text-emerald-600 hover:text-emerald-800"
+                    >
+                      + Plan ahead for tomorrow
+                    </button>
+                  )}
+                </>
               )}
             </div>
           ) : (
@@ -485,12 +572,14 @@ export default function TodayView({
           </div>
         )}
         {onQuickCreate && (
-          <InlineTaskAdd
-            tags={tags}
-            fields={fieldsList ?? []}
-            onSubmit={onQuickCreate}
-            accentColor={listColor}
-          />
+          <div data-inline-add>
+            <InlineTaskAdd
+              tags={tags}
+              fields={fieldsList ?? []}
+              onSubmit={onQuickCreate}
+              accentColor={listColor}
+            />
+          </div>
         )}
       </div>
     </div>

@@ -1,0 +1,11 @@
+export const MS_PER_DAY = 86_400_000;
+export const DEFAULT_UPCOMING_DAYS = 7;
+export const MAX_TAG_PILLS_SHOWN = 3;
+export const WEATHER_WIND_THRESHOLD_KMH = 15;
+export const WEATHER_RAIN_THRESHOLD_MM = 5;
+export const WEATHER_FROST_THRESHOLD_C = 2;
+export const WEATHER_HEAT_THRESHOLD_C = 38;
+export const GPS_DEBOUNCE_MS = 30_000;
+export const API_CACHE_TTL_MS = 60_000;
+export const API_CACHE_GEOJSON_TTL_MS = 300_000;
+export const TOAST_DURATION_MS = 4_000;

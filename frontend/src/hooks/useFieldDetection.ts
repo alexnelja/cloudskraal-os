@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 import { point } from '@turf/helpers';
+import { GPS_DEBOUNCE_MS } from '../constants';
 
 export interface DetectedField {
   fieldId: string;
   fieldName: string;
 }
 
-const DEBOUNCE_MS = 30_000; // 30 seconds
+const DEBOUNCE_MS = GPS_DEBOUNCE_MS;
 const MIN_MOVE_DEG = 0.0001; // ~11 m — skip check if position barely moved
 
 /**

@@ -1,4 +1,10 @@
 import type { Task } from '../types/calendar';
+import {
+  WEATHER_WIND_THRESHOLD_KMH,
+  WEATHER_RAIN_THRESHOLD_MM,
+  WEATHER_FROST_THRESHOLD_C,
+  WEATHER_HEAT_THRESHOLD_C,
+} from '../constants';
 
 export interface WeatherData {
   wind_speed_max: number;
@@ -50,11 +56,11 @@ export function evaluateWeatherBlocks(
     const isHarvest = titleContains(task, 'harvest');
     const isLivestock = hasLivestockOpsTag(task);
 
-    // Wind rule: Crop Ops OR spray tasks, wind > 15 km/h → blocked
-    if ((isCropOps || isSpray) && today.wind_speed_max > 15) {
+    // Wind rule: Crop Ops OR spray tasks, wind > threshold → blocked
+    if ((isCropOps || isSpray) && today.wind_speed_max > WEATHER_WIND_THRESHOLD_KMH) {
       let clearsAt: string | null = null;
       for (let i = 0; i < forecast.length; i++) {
-        if (forecast[i].wind_speed_max <= 15) {
+        if (forecast[i].wind_speed_max <= WEATHER_WIND_THRESHOLD_KMH) {
           clearsAt = todayPlusDays(i + 1);
           break;
         }
@@ -68,11 +74,11 @@ export function evaluateWeatherBlocks(
       });
     }
 
-    // Rain rule: Crop Ops OR harvest tasks, precipitation > 5mm → warning
-    if ((isCropOps || isHarvest) && today.precipitation_sum > 5) {
+    // Rain rule: Crop Ops OR harvest tasks, precipitation > threshold → warning
+    if ((isCropOps || isHarvest) && today.precipitation_sum > WEATHER_RAIN_THRESHOLD_MM) {
       let clearsAt: string | null = null;
       for (let i = 0; i < forecast.length; i++) {
-        if (forecast[i].precipitation_sum <= 5) {
+        if (forecast[i].precipitation_sum <= WEATHER_RAIN_THRESHOLD_MM) {
           clearsAt = todayPlusDays(i + 1);
           break;
         }
@@ -86,11 +92,11 @@ export function evaluateWeatherBlocks(
       });
     }
 
-    // Frost rule: Livestock Ops, temp < 2°C → warning
-    if (isLivestock && today.temperature_min < 2) {
+    // Frost rule: Livestock Ops, temp < threshold → warning
+    if (isLivestock && today.temperature_min < WEATHER_FROST_THRESHOLD_C) {
       let clearsAt: string | null = null;
       for (let i = 0; i < forecast.length; i++) {
-        if (forecast[i].temperature_min >= 2) {
+        if (forecast[i].temperature_min >= WEATHER_FROST_THRESHOLD_C) {
           clearsAt = todayPlusDays(i + 1);
           break;
         }
@@ -104,11 +110,11 @@ export function evaluateWeatherBlocks(
       });
     }
 
-    // Heat rule: any task, temp > 38°C → warning
-    if (today.temperature_max > 38) {
+    // Heat rule: any task, temp > threshold → warning
+    if (today.temperature_max > WEATHER_HEAT_THRESHOLD_C) {
       let clearsAt: string | null = null;
       for (let i = 0; i < forecast.length; i++) {
-        if (forecast[i].temperature_max <= 38) {
+        if (forecast[i].temperature_max <= WEATHER_HEAT_THRESHOLD_C) {
           clearsAt = todayPlusDays(i + 1);
           break;
         }

@@ -2,13 +2,14 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task } from '../../types/calendar';
 import { PRIORITY_COLORS } from '../../types/calendar';
+import { MAX_TAG_PILLS_SHOWN } from '../../constants';
 
 interface BoardCardProps {
   task: Task;
   onSelect: (id: string) => void;
 }
 
-const MAX_VISIBLE_TAGS = 3;
+const MAX_VISIBLE_TAGS = MAX_TAG_PILLS_SHOWN;
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');

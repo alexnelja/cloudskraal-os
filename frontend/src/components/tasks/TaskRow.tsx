@@ -1,10 +1,12 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check } from '@phosphor-icons/react';
+import { Check, CalendarBlank } from '@phosphor-icons/react';
+import { useNavigate } from 'react-router-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task } from '../../types/calendar';
 import type { TaskStatusConfig } from '../../types/taskManager';
+import { ENTERPRISE_COLORS } from '../../types/farm';
 
 interface TaskRowProps {
   task: Task;
@@ -46,6 +48,7 @@ export default function TaskRow({
   selected = false,
   sortableId,
 }: TaskRowProps) {
+  const navigate = useNavigate();
   const isCompleted = task.status === 'completed';
   const overdue = isDueOverdue(task.due_date);
   const isUrgent = task.priority === 'urgent' || task.priority === 'high';
@@ -143,6 +146,13 @@ export default function TaskRow({
                   isCompleted ? 'line-through opacity-50' : ''
                 }`}
               >
+                {task.enterprise && (
+                  <span
+                    data-testid="enterprise-dot"
+                    className="inline-block w-1.5 h-1.5 rounded-full mr-1.5 align-middle"
+                    style={{ backgroundColor: ENTERPRISE_COLORS[task.enterprise] ?? '#6b7280' }}
+                  />
+                )}
                 {isUrgent && !isCompleted && (
                   <span data-testid="priority-dot" className="text-amber-500 font-semibold mr-1">!</span>
                 )}
@@ -156,12 +166,23 @@ export default function TaskRow({
               )}
             </div>
 
-            {/* Right: due date */}
+            {/* Right: due date + calendar link */}
             {task.due_date && (
-              <span className={`text-[13px] shrink-0 mt-0.5 ${
+              <span className={`flex items-center gap-1 text-[13px] shrink-0 mt-0.5 ${
                 overdue && !isCompleted ? 'text-red-500 font-medium' : 'text-stone-400'
               }`}>
                 {formatDueLabel(task.due_date)}
+                <button
+                  type="button"
+                  aria-label="View on calendar"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/calendar?date=${task.due_date!.slice(0, 7)}`);
+                  }}
+                  className="text-stone-300 hover:text-emerald-600 transition-colors"
+                >
+                  <CalendarBlank size={14} />
+                </button>
               </span>
             )}
           </div>
