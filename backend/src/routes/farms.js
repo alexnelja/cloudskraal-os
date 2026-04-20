@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/schema');
-const { refreshFieldCurrent } = require('../services/usage');
+const { refreshFieldCurrent, refreshAllFieldsCurrent } = require('../services/usage');
 const { todayUTC } = require('../utils/dates');
 const { getSoilAtPoint, fieldCentroid } = require('../services/fieldEnrichment');
 
@@ -74,7 +74,8 @@ router.get('/fields', (req, res) => {
   `).all(...params);
 
   const asOf = todayUTC();
-  for (const r of fields) refreshFieldCurrent(db, r.id, asOf);
+  const fieldIds = fields.map(r => r.id);
+  refreshAllFieldsCurrent(db, fieldIds, asOf);
   const ids = fields.map(r => r.id);
   if (ids.length > 0) {
     const placeholders = ids.map(() => '?').join(',');

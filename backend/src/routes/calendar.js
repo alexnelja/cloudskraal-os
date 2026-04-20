@@ -1,3 +1,11 @@
+/**
+ * TECH DEBT: This file handles two separate domains:
+ * - Calendar Events (lines ~1-250): GET/POST/PATCH/DELETE /calendar/events, /calendar/sync
+ * - Tasks (lines ~250+): GET/POST/PATCH/DELETE /tasks, /tasks/:id/complete, /tasks/:id/inputs, etc.
+ *
+ * TODO: Split into calendar-events.js and tasks-crud.js
+ * The task-manager routes (tags, statuses) are already in routes/tasks.js
+ */
 const { Router } = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/schema');

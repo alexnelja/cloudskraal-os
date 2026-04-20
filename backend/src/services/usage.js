@@ -75,6 +75,44 @@ function refreshFieldCurrent(db, fieldId, asOf) {
     .run(row.usage, row.usage, plantedYear, new Date().toISOString(), fieldId);
 }
 
+function refreshAllFieldsCurrent(db, fieldIds, asOf) {
+  if (!fieldIds.length) return;
+
+  const placeholders = fieldIds.map(() => '?').join(',');
+  // Get all active usage periods for the given fields in one query
+  const periods = db.prepare(`
+    SELECT field_id, usage, planted_date
+      FROM field_usage_period
+     WHERE field_id IN (${placeholders})
+       AND deleted_at IS NULL
+       AND start_date <= ?
+       AND (end_date IS NULL OR end_date >= ?)
+     ORDER BY start_date DESC
+  `).all(...fieldIds, asOf, asOf);
+
+  // Keep only the first (most recent start_date) per field
+  const currentByField = {};
+  for (const p of periods) {
+    if (!currentByField[p.field_id]) currentByField[p.field_id] = p;
+  }
+
+  // Update all fields in a single transaction
+  const now = new Date().toISOString();
+  const updateStmt = db.prepare(
+    'UPDATE fields SET enterprise=?, crop_type=?, planted_year=?, updated_at=? WHERE id=?'
+  );
+  const tx = db.transaction(() => {
+    for (const fieldId of fieldIds) {
+      const row = currentByField[fieldId];
+      if (row) {
+        const plantedYear = row.planted_date ? row.planted_date.slice(0, 4) : null;
+        updateStmt.run(row.usage, row.usage, plantedYear, now, fieldId);
+      }
+    }
+  });
+  tx();
+}
+
 module.exports = {
   USAGE_TYPES,
   PERENNIAL_USAGES,
@@ -84,4 +122,5 @@ module.exports = {
   yearsSincePlanted,
   rotationYearEffective,
   refreshFieldCurrent,
+  refreshAllFieldsCurrent,
 };

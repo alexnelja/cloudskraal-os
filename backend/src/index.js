@@ -51,6 +51,15 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Input validation for write methods
+const { validateBody } = require('./middleware/validate');
+app.use((req, res, next) => {
+  if (['POST', 'PATCH', 'PUT'].includes(req.method)) {
+    return validateBody()(req, res, next);
+  }
+  next();
+});
+
 // Routes
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/projects', projectRoutes);
@@ -76,11 +85,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Error handler
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
+// Centralized error handler
+const { errorHandler } = require('./middleware/errorHandler');
+app.use(errorHandler);
 
 // Initialize DB and seed
 const db = getDb();
