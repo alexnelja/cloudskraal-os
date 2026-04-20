@@ -152,10 +152,6 @@ export function useMapData() {
     }
   }, [fields, selectedFieldId]);
 
-  const handleEditField = useCallback((_fieldId: string) => {
-    // Exposed as setter — page component uses setEditFieldId directly
-  }, []);
-
   const retryLoad = useCallback(() => {
     setLoadErrors([]);
     setLoading(true);
@@ -210,7 +206,6 @@ export function useMapData() {
     handleLayerOpacity,
     handleEnterpriseToggle,
     handleDeleteField,
-    handleEditField,
     retryLoad,
     bumpLoadNonce,
     loadNonce,

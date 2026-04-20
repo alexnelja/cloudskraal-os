@@ -1,4 +1,5 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import FarmMap from '../components/map/FarmMap';
 import FieldPanel from '../components/map/FieldPanel';
@@ -9,7 +10,7 @@ import LayerControl from '../components/map/LayerControl';
 import { AnimatePresence, motion } from 'motion/react';
 import { MapPinArea, NotePencil, List, Polygon as PolyIcon } from '@phosphor-icons/react';
 import FluidSheet from '../components/map/FluidSheet';
-import AnnotateTool from '../components/map/tools/AnnotateTool';
+import AnnotateTool, { type DrawFinishPayload } from '../components/map/tools/AnnotateTool';
 import SaveAnnotationModal from '../components/map/SaveAnnotationModal';
 import AnnotationsSidebar from '../components/map/AnnotationsSidebar';
 import AnnotationMarkers from '../components/map/AnnotationMarkers';
@@ -27,7 +28,6 @@ import { useMapData } from '../hooks/useMapData';
 import { useAnnotationState } from '../hooks/useAnnotationState';
 import { useMapInteractions } from '../hooks/useMapInteractions';
 import type { Measurement } from '../types/measurement';
-import type { DrawFinishPayload } from '../components/map/tools/AnnotateTool';
 import * as turf from '@turf/turf';
 
 function getBoundsForFarm(
@@ -61,6 +61,10 @@ function getBoundsForFarm(
 
 export default function FarmMapPage() {
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [editFieldId, setEditFieldId] = useState<string | null>(null);
+  const [fieldsSidebarOpen, setFieldsSidebarOpen] = useState(false);
+  const [fieldsSidebarCollapsed, setFieldsSidebarCollapsed] = useState(false);
 
   // --- Data hook ---
   const {
@@ -75,91 +79,76 @@ export default function FarmMapPage() {
   } = useMapData();
 
   // --- Annotation hook ---
-  const {
-    selectedAnnotationId, setSelectedAnnotationId,
-    sidebarOpen, setSidebarOpen,
-    pendingDraw, finishedGeometry, measurementText,
-    handleDrawFinish: annotationHandleDrawFinish, clearFinished, handleSaveAsPick,
-    handleSaveAnnotation, handleDiscardAnnotation,
-    editingAnnotationId, handleAnnotationEdit, handleGeometryChange,
-    handleFinishEditing, handleCancelEditing,
-    handleAnnotationSelect, handleAnnotationDelete, handleBatchDelete,
-    dropMapNote, flyToAnnotation,
-    taskCountByAnnotation,
-    saveMeasurementPending, setSaveMeasurementPending,
-    newFieldSeed, setNewFieldSeed, newFieldOpen, setNewFieldOpen,
-    searchParams, setSearchParams,
-  } = useAnnotationState({
-    mapRef,
-    annotations,
-    setAnnotations,
-    tasks,
-    geojson,
-    terraDraw: null, // will be wired after interactions hook
+  const ann = useAnnotationState({
+    mapRef, annotations, setAnnotations, tasks, geojson,
   });
 
   // --- Interactions hook ---
-  const {
-    contextMenu, setContextMenu, handleMapContextMenu, handleMarkerContextMenu,
-    createTaskContext, setCreateTaskContext, handleSaveTask,
-    armedDropMode, handleArmedMapClick,
-    longPress, pressRing,
-    drawMode, setDrawMode, terraDraw, setTerraDraw,
-    basemapId, handleBasemapChange,
-    mapInstance, setMapInstance,
-    awaitingFieldDraw, setAwaitingFieldDraw, awaitingFieldDrawRef,
-    handleAddField: interactionsHandleAddField,
-  } = useMapInteractions({
-    mapRef,
-    annotations,
-    setAnnotations,
-    dropMapNote,
-    handleAnnotationSelect,
-    setSidebarOpen,
-    setSelectedAnnotationId,
+  const ix = useMapInteractions({
+    mapRef, annotations, setAnnotations,
+    dropMapNote: ann.dropMapNote,
+    handleAnnotationSelect: ann.handleAnnotationSelect,
+    setSidebarOpen: ann.setSidebarOpen,
+    setSelectedAnnotationId: ann.setSelectedAnnotationId,
     refreshTasks,
   });
 
-  // Wire terraDraw into annotation state after both hooks are initialized.
-  // The annotation edit/finish handlers need terraDraw, so we recreate them
-  // by passing terraDraw through the hook args. Since we can't re-call the hook
-  // conditionally, we re-instantiate annotation state with terraDraw once available.
-  // Instead, we use a ref-based approach: annotation state hooks that need terraDraw
-  // are re-created here as thin wrappers.
+  // --- TerraDraw-dependent annotation wiring ---
+  // These few handlers bridge annotation state with terraDraw from interactions.
 
-  // Re-wire annotation edit to use terraDraw from interactions hook
   const handleAnnotationEditWired = useCallback((id: string) => {
-    const ann = annotations.find(a => a.id === id);
-    if (!ann || !terraDraw) return;
-    handleAnnotationEdit(id);
-    // The hook's internal handleAnnotationEdit won't have terraDraw,
-    // so we manually do the terraDraw part here
-    const geomType = ann.geometry.type;
+    const editAnn = ann.handleAnnotationEdit(id);
+    if (!editAnn || !ix.terraDraw) return;
+    const geomType = editAnn.geometry.type;
     const mode = geomType === 'Polygon' ? 'polygon' : geomType === 'LineString' ? 'linestring' : 'point';
     const feature: GeoJSON.Feature = {
-      id: ann.id,
+      id: editAnn.id,
       type: 'Feature',
-      geometry: ann.geometry,
+      geometry: editAnn.geometry,
       properties: { mode },
     };
-    terraDraw.addFeatures?.([feature]);
-    terraDraw.setMode('select');
-  }, [annotations, terraDraw, handleAnnotationEdit]);
+    ix.terraDraw.addFeatures?.([feature]);
+    ix.terraDraw.setMode('select');
+  }, [ann, ix.terraDraw]);
+
+  const handleFinishEditingWired = useCallback(() => {
+    const id = ann.handleFinishEditing();
+    if (id && ix.terraDraw?.removeFeatures) {
+      ix.terraDraw.removeFeatures([id]);
+    }
+    ix.terraDraw?.setMode('render');
+  }, [ann, ix.terraDraw]);
+
+  const handleCancelEditingWired = useCallback(() => {
+    const id = ann.handleCancelEditing();
+    if (id) {
+      ix.terraDraw?.removeFeatures?.([id]);
+    }
+    ix.terraDraw?.setMode('render');
+  }, [ann, ix.terraDraw]);
+
+  const handleAnnotationDeleteWired = useCallback(async (id: string) => {
+    await ann.handleAnnotationDelete(id, searchParams, setSearchParams);
+  }, [ann, searchParams, setSearchParams]);
 
   // Wrap handleDrawFinish to pass awaitingFieldDraw state
   const handleDrawFinish = useCallback((payload: DrawFinishPayload) => {
-    annotationHandleDrawFinish(payload, awaitingFieldDrawRef.current, setAwaitingFieldDraw);
-  }, [annotationHandleDrawFinish, awaitingFieldDrawRef, setAwaitingFieldDraw]);
+    ann.handleDrawFinish(payload, ix.awaitingFieldDrawRef.current, ix.setAwaitingFieldDraw);
+  }, [ann, ix.awaitingFieldDrawRef, ix.setAwaitingFieldDraw]);
 
-  // handleAddField that opens modal or arms polygon draw
+  // handleAddField — opens modal or arms polygon draw
   const handleAddField = useCallback((opts?: { geometry?: GeoJSON.Geometry; areaHa?: number }) => {
     if (opts?.geometry) {
-      setNewFieldSeed(opts);
-      setNewFieldOpen(true);
+      ann.setNewFieldSeed(opts);
+      ann.setNewFieldOpen(true);
       return;
     }
-    interactionsHandleAddField();
-  }, [interactionsHandleAddField, setNewFieldSeed, setNewFieldOpen]);
+    if (ix.terraDraw) {
+      ix.terraDraw.setMode('render');
+      ix.terraDraw.setMode('polygon');
+    }
+    ix.setAwaitingFieldDraw(true);
+  }, [ann, ix.terraDraw, ix.setAwaitingFieldDraw]);
 
   // Field select with zoom
   const handleFieldSelect = useCallback((fieldId: string) => {
@@ -196,20 +185,16 @@ export default function FarmMapPage() {
     map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 50 });
   }, [geojson]);
 
-  // Edit field state (local to page)
-  const [editFieldId, setEditFieldId] = useEditFieldState();
-  const [fieldsSidebarOpen, setFieldsSidebarOpen] = useFieldsSidebarState();
-
   // Deep-link: ?annotation=<id>
   useEffect(() => {
     const annId = searchParams.get('annotation');
     if (!annId || annotations.length === 0) return;
-    const ann = annotations.find((a) => a.id === annId);
-    if (!ann) return;
-    setSelectedAnnotationId(annId);
-    setSidebarOpen(true);
-    flyToAnnotation(ann);
-  }, [searchParams, annotations, flyToAnnotation, setSelectedAnnotationId, setSidebarOpen]);
+    const found = annotations.find((a) => a.id === annId);
+    if (!found) return;
+    ann.setSelectedAnnotationId(annId);
+    ann.setSidebarOpen(true);
+    ann.flyToAnnotation(found);
+  }, [searchParams, annotations, ann]);
 
   const fieldsSidebar = (
     <FieldsSidebar
@@ -226,8 +211,8 @@ export default function FarmMapPage() {
       onDeleteField={handleDeleteField}
       onEditField={setEditFieldId}
       onColorChange={setEnterpriseColor}
-      collapsed={fieldsSidebarOpen.collapsed}
-      onToggleCollapse={() => setFieldsSidebarOpen(prev => ({ ...prev, collapsed: !prev.collapsed }))}
+      collapsed={fieldsSidebarCollapsed}
+      onToggleCollapse={() => setFieldsSidebarCollapsed((v) => !v)}
     />
   );
 
@@ -241,7 +226,7 @@ export default function FarmMapPage() {
 
       {/* Mobile: FluidSheet overlay */}
       <div className="md:hidden">
-        <FluidSheet side="left" open={fieldsSidebarOpen.open} onDismiss={() => setFieldsSidebarOpen(prev => ({ ...prev, open: false }))}>
+        <FluidSheet side="left" open={fieldsSidebarOpen} onDismiss={() => setFieldsSidebarOpen(false)}>
           {fieldsSidebar}
         </FluidSheet>
       </div>
@@ -255,10 +240,10 @@ export default function FarmMapPage() {
       ) : (
         <div
           className="w-full h-full"
-          onPointerDown={longPress.onPointerDown}
-          onPointerMove={longPress.onPointerMove}
-          onPointerUp={longPress.onPointerUp}
-          onPointerCancel={longPress.onPointerCancel}
+          onPointerDown={ix.longPress.onPointerDown}
+          onPointerMove={ix.longPress.onPointerMove}
+          onPointerUp={ix.longPress.onPointerUp}
+          onPointerCancel={ix.longPress.onPointerCancel}
         >
         <FarmMap
           geojson={geojson}
@@ -267,31 +252,31 @@ export default function FarmMapPage() {
           onFieldSelect={setSelectedFieldId}
           visibleEnterprises={visibleEnterprises}
           showFarmBoundaries={showFarmBoundaries}
-          onMapReady={(map) => { mapRef.current = map; setMapInstance(map); }}
+          onMapReady={(map) => { mapRef.current = map; ix.setMapInstance(map); }}
           gisLayers={mapLayers}
           annotations={annotations}
-          selectedAnnotationId={selectedAnnotationId}
-          onAnnotationSelect={handleAnnotationSelect}
-          onContextMenu={handleMapContextMenu}
-          onMapClick={handleArmedMapClick}
+          selectedAnnotationId={ann.selectedAnnotationId}
+          onAnnotationSelect={ann.handleAnnotationSelect}
+          onContextMenu={ix.handleMapContextMenu}
+          onMapClick={ix.handleArmedMapClick}
           cursor={
-            armedDropMode || ['linestring', 'polygon', 'point'].includes(drawMode)
+            ix.armedDropMode || ['linestring', 'polygon', 'point'].includes(ix.drawMode)
               ? 'crosshair'
               : 'grab'
           }
-          basemapId={basemapId}
+          basemapId={ix.basemapId}
           enterpriseColors={enterpriseColors}
         />
         </div>
       )}
 
-      {/* Long-press affordance — pulsing amber ring grows 0-500ms */}
+      {/* Long-press affordance ring */}
       <AnimatePresence>
-        {pressRing && (
+        {ix.pressRing && (
           <motion.div
             key="press-ring"
             className="longpress-ring"
-            style={{ left: pressRing.x, top: pressRing.y }}
+            style={{ left: ix.pressRing.x, top: ix.pressRing.y }}
             initial={{ scale: 0.2, opacity: 0.8 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 1.25, opacity: 0 }}
@@ -346,7 +331,7 @@ export default function FarmMapPage() {
 
       {/* Drawing help banner */}
       <AnimatePresence>
-        {(drawMode === 'linestring' || drawMode === 'polygon' || drawMode === 'point') && (
+        {(ix.drawMode === 'linestring' || ix.drawMode === 'polygon' || ix.drawMode === 'point') && (
           <motion.div
             key="draw-help"
             initial={{ opacity: 0, y: -8 }}
@@ -373,7 +358,7 @@ export default function FarmMapPage() {
 
       {/* Awaiting field boundary draw banner */}
       <AnimatePresence>
-        {awaitingFieldDraw && (
+        {ix.awaitingFieldDraw && (
           <motion.div
             key="field-draw-banner"
             initial={{ opacity: 0, y: -8 }}
@@ -399,7 +384,7 @@ export default function FarmMapPage() {
 
       {/* Armed drop-note banner */}
       <AnimatePresence>
-        {armedDropMode && (
+        {ix.armedDropMode && (
           <motion.div
             key="drop-banner"
             initial={{ opacity: 0, y: -8 }}
@@ -424,7 +409,7 @@ export default function FarmMapPage() {
         type="button"
         className="md:hidden absolute top-3 left-3 z-10 glass-button rounded-full w-10 h-10 flex items-center justify-center"
         aria-label="Open fields sidebar"
-        onClick={() => setFieldsSidebarOpen(prev => ({ ...prev, open: true }))}
+        onClick={() => setFieldsSidebarOpen(true)}
       >
         <List size={18} />
       </button>
@@ -447,16 +432,16 @@ export default function FarmMapPage() {
       {!loading && (
         <MapOverlayRail position="tr">
           <MeasureToolbar
-            terraDraw={terraDraw}
-            currentMode={drawMode}
-            finishedGeometry={finishedGeometry}
-            measurementText={measurementText}
-            onPick={handleSaveAsPick}
-            onDiscard={clearFinished}
+            terraDraw={ix.terraDraw}
+            currentMode={ix.drawMode}
+            finishedGeometry={ann.finishedGeometry}
+            measurementText={ann.measurementText}
+            onPick={ann.handleSaveAsPick}
+            onDiscard={ann.clearFinished}
           />
           <BasemapSwitcher
-            current={basemapId}
-            onChange={handleBasemapChange}
+            current={ix.basemapId}
+            onChange={ix.handleBasemapChange}
           />
           <LayerControl
             layers={mapLayers}
@@ -464,11 +449,11 @@ export default function FarmMapPage() {
             onOpacityChange={handleLayerOpacity}
           />
           <AnimatePresence>
-            {!sidebarOpen && (
+            {!ann.sidebarOpen && (
               <motion.button
                 key="annotations-toggle"
                 type="button"
-                onClick={() => setSidebarOpen(true)}
+                onClick={() => ann.setSidebarOpen(true)}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
@@ -502,7 +487,7 @@ export default function FarmMapPage() {
                     onClick={() => setLegendExpanded(false)}
                     className="text-xs font-semibold text-stone-600 text-left mb-1"
                   >
-                    Legend &#9650;
+                    Legend ▲
                   </button>
                   {legendEnterprises.map(ent => (
                     <div key={ent} className="flex items-center gap-2">
@@ -525,7 +510,7 @@ export default function FarmMapPage() {
                   onClick={() => setLegendExpanded(true)}
                   className="glass-button rounded-full px-3 py-2 text-xs font-semibold text-stone-700"
                 >
-                  Legend &#9660;
+                  Legend ▼
                 </button>
               )}
             </div>
@@ -568,57 +553,57 @@ export default function FarmMapPage() {
 
       {/* Export map button */}
       <MapOverlayRail position="bl">
-        <ExportMapButton map={mapInstance} />
+        <ExportMapButton map={ix.mapInstance} />
       </MapOverlayRail>
 
       {/* Annotate tool */}
-      <AnnotateTool map={mapInstance} onFinish={handleDrawFinish} onModeChange={setDrawMode} onReady={setTerraDraw} onGeometryChange={handleGeometryChange} />
+      <AnnotateTool map={ix.mapInstance} onFinish={handleDrawFinish} onModeChange={ix.setDrawMode} onReady={ix.setTerraDraw} onGeometryChange={ann.handleGeometryChange} />
 
       {/* Category icon markers overlay */}
       <AnnotationMarkers
-        map={mapInstance}
+        map={ix.mapInstance}
         annotations={annotations}
-        selectedId={selectedAnnotationId}
-        onSelect={handleAnnotationSelect}
-        onContextMenu={handleMarkerContextMenu}
-        excludeId={editingAnnotationId}
+        selectedId={ann.selectedAnnotationId}
+        onSelect={ann.handleAnnotationSelect}
+        onContextMenu={ix.handleMarkerContextMenu}
+        excludeId={ann.editingAnnotationId}
       />
 
       {/* Context menu */}
       <MapContextMenu
-        open={contextMenu !== null}
-        x={contextMenu?.x ?? 0}
-        y={contextMenu?.y ?? 0}
-        title={contextMenu?.title}
-        items={contextMenu?.items ?? []}
-        onDismiss={() => setContextMenu(null)}
+        open={ix.contextMenu !== null}
+        x={ix.contextMenu?.x ?? 0}
+        y={ix.contextMenu?.y ?? 0}
+        title={ix.contextMenu?.title}
+        items={ix.contextMenu?.items ?? []}
+        onDismiss={() => ix.setContextMenu(null)}
       />
 
       {/* Create task modal */}
       <CreateTaskModal
-        open={createTaskContext !== null}
-        defaultTitle={createTaskContext?.defaultTitle ?? ''}
-        context={createTaskContext?.context ?? { kind: 'blank', label: 'location' }}
-        onSave={handleSaveTask}
-        onCancel={() => setCreateTaskContext(null)}
+        open={ix.createTaskContext !== null}
+        defaultTitle={ix.createTaskContext?.defaultTitle ?? ''}
+        context={ix.createTaskContext?.context ?? { kind: 'blank', label: 'location' }}
+        onSave={ix.handleSaveTask}
+        onCancel={() => ix.setCreateTaskContext(null)}
       />
 
       {/* Save dialog after finishing a draw */}
       <SaveAnnotationModal
-        open={pendingDraw !== null}
-        type={pendingDraw?.type ?? 'pin'}
-        geometry={pendingDraw?.geometry ?? { type: 'Point', coordinates: [0, 0] }}
-        onSave={handleSaveAnnotation}
-        onDiscard={handleDiscardAnnotation}
+        open={ann.pendingDraw !== null}
+        type={ann.pendingDraw?.type ?? 'pin'}
+        geometry={ann.pendingDraw?.geometry ?? { type: 'Point', coordinates: [0, 0] }}
+        onSave={ann.handleSaveAnnotation}
+        onDiscard={ann.handleDiscardAnnotation}
       />
 
       {/* Editing bar */}
-      {editingAnnotationId && (
+      {ann.editingAnnotationId && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white/95 backdrop-blur-sm shadow-lg rounded-xl px-5 py-3 border border-stone-200/60">
           <span className="text-sm text-stone-700">Editing annotation geometry — drag to reshape</span>
           <button
             type="button"
-            onClick={handleFinishEditing}
+            onClick={handleFinishEditingWired}
             className="px-4 py-1.5 text-sm font-medium text-white rounded-lg transition-colors"
             style={{ background: 'linear-gradient(135deg, #d97706, #b45309)' }}
           >
@@ -626,7 +611,7 @@ export default function FarmMapPage() {
           </button>
           <button
             type="button"
-            onClick={handleCancelEditing}
+            onClick={handleCancelEditingWired}
             className="px-3 py-1.5 text-sm text-stone-600 hover:text-stone-900 transition-colors"
           >
             Cancel
@@ -636,15 +621,15 @@ export default function FarmMapPage() {
 
       {/* Annotations sidebar */}
       <AnnotationsSidebar
-        open={sidebarOpen}
+        open={ann.sidebarOpen}
         annotations={annotations}
-        selectedId={selectedAnnotationId}
-        onToggle={() => setSidebarOpen(false)}
-        onSelect={handleAnnotationSelect}
-        onDelete={handleAnnotationDelete}
+        selectedId={ann.selectedAnnotationId}
+        onToggle={() => ann.setSidebarOpen(false)}
+        onSelect={ann.handleAnnotationSelect}
+        onDelete={handleAnnotationDeleteWired}
         onEdit={handleAnnotationEditWired}
-        onBatchDelete={handleBatchDelete}
-        taskCountById={taskCountByAnnotation}
+        onBatchDelete={ann.handleBatchDelete}
+        taskCountById={ann.taskCountByAnnotation}
         onMeasurementZoom={(m) => {
           try {
             const geom = JSON.parse(m.geometry) as GeoJSON.Geometry;
@@ -665,17 +650,17 @@ export default function FarmMapPage() {
 
       {/* New field modal */}
       <NewFieldModal
-        open={newFieldOpen}
-        onClose={() => { setNewFieldOpen(false); setNewFieldSeed({}); clearFinished(); }}
+        open={ann.newFieldOpen}
+        onClose={() => { ann.setNewFieldOpen(false); ann.setNewFieldSeed({}); ann.clearFinished(); }}
         onCreated={() => {
           setLoading(true);
           bumpLoadNonce();
-          clearFinished();
+          ann.clearFinished();
         }}
         farms={farms}
         enterprises={enterprises}
-        geometry={newFieldSeed.geometry}
-        areaHa={newFieldSeed.areaHa}
+        geometry={ann.newFieldSeed.geometry}
+        areaHa={ann.newFieldSeed.areaHa}
         farmBoundaries={farmBoundaries}
       />
 
@@ -693,34 +678,20 @@ export default function FarmMapPage() {
       />
 
       {/* Save measurement modal */}
-      {saveMeasurementPending && (
+      {ann.saveMeasurementPending && (
         <SaveMeasurementModal
           open={true}
-          kind={saveMeasurementPending.kind}
-          value={saveMeasurementPending.value}
-          unit={saveMeasurementPending.unit}
-          formatted={saveMeasurementPending.formatted}
-          geometry={saveMeasurementPending.geometry}
+          kind={ann.saveMeasurementPending.kind}
+          value={ann.saveMeasurementPending.value}
+          unit={ann.saveMeasurementPending.unit}
+          formatted={ann.saveMeasurementPending.formatted}
+          geometry={ann.saveMeasurementPending.geometry}
           onSaved={(_m: Measurement) => {
-            setSaveMeasurementPending(null);
+            ann.setSaveMeasurementPending(null);
           }}
-          onDiscard={() => setSaveMeasurementPending(null)}
+          onDiscard={() => ann.setSaveMeasurementPending(null)}
         />
       )}
     </div>
   );
 }
-
-// Small inline state hooks to keep the component body clean
-function useEditFieldState() {
-  const [editFieldId, setEditFieldId] = useState<string | null>(null);
-  return [editFieldId, setEditFieldId] as const;
-}
-
-function useFieldsSidebarState() {
-  const [state, setState] = useState({ open: false, collapsed: false });
-  return [state, setState] as const;
-}
-
-// Need useState import for the inline hooks
-import { useState } from 'react';

@@ -3,7 +3,6 @@ import maplibregl from 'maplibre-gl';
 import * as turf from '@turf/turf';
 import {
   createAnnotation,
-  createAnnotation as apiCreateAnnotation,
   deleteAnnotation as apiDeleteAnnotation,
   updateAnnotation as apiUpdateAnnotation,
 } from '../api/annotations';
@@ -280,7 +279,7 @@ export function useAnnotationState({
 
   const handleSaveAnnotation = useCallback(async (input: CreateAnnotationInput) => {
     try {
-      const created = await apiCreateAnnotation(input);
+      const created = await createAnnotation(input);
       setAnnotations((prev) => [created, ...prev]);
       setSelectedAnnotationId(created.id);
       setSidebarOpen(true);
