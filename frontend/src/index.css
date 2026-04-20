@@ -67,18 +67,18 @@
   cursor: pointer;
 }
 
-/* Input — tonal bg, focus bottom line */
-input:not([type="checkbox"]):not([type="radio"]),
-textarea,
-select {
+/* Input — tonal bg, focus bottom line (scoped to glass-panel to avoid overriding component-level styles) */
+.glass-panel input:not([type="checkbox"]):not([type="radio"]),
+.glass-panel textarea,
+.glass-panel select {
   background: var(--surface-container-low);
   border: 2px solid transparent;
   border-radius: 0.5rem;
   transition: border-color 0.15s;
 }
-input:not([type="checkbox"]):not([type="radio"]):focus,
-textarea:focus,
-select:focus {
+.glass-panel input:not([type="checkbox"]):not([type="radio"]):focus,
+.glass-panel textarea:focus,
+.glass-panel select:focus {
   border-bottom-color: var(--primary);
   outline: none;
 }

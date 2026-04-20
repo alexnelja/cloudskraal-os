@@ -260,7 +260,7 @@ export default function TaskManagerPage() {
 
       {/* Transition banner - subtle, only on home */}
       {viewMode === 'home' && transitionSuggestions.length > 0 && (
-        <div className="px-3 pb-2">
+        <div className="px-5 pb-2">
           <TransitionBanner
             suggestions={transitionSuggestions}
             onGenerate={handleTransitionGenerate}
@@ -277,7 +277,7 @@ export default function TaskManagerPage() {
           </div>
         ) : viewMode === 'home' ? (
           /* ===== HOME: Smart List Cards ===== */
-          <div className="h-full overflow-y-auto px-3 pb-6">
+          <div className="h-full overflow-y-auto px-5 pb-6">
             {/* Smart list cards grid */}
             <div className="grid grid-cols-2 gap-3 mb-6">
               {SMART_LISTS.map((card) => {

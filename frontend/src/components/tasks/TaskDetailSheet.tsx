@@ -26,6 +26,30 @@ const PRIORITIES: { value: TaskPriority; label: string }[] = [
 const INPUT = 'w-full bg-white border border-stone-200/80 rounded-xl px-3 py-2.5 text-[15px] text-stone-900 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20';
 const LABEL = 'text-[13px] font-medium text-stone-500 mb-1.5 block';
 
+/** Convert total minutes to "2h 30m" display string */
+function formatMinutesToDisplay(totalMinutes: number): string {
+  if (!totalMinutes) return '';
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+}
+
+/** Parse display string like "2h", "30m", "2h30m", "2h 30m", or plain number (minutes) into total minutes */
+function parseTimeToMinutes(input: string): number | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  // Plain number → treat as minutes
+  if (/^\d+$/.test(trimmed)) return Number(trimmed);
+  let total = 0;
+  const hourMatch = trimmed.match(/(\d+)\s*h/i);
+  const minMatch = trimmed.match(/(\d+)\s*m/i);
+  if (hourMatch) total += Number(hourMatch[1]) * 60;
+  if (minMatch) total += Number(minMatch[1]);
+  return total > 0 ? total : null;
+}
+
 export default function TaskDetailSheet({
   task,
   open,
@@ -43,6 +67,7 @@ export default function TaskDetailSheet({
   const [dueDate, setDueDate] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [estimatedMinutes, setEstimatedMinutes] = useState('');
+  const [estimatedTimeDisplay, setEstimatedTimeDisplay] = useState('');
   const [fieldId, setFieldId] = useState<string | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -57,6 +82,7 @@ export default function TaskDetailSheet({
       setDueDate(task.due_date || '');
       setAssignedTo(task.assigned_to || '');
       setEstimatedMinutes(task.estimated_minutes?.toString() || '');
+      setEstimatedTimeDisplay(formatMinutesToDisplay(task.estimated_minutes ?? 0));
       setFieldId(task.field_id);
       setSelectedTagIds(new Set(task.tags?.map((t) => t.id) || []));
       setConfirmDelete(false);
@@ -169,55 +195,54 @@ export default function TaskDetailSheet({
                 />
               </div>
 
-              {/* Notes */}
-              <div className="bg-white rounded-2xl p-4">
-                <label className={LABEL}>Notes</label>
-                <textarea
-                  className={`${INPUT} min-h-[80px] resize-y`}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add notes..."
-                />
-              </div>
-
-              {/* Status & Priority */}
+              {/* Due Date & Field — most used on farm */}
               <div className="bg-white rounded-2xl p-4 space-y-4">
-                {/* Status */}
                 <div>
-                  <label className={LABEL}>Status</label>
+                  <label className={LABEL}>Due date</label>
+                  <input
+                    type="date"
+                    className={INPUT}
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className={LABEL}>Field</label>
                   <select
                     className={INPUT}
-                    value={statusId ?? ''}
-                    onChange={(e) => setStatusId(e.target.value || null)}
+                    value={fieldId ?? ''}
+                    onChange={(e) => setFieldId(e.target.value || null)}
                   >
-                    {statuses.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
+                    <option value="">(no field)</option>
+                    {fields.map((f) => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
                     ))}
                   </select>
                 </div>
+              </div>
 
-                {/* Priority */}
-                <div>
-                  <label className={LABEL}>Priority</label>
-                  <div className="flex gap-2">
-                    {PRIORITIES.map((p) => {
-                      const isSelected = priority === p.value;
-                      return (
-                        <button
-                          key={p.value}
-                          type="button"
-                          onClick={() => setPriority(p.value)}
-                          className={`px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors flex-1 ${
-                            isSelected
-                              ? 'bg-stone-900 text-white'
-                              : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                          }`}
-                        >
-                          {p.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+              {/* Priority */}
+              <div className="bg-white rounded-2xl p-4">
+                <label className={LABEL}>Priority</label>
+                <div className="flex gap-2">
+                  {PRIORITIES.map((p) => {
+                    const isSelected = priority === p.value;
+                    return (
+                      <button
+                        key={p.value}
+                        type="button"
+                        onClick={() => setPriority(p.value)}
+                        className={`px-3 py-1.5 rounded-xl text-[13px] font-medium transition-colors flex-1 ${
+                          isSelected
+                            ? 'bg-stone-900 text-white'
+                            : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -250,30 +275,20 @@ export default function TaskDetailSheet({
                 </div>
               )}
 
-              {/* Field, Date, Assignee, Est. minutes */}
+              {/* Status, Assignee, Notes, Est. time */}
               <div className="bg-white rounded-2xl p-4 space-y-4">
+                {/* Status */}
                 <div>
-                  <label className={LABEL}>Field</label>
+                  <label className={LABEL}>Status</label>
                   <select
                     className={INPUT}
-                    value={fieldId ?? ''}
-                    onChange={(e) => setFieldId(e.target.value || null)}
+                    value={statusId ?? ''}
+                    onChange={(e) => setStatusId(e.target.value || null)}
                   >
-                    <option value="">(no field)</option>
-                    {fields.map((f) => (
-                      <option key={f.id} value={f.id}>{f.name}</option>
+                    {statuses.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
-                </div>
-
-                <div>
-                  <label className={LABEL}>Due date</label>
-                  <input
-                    type="date"
-                    className={INPUT}
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                  />
                 </div>
 
                 <div>
@@ -287,15 +302,30 @@ export default function TaskDetailSheet({
                   />
                 </div>
 
+                {/* Notes */}
                 <div>
-                  <label className={LABEL}>Estimated minutes</label>
+                  <label className={LABEL}>Notes</label>
+                  <textarea
+                    className={`${INPUT} min-h-[80px] resize-y`}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Add notes..."
+                  />
+                </div>
+
+                <div>
+                  <label className={LABEL}>Estimated time</label>
                   <input
-                    type="number"
-                    className={`${INPUT} max-w-[120px]`}
-                    min={0}
-                    placeholder="0"
-                    value={estimatedMinutes}
-                    onChange={(e) => setEstimatedMinutes(e.target.value)}
+                    type="text"
+                    className={`${INPUT} max-w-[140px]`}
+                    placeholder="e.g. 2h 30m"
+                    value={estimatedTimeDisplay}
+                    onChange={(e) => setEstimatedTimeDisplay(e.target.value)}
+                    onBlur={() => {
+                      const mins = parseTimeToMinutes(estimatedTimeDisplay);
+                      setEstimatedMinutes(mins?.toString() || '');
+                      setEstimatedTimeDisplay(mins ? formatMinutesToDisplay(mins) : '');
+                    }}
                   />
                 </div>
               </div>

@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@libsql/client": "^0.17.2",
-    "@supabase/supabase-js": "^2.100.1",
     "@turf/area": "^7.3.4",
     "@turf/boolean-point-in-polygon": "^7.3.4",
     "@turf/centroid": "^7.3.4",
