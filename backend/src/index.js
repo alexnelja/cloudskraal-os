@@ -89,26 +89,39 @@ app.get('/api/health', (req, res) => {
 const { errorHandler } = require('./middleware/errorHandler');
 app.use(errorHandler);
 
-// Initialize DB and seed
+// Initialize DB and seed. `seedFarms` and `seedExcelImport` are async because
+// ExcelJS `readFile` is promise-based (xlsx→exceljs migration, S-H2).
 const db = getDb();
-seedDatabase(db);
-seedFarms(db);
-seedCalendar(db);
-seedWiki(db);
-seedPhase2(db);
-seedPhase3(db);
-seedExcelImport(db);
-seedLandUse2026(db);
-seedUsagePeriods(db);
-seedFieldCosts(db);
-seedStandPercent(db);
-seedConversionFactors(db);
-seedEnterprisePrices(db);
+
+async function initializeAndSeed() {
+  seedDatabase(db);
+  await seedFarms(db);
+  seedCalendar(db);
+  seedWiki(db);
+  seedPhase2(db);
+  seedPhase3(db);
+  await seedExcelImport(db);
+  seedLandUse2026(db);
+  seedUsagePeriods(db);
+  seedFieldCosts(db);
+  seedStandPercent(db);
+  seedConversionFactors(db);
+  seedEnterprisePrices(db);
+}
+
+// Expose the initialization promise so tests / embedders can await readiness.
+const ready = initializeAndSeed().catch((err) => {
+  console.error('Seed initialization failed:', err);
+  process.exitCode = 1;
+  throw err;
+});
 
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Cloudskraal CapEx API running on http://localhost:${PORT}`);
+  ready.then(() => {
+    app.listen(PORT, () => {
+      console.log(`Cloudskraal CapEx API running on http://localhost:${PORT}`);
+    });
   });
 }
 
-module.exports = { app };
+module.exports = { app, ready };

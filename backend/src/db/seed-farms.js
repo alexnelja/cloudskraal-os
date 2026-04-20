@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 const { v4: uuidv4 } = require('uuid');
 
 // ── Farm definitions ──────────────────────────────────────────────────────────
@@ -140,16 +140,29 @@ function extractFieldCode(name) {
 }
 
 // ── Excel parsing ─────────────────────────────────────────────────────────────
-function parseOeskatting(filePath) {
-  const wb = XLSX.readFile(filePath);
-  const ws = wb.Sheets['clo010'];
-  const range = XLSX.utils.decode_range(ws['!ref']);
+async function parseOeskatting(filePath) {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.readFile(filePath);
+  const ws = wb.getWorksheet('clo010');
+  if (!ws) return [];
 
+  // xlsx was 0-indexed; ExcelJS is 1-indexed. Original loop started at r=3 (row 4 visually).
+  // Preserve identical offsets by shifting: xlsx r=3 → ExcelJS row 4, xlsx c=0 → ExcelJS col 1.
   const rows = [];
-  for (let r = 3; r <= range.e.r; r++) {
+  const lastRow = ws.rowCount;
+  for (let r = 4; r <= lastRow; r++) {
+    const row = ws.getRow(r);
     const getCell = (c) => {
-      const cell = ws[XLSX.utils.encode_cell({ r, c })];
-      return cell ? cell.v : null;
+      const raw = row.getCell(c + 1).value;
+      if (raw == null) return null;
+      if (typeof raw === 'object') {
+        if ('result' in raw) return raw.result;
+        if ('text' in raw) return raw.text;
+        if ('richText' in raw && Array.isArray(raw.richText)) {
+          return raw.richText.map(rt => rt.text).join('');
+        }
+      }
+      return raw;
     };
 
     const farmName = getCell(0);
@@ -197,7 +210,7 @@ function parseOeskatting(filePath) {
 }
 
 // ── Main seed function ────────────────────────────────────────────────────────
-function seedFarms(db) {
+async function seedFarms(db) {
   const count = db.prepare('SELECT COUNT(*) as c FROM farms').get().c;
   if (count > 0) {
     console.log('Farms already seeded, skipping.');
@@ -215,7 +228,7 @@ function seedFarms(db) {
   const xlsxPath = path.join(__dirname, '..', '..', '..', 'data', 'Johan Brand - Rooibos Oeskatting.xlsx');
 
   const geojson = JSON.parse(fs.readFileSync(geoPath, 'utf8'));
-  const oeskatting = parseOeskatting(xlsxPath);
+  const oeskatting = await parseOeskatting(xlsxPath);
 
   // Build a lookup of oeskatting rows by field code
   const oesLookup = {};
