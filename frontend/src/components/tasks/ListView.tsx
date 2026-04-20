@@ -162,60 +162,75 @@ export default function ListView({
     );
   };
 
+  const hasActiveFilter = !!(searchText || filterStatus || filterPriority || filterTag);
+
   const headerClass =
-    'text-[11px] uppercase tracking-[0.08em] font-semibold text-stone-500 py-2 px-3 border-b border-stone-200/60 cursor-pointer hover:text-stone-700 text-left whitespace-nowrap select-none';
+    'text-[11px] uppercase tracking-[0.08em] font-semibold text-stone-400 py-2 px-3 border-b border-stone-200/60 cursor-pointer hover:text-stone-700 text-left whitespace-nowrap select-none';
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Filter bar */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-stone-100 bg-stone-50/40">
-        <FunnelSimple size={14} className="text-stone-400 shrink-0" />
-        <input
-          type="text"
-          placeholder="Search title..."
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          className="text-xs bg-white border border-stone-200 rounded px-2 py-1 w-40 focus:outline-none focus:ring-1 focus:ring-amber-400/50"
-        />
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="text-xs bg-white border border-stone-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400/50"
-        >
-          <option value="">All statuses</option>
-          {statuses.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={filterPriority}
-          onChange={(e) => setFilterPriority(e.target.value)}
-          className="text-xs bg-white border border-stone-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400/50"
-        >
-          <option value="">All priorities</option>
-          <option value="urgent">Urgent</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-        <select
-          value={filterTag}
-          onChange={(e) => setFilterTag(e.target.value)}
-          className="text-xs bg-white border border-stone-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400/50"
-        >
-          <option value="">All tags</option>
-          {allTags.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
+      <div className="flex items-center gap-2 px-4 py-3 bg-[#f2f2f7]">
+        <FunnelSimple size={14} className={`shrink-0 transition-colors ${hasActiveFilter ? 'text-emerald-500' : 'text-stone-400'}`} />
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search title..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="text-[13px] bg-[#f2f2f7] border-0 rounded-xl px-3 py-2 w-40 focus:outline-none focus:ring-2 focus:ring-emerald-400/30 placeholder:text-stone-400"
+          />
+          {searchText && <span className="absolute right-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+        </div>
+        <div className="relative">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="text-[13px] bg-[#f2f2f7] border-0 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400/30 appearance-none pr-6"
+          >
+            <option value="">All statuses</option>
+            {statuses.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          {filterStatus && <span className="absolute right-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-400 pointer-events-none" />}
+        </div>
+        <div className="relative">
+          <select
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value)}
+            className="text-[13px] bg-[#f2f2f7] border-0 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400/30 appearance-none pr-6"
+          >
+            <option value="">All priorities</option>
+            <option value="urgent">Urgent</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          {filterPriority && <span className="absolute right-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-400 pointer-events-none" />}
+        </div>
+        <div className="relative">
+          <select
+            value={filterTag}
+            onChange={(e) => setFilterTag(e.target.value)}
+            className="text-[13px] bg-[#f2f2f7] border-0 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400/30 appearance-none pr-6"
+          >
+            <option value="">All tags</option>
+            {allTags.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+          {filterTag && <span className="absolute right-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-400 pointer-events-none" />}
+        </div>
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto px-3 pb-3">
+        <div className="bg-white rounded-2xl shadow-sm border border-stone-200/40 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-white z-10">
             <tr>
@@ -384,11 +399,12 @@ export default function ListView({
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Bulk actions bar */}
       {selected.size > 0 && (
-        <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm border-t border-stone-200 px-4 py-2 flex items-center gap-3 z-20">
+        <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm rounded-b-2xl border-t border-stone-200 px-4 py-2 flex items-center gap-3 z-20">
           <span className="text-xs font-medium text-stone-600">
             {selected.size} selected
           </span>

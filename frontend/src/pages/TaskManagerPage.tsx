@@ -661,6 +661,32 @@ export default function TaskManagerPage() {
           onDismiss={() => setCopToast(null)}
         />
       )}
+
+      {/* Completion undo toast (non-COP tasks) */}
+      <AnimatePresence onExitComplete={() => setCompletionToast(null)}>
+        {completionToast && !copToast && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[100] max-w-sm w-[calc(100%-2rem)]"
+          >
+            <div className="bg-white/95 backdrop-blur-md rounded-xl px-4 py-3 shadow-lg border border-stone-200/40 flex items-center justify-between gap-3">
+              <p className="text-sm text-stone-700 truncate">
+                &lsquo;{completionToast.title}&rsquo; completed
+              </p>
+              <button
+                type="button"
+                onClick={handleUndoCompletionToast}
+                className="text-xs font-semibold text-emerald-600 hover:text-emerald-800 underline underline-offset-2 transition-colors shrink-0"
+              >
+                Undo
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
