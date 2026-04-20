@@ -1,38 +1,78 @@
-import { NavLink } from 'react-router-dom';
-import { SquaresFour, MapTrifold, CheckSquare, CalendarBlank, BookOpen } from '@phosphor-icons/react';
+import { useEffect, useRef, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import type { MdNavigationBar } from '@material/web/labs/navigationbar/navigation-bar';
 
-const tabs = [
-  { to: '/', icon: SquaresFour, label: 'Home' },
-  { to: '/map', icon: MapTrifold, label: 'Map' },
-  { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
-  { to: '/calendar', icon: CalendarBlank, label: 'Calendar' },
-  { to: '/wiki', icon: BookOpen, label: 'Wiki' },
+type Tab = {
+  to: string;
+  label: string;
+  /** Material Symbols icon name — rendered inside `<md-icon slot="active-icon">` / `slot="inactive-icon"`. */
+  icon: string;
+};
+
+const tabs: Tab[] = [
+  { to: '/', label: 'Home', icon: 'home' },
+  { to: '/map', label: 'Map', icon: 'map' },
+  { to: '/tasks', label: 'Tasks', icon: 'task_alt' },
+  { to: '/calendar', label: 'Calendar', icon: 'calendar_month' },
+  { to: '/wiki', label: 'Wiki', icon: 'menu_book' },
 ];
 
+function indexForPath(pathname: string): number {
+  // `/` is exact-match; others match by prefix so `/tasks/123` stays active on the Tasks tab.
+  if (pathname === '/') return 0;
+  const idx = tabs.findIndex((t) => t.to !== '/' && pathname.startsWith(t.to));
+  return idx === -1 ? 0 : idx;
+}
+
+/**
+ * Mobile bottom navigation — MD3 `<md-navigation-bar>`.
+ *
+ * The Lit element dispatches `navigation-bar-activated` with the new
+ * activeIndex; we translate that into a react-router navigate(). We also push
+ * the current route's index back into `activeIndex` whenever the URL changes
+ * so browser back/forward stays in sync with the bar.
+ */
 export default function BottomNav() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const barRef = useRef<MdNavigationBar | null>(null);
+
+  const activeIndex = useMemo(() => indexForPath(location.pathname), [location.pathname]);
+
+  // Keep the web component's activeIndex in sync with the router.
+  useEffect(() => {
+    if (barRef.current && barRef.current.activeIndex !== activeIndex) {
+      barRef.current.activeIndex = activeIndex;
+    }
+  }, [activeIndex]);
+
+  // Listen for user-driven tab activations and navigate.
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ activeIndex: number }>).detail;
+      const target = tabs[detail.activeIndex];
+      if (target && target.to !== location.pathname) {
+        navigate(target.to);
+      }
+    };
+    el.addEventListener('navigation-bar-activated', handler);
+    return () => el.removeEventListener('navigation-bar-activated', handler);
+  }, [navigate, location.pathname]);
+
   return (
-    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 h-20 bg-white/80 backdrop-blur-xl rounded-t-2xl md:hidden pb-2"
+    <md-navigation-bar
+      ref={barRef}
+      class="md3-bottom-nav md:hidden"
       aria-label="Main navigation"
     >
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        return (
-          <NavLink
-            key={tab.to}
-            to={tab.to}
-            end={tab.to === '/'}
-            aria-label={tab.label}
-            className={({ isActive }) =>
-              isActive
-                ? 'flex flex-col items-center justify-center text-white bg-gradient-to-br from-[#005d42] to-[#047857] rounded-xl px-3 py-1.5 gap-0.5 min-w-[44px] min-h-[44px]'
-                : 'flex flex-col items-center justify-center text-[#78716c] gap-0.5 min-w-[44px] min-h-[44px]'
-            }
-          >
-            <Icon size={20} weight="duotone" />
-            <span className="text-[10px] font-medium tracking-wide uppercase">{tab.label}</span>
-          </NavLink>
-        );
-      })}
-    </nav>
+      {tabs.map((tab, i) => (
+        <md-navigation-tab key={tab.to} label={tab.label} active={i === activeIndex}>
+          <md-icon slot="active-icon">{tab.icon}</md-icon>
+          <md-icon slot="inactive-icon">{tab.icon}</md-icon>
+        </md-navigation-tab>
+      ))}
+    </md-navigation-bar>
   );
 }

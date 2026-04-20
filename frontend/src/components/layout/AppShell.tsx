@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wheat } from 'lucide-react';
+import { Plant } from '@phosphor-icons/react';
 import Sidebar from '../Sidebar';
 import BottomNav from './BottomNav';
 import CommandPalette from '../CommandPalette';
@@ -12,7 +12,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        setCommandPaletteOpen(prev => !prev);
+        setCommandPaletteOpen((prev) => !prev);
       }
     };
     window.addEventListener('keydown', handler);
@@ -20,27 +20,46 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#f9f9f8]">
-      {/* Mobile top bar */}
-      <header className="fixed top-0 w-full flex justify-between items-center px-4 h-14 bg-white/80 backdrop-blur-xl z-40 md:hidden">
-        <div className="flex items-center gap-2 text-[#005d42] font-bold">
-          <Wheat size={20} />
-          <span className="text-base font-semibold tracking-tight">Cloudskraal</span>
+    <div
+      className="min-h-screen"
+      style={{ background: 'var(--md-sys-color-surface)' }}
+    >
+      {/* Mobile top app bar */}
+      <header
+        className="fixed top-0 w-full flex justify-between items-center px-4 h-14 backdrop-blur-xl z-40 md:hidden"
+        style={{
+          background: 'color-mix(in srgb, var(--md-sys-color-surface) 80%, transparent)',
+          borderBottom: '1px solid var(--md-sys-color-outline-variant)',
+        }}
+      >
+        <div
+          className="flex items-center gap-2"
+          style={{
+            color: 'var(--md-sys-color-primary)',
+            font: 'var(--md-sys-typescale-title-medium)',
+          }}
+        >
+          <Plant size={20} weight="fill" />
+          <span>Cloudskraal</span>
         </div>
-        <div className="h-8 w-8 rounded-full bg-[#047857]/10 flex items-center justify-center text-[#047857] text-xs font-bold">
+        <div
+          className="h-8 w-8 rounded-full flex items-center justify-center"
+          style={{
+            background: 'var(--md-sys-color-primary-container)',
+            color: 'var(--md-sys-color-on-primary-container)',
+            font: 'var(--md-sys-typescale-label-medium)',
+          }}
+        >
           AN
         </div>
       </header>
 
       <Sidebar />
       <BottomNav />
-      <main className="md:ml-64 mt-14 md:mt-0 pb-24 md:pb-0 transition-all duration-300">
+      <main className="md:ml-[360px] mt-14 md:mt-0 pb-24 md:pb-0 transition-all duration-300">
         {children}
       </main>
-      <CommandPalette
-        open={commandPaletteOpen}
-        onClose={() => setCommandPaletteOpen(false)}
-      />
+      <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
       <QuickAddFAB />
     </div>
   );

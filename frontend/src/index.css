@@ -501,3 +501,79 @@ body {
   from { opacity: 1; }
   to { opacity: 0; }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   MD3 Shell — Phase 1
+   Positioning + theming for @material/web nav components (Lit custom
+   elements don't ship with fixed-positioning; we add it here so they drop
+   into the existing AppShell layout without behavioral surprises).
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* Mobile bottom nav — md-navigation-bar */
+md-navigation-bar.md3-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  border-top-left-radius: var(--md-sys-shape-corner-large);
+  border-top-right-radius: var(--md-sys-shape-corner-large);
+  /* Theme the nav-bar via its documented component tokens */
+  --md-navigation-bar-container-color: var(--md-sys-color-surface-container);
+  --md-navigation-bar-active-indicator-color: var(--md-sys-color-primary-container);
+  --md-navigation-bar-active-icon-color: var(--md-sys-color-on-primary-container);
+  --md-navigation-bar-inactive-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-navigation-bar-active-label-text-color: var(--md-sys-color-on-surface);
+  --md-navigation-bar-inactive-label-text-color: var(--md-sys-color-on-surface-variant);
+}
+
+/* Desktop side nav — md-navigation-drawer */
+md-navigation-drawer.md3-side-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 50;
+  /* Drawer is hidden on mobile; AppShell's md:hidden on BottomNav complements this. */
+  --md-navigation-drawer-container-color: var(--md-sys-color-surface-container-low);
+  --md-navigation-drawer-container-shape: 0;
+}
+@media (max-width: 767px) {
+  md-navigation-drawer.md3-side-nav {
+    display: none;
+  }
+}
+
+/* Side-nav rail items — react-router NavLinks styled as MD3 navigation items */
+.md3-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  margin: 4px 12px;
+  padding: 0 16px;
+  border-radius: var(--md-sys-shape-corner-full);
+  color: var(--md-sys-color-on-surface-variant);
+  font: var(--md-sys-typescale-label-large);
+  letter-spacing: 0.1px;
+  text-decoration: none;
+  transition: background-color var(--md-sys-motion-duration-short3)
+    var(--md-sys-motion-easing-standard);
+}
+.md3-nav-item:hover {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+}
+.md3-nav-item.is-active {
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.md3-nav-item .md3-nav-item__icon {
+  font-size: 24px;
+  line-height: 1;
+}
+.md3-nav-group-label {
+  padding: 16px 28px 8px;
+  font: var(--md-sys-typescale-title-small);
+  color: var(--md-sys-color-on-surface-variant);
+  letter-spacing: 0.1px;
+}
