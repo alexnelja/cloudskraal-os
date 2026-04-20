@@ -1,4 +1,5 @@
 import type { Tag, TaskStatusConfig } from '../types/taskManager';
+import { cached, invalidate } from '../lib/apiCache';
 
 import { API_BASE_URL } from './config';
 const BASE_URL = API_BASE_URL;
@@ -19,7 +20,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export async function listTags(group?: string): Promise<Tag[]> {
   const qs = group ? `?group=${encodeURIComponent(group)}` : '';
-  return request<Tag[]>(`/tags${qs}`);
+  const cacheKey = `tags:${qs}`;
+  return cached(cacheKey, () => request<Tag[]>(`/tags${qs}`));
 }
 
 export async function createTag(data: {
@@ -27,30 +29,35 @@ export async function createTag(data: {
   color?: string;
   group?: string;
 }): Promise<Tag> {
-  return request<Tag>('/tags', {
+  const result = await request<Tag>('/tags', {
     method: 'POST',
     body: JSON.stringify(data),
   });
+  invalidate('tags');
+  return result;
 }
 
 export async function updateTag(
   id: string,
   data: Partial<Tag>,
 ): Promise<Tag> {
-  return request<Tag>(`/tags/${id}`, {
+  const result = await request<Tag>(`/tags/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
+  invalidate('tags');
+  return result;
 }
 
 export async function deleteTag(id: string): Promise<void> {
   await request<void>(`/tags/${id}`, { method: 'DELETE' });
+  invalidate('tags');
 }
 
 // --- Task Statuses ---
 
 export async function listStatuses(): Promise<TaskStatusConfig[]> {
-  return request<TaskStatusConfig[]>('/task-statuses');
+  return cached('statuses', () => request<TaskStatusConfig[]>('/task-statuses'));
 }
 
 export async function createStatus(data: {
@@ -58,24 +65,29 @@ export async function createStatus(data: {
   color?: string;
   category: string;
 }): Promise<TaskStatusConfig> {
-  return request<TaskStatusConfig>('/task-statuses', {
+  const result = await request<TaskStatusConfig>('/task-statuses', {
     method: 'POST',
     body: JSON.stringify(data),
   });
+  invalidate('statuses');
+  return result;
 }
 
 export async function updateStatus(
   id: string,
   data: Partial<TaskStatusConfig>,
 ): Promise<TaskStatusConfig> {
-  return request<TaskStatusConfig>(`/task-statuses/${id}`, {
+  const result = await request<TaskStatusConfig>(`/task-statuses/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
+  invalidate('statuses');
+  return result;
 }
 
 export async function deleteStatus(id: string): Promise<void> {
   await request<void>(`/task-statuses/${id}`, { method: 'DELETE' });
+  invalidate('statuses');
 }
 
 // --- Task-Tag Linking ---

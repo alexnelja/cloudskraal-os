@@ -1,4 +1,5 @@
 import type { Farm, Field, FieldNote, MapLayer, FieldCostOfProduction } from '../types/farm';
+import { cached, invalidate } from '../lib/apiCache';
 
 import { API_BASE_URL } from './config';
 const BASE_URL = API_BASE_URL;
@@ -24,7 +25,8 @@ export async function getFields(params?: { farm_id?: string; enterprise?: string
   if (params?.farm_id) qs.set('farm_id', params.farm_id);
   if (params?.enterprise) qs.set('enterprise', params.enterprise);
   const query = qs.toString();
-  return request<Field[]>(`/fields${query ? `?${query}` : ''}`);
+  const cacheKey = `fields:${query}`;
+  return cached(cacheKey, () => request<Field[]>(`/fields${query ? `?${query}` : ''}`));
 }
 
 export async function getField(id: string): Promise<Field> {
@@ -32,7 +34,10 @@ export async function getField(id: string): Promise<Field> {
 }
 
 export async function updateField(id: string, data: Partial<Field>): Promise<Field> {
-  return request<Field>(`/fields/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  const result = await request<Field>(`/fields/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  invalidate('fields');
+  invalidate('geojson');
+  return result;
 }
 
 export async function getFarmBoundaries(): Promise<GeoJSON.FeatureCollection> {
@@ -44,7 +49,8 @@ export async function getMapGeoJSON(params?: { farm?: string; enterprise?: strin
   if (params?.farm) qs.set('farm', params.farm);
   if (params?.enterprise) qs.set('enterprise', params.enterprise);
   const query = qs.toString();
-  return request<GeoJSON.FeatureCollection>(`/map/geojson${query ? `?${query}` : ''}`);
+  const cacheKey = `geojson:${query}`;
+  return cached(cacheKey, () => request<GeoJSON.FeatureCollection>(`/map/geojson${query ? `?${query}` : ''}`), 300_000);
 }
 
 export async function getMapLayers(): Promise<MapLayer[]> {
@@ -77,10 +83,15 @@ export interface CreateFieldInput {
 }
 
 export async function createField(input: CreateFieldInput): Promise<Field> {
-  return request<Field>('/fields', { method: 'POST', body: JSON.stringify(input) });
+  const result = await request<Field>('/fields', { method: 'POST', body: JSON.stringify(input) });
+  invalidate('fields');
+  invalidate('geojson');
+  return result;
 }
 
 export async function deleteField(id: string): Promise<void> {
   const res = await fetch(`${BASE_URL}/fields/${id}`, { method: 'DELETE' });
   if (!res.ok && res.status !== 404) throw new Error(`Delete failed: ${res.status}`);
+  invalidate('fields');
+  invalidate('geojson');
 }

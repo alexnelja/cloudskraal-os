@@ -5,6 +5,7 @@ import type {
   TaskChecklist,
   TaskInput,
 } from '../types/calendar';
+import { cached, invalidate } from '../lib/apiCache';
 
 import { API_BASE_URL } from './config';
 const BASE_URL = API_BASE_URL;
@@ -73,7 +74,8 @@ export async function getTasks(params?: {
   if (params?.due_before) qs.set('due_before', params.due_before);
   if (params?.due_after) qs.set('due_after', params.due_after);
   const query = qs.toString();
-  return request<Task[]>(`/tasks${query ? `?${query}` : ''}`);
+  const cacheKey = `tasks:${query}`;
+  return cached(cacheKey, () => request<Task[]>(`/tasks${query ? `?${query}` : ''}`));
 }
 
 export async function getTask(id: string): Promise<Task> {
@@ -83,32 +85,41 @@ export async function getTask(id: string): Promise<Task> {
 export async function createTask(
   data: Omit<Task, 'id' | 'completed_date' | 'completed_by' | 'inputs' | 'checklists' | 'depends_on_task'>,
 ): Promise<Task> {
-  return request<Task>('/tasks', {
+  const result = await request<Task>('/tasks', {
     method: 'POST',
     body: JSON.stringify(data),
   });
+  invalidate('tasks');
+  return result;
 }
 
 export async function updateTask(
   id: string,
   data: Partial<Task>,
 ): Promise<Task> {
-  return request<Task>(`/tasks/${id}`, {
+  const result = await request<Task>(`/tasks/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
+  invalidate('tasks');
+  return result;
 }
 
 export async function deleteTask(id: string): Promise<void> {
   await request<void>(`/tasks/${id}`, { method: 'DELETE' });
+  invalidate('tasks');
 }
 
 export async function completeTask(id: string): Promise<Task & { costs_logged?: Array<{ id: string; product_name: string; category: string; total_cost: number }> }> {
-  return request<Task & { costs_logged?: Array<{ id: string; product_name: string; category: string; total_cost: number }> }>(`/tasks/${id}/complete`, { method: 'POST' });
+  const result = await request<Task & { costs_logged?: Array<{ id: string; product_name: string; category: string; total_cost: number }> }>(`/tasks/${id}/complete`, { method: 'POST' });
+  invalidate('tasks');
+  return result;
 }
 
 export async function uncompleteTask(id: string): Promise<Task> {
-  return request<Task>(`/tasks/${id}/uncomplete`, { method: 'POST' });
+  const result = await request<Task>(`/tasks/${id}/uncomplete`, { method: 'POST' });
+  invalidate('tasks');
+  return result;
 }
 
 // --- Task Inputs ---
