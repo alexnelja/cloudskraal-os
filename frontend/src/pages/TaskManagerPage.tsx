@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { Bell, BellSlash, GearSix, CaretLeft } from '@phosphor-icons/react';
 import { useFieldDetection } from '../hooks/useFieldDetection';
@@ -75,11 +76,13 @@ const SMART_LISTS: SmartListCard[] = [
 ];
 
 export default function TaskManagerPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>('home');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [statuses, setStatuses] = useState<TaskStatusConfig[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [initialTagFilter, setInitialTagFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [fields, setFields] = useState<Array<{ id: string; name: string; enterprise: string }>>([]);
@@ -88,6 +91,8 @@ export default function TaskManagerPage() {
   const [weatherBlocks, setWeatherBlocks] = useState<WeatherBlock[]>([]);
   const [weatherToday, setWeatherToday] = useState<WeatherData | null>(null);
   const [copToast, setCopToast] = useState<{ costsLogged: Array<{ id: string; product_name: string; total_cost: number }>; taskTitle: string; taskId: string } | null>(null);
+  const [completionToast, setCompletionToast] = useState<{ taskId: string; title: string } | null>(null);
+  const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [transitionSuggestions, setTransitionSuggestions] = useState<TransitionSuggestion[]>([]);
   const [notificationsOn, setNotificationsOn] = useState(() =>
     localStorage.getItem('capex.notifications-enabled') === 'true' && isNotificationEnabled(),
@@ -144,6 +149,26 @@ export default function TaskManagerPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Auto-open task detail sheet from ?detail= query param (e.g. after FAB quick-create)
+  useEffect(() => {
+    if (loading) return;
+    const detailId = searchParams.get('detail');
+    if (detailId) {
+      const taskExists = tasks.some((t) => t.id === detailId);
+      if (taskExists) {
+        setSelectedTaskId(detailId);
+        // Switch to a list view so the detail sheet makes sense
+        if (viewMode === 'home') setViewMode('all');
+      }
+      // Clear the query param so it doesn't re-trigger
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('detail');
+        return next;
+      }, { replace: true });
+    }
+  }, [loading, tasks, searchParams, setSearchParams, viewMode]);
 
   // Weather
   const loadWeather = useCallback(
@@ -295,13 +320,22 @@ export default function TaskManagerPage() {
   // Task actions
   const handleComplete = useCallback(async (id: string) => {
     try {
+      // Grab the title before the task disappears from the list
+      const taskTitle = tasks.find((t) => t.id === id)?.title ?? 'Task';
       const result = await completeTask(id);
       await fetchData();
       if (result.costs_logged && result.costs_logged.length > 0) {
         setCopToast({ costsLogged: result.costs_logged, taskTitle: result.title, taskId: id });
+      } else {
+        // Show lightweight completion toast with undo for non-COP completions
+        if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
+        setCompletionToast({ taskId: id, title: taskTitle });
+        completionTimerRef.current = setTimeout(() => {
+          setCompletionToast(null);
+        }, 4000);
       }
     } catch (err) { console.error('Failed to complete task:', err); }
-  }, [fetchData]);
+  }, [fetchData, tasks]);
 
   const handleUndoComplete = useCallback(async () => {
     if (!copToast) return;
@@ -311,6 +345,16 @@ export default function TaskManagerPage() {
       await fetchData();
     } catch (err) { console.error('Failed to undo task completion:', err); }
   }, [copToast, fetchData]);
+
+  const handleUndoCompletionToast = useCallback(async () => {
+    if (!completionToast) return;
+    if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
+    try {
+      await uncompleteTask(completionToast.taskId);
+      setCompletionToast(null);
+      await fetchData();
+    } catch (err) { console.error('Failed to undo task completion:', err); }
+  }, [completionToast, fetchData]);
 
   const handleStatusChange = useCallback(async (taskId: string, newStatusId: string) => {
     try {
@@ -404,7 +448,7 @@ export default function TaskManagerPage() {
           ) : (
             <button
               type="button"
-              onClick={() => startTransition('slide-back', () => setViewMode('home'))}
+              onClick={() => startTransition('slide-back', () => { setViewMode('home'); setInitialTagFilter(null); })}
               className="flex items-center gap-1 text-blue-500 hover:text-blue-600 transition-colors"
             >
               <CaretLeft size={20} weight="bold" />
@@ -481,7 +525,7 @@ export default function TaskManagerPage() {
                         </span>
                         <span className="text-[15px] font-medium text-stone-700">{card.label}</span>
                       </div>
-                      <span className="text-[24px] font-bold text-stone-400 leading-none">{count}</span>
+                      <span className="text-[24px] font-bold leading-none" style={{ color: card.color }}>{count}</span>
                     </div>
                   </motion.button>
                 );
@@ -518,8 +562,7 @@ export default function TaskManagerPage() {
                         key={tag.id}
                         type="button"
                         onClick={() => {
-                          // Navigate to All view with this tag pre-filtered
-                          // For now just go to All
+                          setInitialTagFilter(tag.id);
                           setViewMode('all');
                         }}
                         className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-stone-50 transition-colors ${
@@ -567,6 +610,7 @@ export default function TaskManagerPage() {
             listTitle={activeListConfig?.label ?? 'Tasks'}
             listColor={activeListConfig?.color ?? '#57534e'}
             filterMode={viewMode as 'today' | 'all' | 'upcoming' | 'completed'}
+            initialTagFilter={initialTagFilter}
           />
         ) : viewMode === 'board' ? (
           <BoardView

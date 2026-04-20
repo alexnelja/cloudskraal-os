@@ -82,7 +82,7 @@ export default function QuickAddFAB() {
     if (!title || saving) return;
     setSaving(true);
     try {
-      await createTask({
+      const newTask = await createTask({
         title,
         description: null,
         enterprise: null,
@@ -106,15 +106,16 @@ export default function QuickAddFAB() {
         verified_at: null,
       });
       navigator.vibrate?.(15);
-      setToast(`Task "${title}" created`);
       setInlineValue('');
       setInlineMode(null);
+      // Navigate to task detail sheet so user can enrich the new task
+      navigate(`/tasks?detail=${newTask.id}`);
     } catch {
       setToast('Failed to create task');
     } finally {
       setSaving(false);
     }
-  }, [inlineValue, saving]);
+  }, [inlineValue, saving, navigate]);
 
   return (
     <div

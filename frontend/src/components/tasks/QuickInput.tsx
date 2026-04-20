@@ -164,14 +164,14 @@ export default function QuickInput({ tags, fields, onSubmit }: QuickInputProps) 
           }}
           onKeyDown={handleKeyDown}
           placeholder='Add a task... (try: Spray Block 5A tomorrow p1 #rooibos)'
-          className="w-full bg-white/80 backdrop-blur-sm border border-stone-200/60 rounded-xl px-4 py-3 pr-12 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 shadow-sm text-sm"
+          className="w-full bg-white/80 backdrop-blur-sm border border-stone-200/60 rounded-xl px-4 py-3 pr-12 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/30 shadow-sm text-sm"
         />
         <button
           type="button"
           onClick={handleSubmit}
           className="absolute right-2 w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors"
           style={{
-            background: 'linear-gradient(135deg, #d97706, #b45309)',
+            background: 'linear-gradient(135deg, #059669, #047857)',
           }}
           aria-label="Submit task"
         >
@@ -192,7 +192,7 @@ export default function QuickInput({ tags, fields, onSubmit }: QuickInputProps) 
               onClick={() => selectTag(tag)}
               className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${
                 idx === autocompleteIndex
-                  ? 'bg-amber-50 text-stone-900'
+                  ? 'bg-emerald-50 text-stone-900'
                   : 'text-stone-700 hover:bg-stone-50'
               }`}
             >

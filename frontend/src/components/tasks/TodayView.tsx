@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   SunHorizon,
@@ -45,6 +45,8 @@ interface TodayViewProps {
   listColor?: string;
   /** Filter mode: 'today' shows Overdue+Today+Tomorrow, 'all' shows everything, 'upcoming' future only, 'completed' done only */
   filterMode?: 'today' | 'all' | 'upcoming' | 'completed';
+  /** Pre-activate a tag filter on mount (e.g. from home tag click) */
+  initialTagFilter?: string | null;
 }
 
 type TimeGroup = 'Overdue' | 'Today' | 'Tomorrow' | 'Upcoming' | 'No Date';
@@ -88,13 +90,48 @@ export default function TodayView({
   onGpsToggle,
   onQuickCreate,
   listTitle = 'Today',
-  listColor = '#3b82f6',
+  listColor = '#059669',
   filterMode = 'today',
+  initialTagFilter,
 }: TodayViewProps) {
   const [activeTagIds, setActiveTagIds] = useState<Set<string>>(new Set());
   const [showCompleted, setShowCompleted] = useState(filterMode === 'completed');
   const [showFilterPopover, setShowFilterPopover] = useState(false);
   const [showWeatherPopover, setShowWeatherPopover] = useState(false);
+
+  // Pre-activate tag filter when navigated from home tag click
+  useEffect(() => {
+    if (initialTagFilter) {
+      setActiveTagIds(new Set([initialTagFilter]));
+    }
+  }, [initialTagFilter]);
+  const weatherPopoverRef = useRef<HTMLDivElement>(null);
+  const filterPopoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showWeatherPopover && !showFilterPopover) return;
+    const handler = (e: MouseEvent) => {
+      if (showWeatherPopover && weatherPopoverRef.current && !weatherPopoverRef.current.contains(e.target as Node)) {
+        setShowWeatherPopover(false);
+      }
+      if (showFilterPopover && filterPopoverRef.current && !filterPopoverRef.current.contains(e.target as Node)) {
+        setShowFilterPopover(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showWeatherPopover, showFilterPopover]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowWeatherPopover(false);
+        setShowFilterPopover(false);
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
 
   const filteredTasks = useMemo(() => {
     let result = tasks;
@@ -200,7 +237,7 @@ export default function TodayView({
           <div className="flex items-center gap-1">
             {/* Weather icon button */}
             {hasWeather && (
-              <div className="relative">
+              <div className="relative" ref={weatherPopoverRef}>
                 <button
                   type="button"
                   onClick={() => setShowWeatherPopover(!showWeatherPopover)}
@@ -264,7 +301,7 @@ export default function TodayView({
 
             {/* Filter button */}
             {tags.length > 0 && (
-              <div className="relative">
+              <div className="relative" ref={filterPopoverRef}>
                 <button
                   type="button"
                   onClick={() => setShowFilterPopover(!showFilterPopover)}

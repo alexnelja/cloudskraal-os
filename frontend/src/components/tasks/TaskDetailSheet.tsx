@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { X, Trash } from '@phosphor-icons/react';
 import type { Task, TaskPriority } from '../../types/calendar';
 import type { Tag, TaskStatusConfig } from '../../types/taskManager';
+import { addTagToTask, removeTagFromTask } from '../../api/taskManager';
 
 interface TaskDetailSheetProps {
   task: Task | null;
@@ -71,8 +72,23 @@ export default function TaskDetailSheet({
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onDismiss]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!task) return;
+
+    // Sync tag changes
+    const originalTagIds = new Set(task.tags?.map((t) => t.id) || []);
+    const toAdd = [...selectedTagIds].filter((id) => !originalTagIds.has(id));
+    const toRemove = [...originalTagIds].filter((id) => !selectedTagIds.has(id));
+
+    try {
+      await Promise.all([
+        ...toAdd.map((tagId) => addTagToTask(task.id, tagId)),
+        ...toRemove.map((tagId) => removeTagFromTask(task.id, tagId)),
+      ]);
+    } catch (err) {
+      console.error('Failed to sync tags:', err);
+    }
+
     onSave(task.id, {
       title: title.trim(),
       notes: notes.trim() || null,
@@ -85,7 +101,7 @@ export default function TaskDetailSheet({
       field_id: fieldId,
     });
     onDismiss();
-  }, [task, title, notes, priority, statusId, dueDate, assignedTo, estimatedMinutes, fieldId, onSave, onDismiss]);
+  }, [task, title, notes, priority, statusId, dueDate, assignedTo, estimatedMinutes, fieldId, selectedTagIds, onSave, onDismiss]);
 
   const handleDelete = useCallback(() => {
     if (!task) return;

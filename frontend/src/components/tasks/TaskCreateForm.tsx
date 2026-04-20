@@ -32,7 +32,7 @@ const PRIORITIES: { value: TaskPriority; label: string }[] = [
 
 const LABEL = 'text-[11px] uppercase tracking-[0.08em] font-semibold text-stone-600 mb-1.5';
 const INPUT =
-  'w-full bg-white/60 border border-stone-300/80 rounded-lg px-3 py-2 text-stone-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30';
+  'w-full bg-white/60 border border-stone-300/80 rounded-lg px-3 py-2 text-stone-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/30';
 
 export default function TaskCreateForm({
   open,
@@ -246,7 +246,7 @@ export default function TaskCreateForm({
                 <button
                   key={f.id}
                   type="button"
-                  className="w-full text-left px-3 py-1.5 text-sm text-stone-900 hover:bg-amber-50"
+                  className="w-full text-left px-3 py-1.5 text-sm text-stone-900 hover:bg-emerald-50"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     setSelectedFieldId(f.id);
@@ -313,7 +313,7 @@ export default function TaskCreateForm({
             className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               background: title.trim()
-                ? 'linear-gradient(135deg, #d97706, #b45309)'
+                ? 'linear-gradient(135deg, #059669, #047857)'
                 : '#a8a29e',
             }}
           >

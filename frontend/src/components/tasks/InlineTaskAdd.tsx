@@ -143,6 +143,8 @@ export default function InlineTaskAdd({ tags, fields, onSubmit, accentColor = '#
         {/* Date picker toggle */}
         <button
           type="button"
+          title="Set due date"
+          aria-label="Set due date"
           onClick={() => { setShowDatePicker(!showDatePicker); setShowTagPicker(false); setShowFieldPicker(false); }}
           className={`p-2 rounded-lg transition-colors ${
             showDatePicker || manualDate ? 'bg-blue-50 text-blue-600' : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
@@ -154,6 +156,8 @@ export default function InlineTaskAdd({ tags, fields, onSubmit, accentColor = '#
         {/* Tag picker toggle */}
         <button
           type="button"
+          title="Add tags"
+          aria-label="Add tags"
           onClick={() => { setShowTagPicker(!showTagPicker); setShowDatePicker(false); setShowFieldPicker(false); }}
           className={`p-2 rounded-lg transition-colors ${
             showTagPicker || manualTagIds.size > 0 ? 'bg-blue-50 text-blue-600' : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
@@ -165,6 +169,8 @@ export default function InlineTaskAdd({ tags, fields, onSubmit, accentColor = '#
         {/* Priority toggle */}
         <button
           type="button"
+          title="Set priority"
+          aria-label="Set priority"
           onClick={() => {
             const cycle = [null, 'low', 'medium', 'high', 'urgent'];
             const idx = cycle.indexOf(manualPriority);
@@ -180,6 +186,8 @@ export default function InlineTaskAdd({ tags, fields, onSubmit, accentColor = '#
         {/* Field picker toggle */}
         <button
           type="button"
+          title="Link to field"
+          aria-label="Link to field"
           onClick={() => { setShowFieldPicker(!showFieldPicker); setShowDatePicker(false); setShowTagPicker(false); }}
           className={`p-2 rounded-lg transition-colors ${
             showFieldPicker || manualFieldId ? 'bg-green-50 text-green-600' : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
