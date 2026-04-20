@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Bell, BellSlash, GearSix, CaretLeft } from '@phosphor-icons/react';
 import { useFieldDetection } from '../hooks/useFieldDetection';
+import { useViewTransition } from '../hooks/useViewTransition';
 import { getTasks, completeTask, uncompleteTask, createTask, updateTask, deleteTask } from '../api/calendar';
 import { listTags, listStatuses, addTagToTask } from '../api/taskManager';
 import { getFields, getFarms, getMapGeoJSON } from '../api/farms';
@@ -96,6 +97,7 @@ export default function TaskManagerPage() {
     localStorage.getItem('capex.gps-field-detection') === 'true',
   );
   const detectedField = useFieldDetection(geojson, gpsEnabled);
+  const { startTransition } = useViewTransition();
 
   const detectedFieldTaskCount = useMemo(() => {
     if (!detectedField) return 0;
@@ -402,7 +404,7 @@ export default function TaskManagerPage() {
           ) : (
             <button
               type="button"
-              onClick={() => setViewMode('home')}
+              onClick={() => startTransition('slide-back', () => setViewMode('home'))}
               className="flex items-center gap-1 text-blue-500 hover:text-blue-600 transition-colors"
             >
               <CaretLeft size={20} weight="bold" />
@@ -463,14 +465,14 @@ export default function TaskManagerPage() {
                     key={card.id}
                     type="button"
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => setViewMode(card.id)}
+                    onClick={() => startTransition('slide-forward', () => setViewMode(card.id))}
                     className="bg-white rounded-2xl shadow-sm border border-stone-200/40 p-4 text-left transition-shadow hover:shadow-md"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2.5">
                         <span
                           className="w-8 h-8 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: card.color + '18' }}
+                          style={{ backgroundColor: card.color + '18', viewTransitionName: `card-${card.id}` } as React.CSSProperties}
                         >
                           <span
                             className="w-3.5 h-3.5 rounded-full"
@@ -490,14 +492,14 @@ export default function TaskManagerPage() {
             <div className="flex items-center gap-4 mb-4 px-2">
               <button
                 type="button"
-                onClick={() => setViewMode('board')}
+                onClick={() => startTransition('fade', () => setViewMode('board'))}
                 className="text-[13px] text-stone-400 hover:text-stone-600 transition-colors"
               >
                 Board view
               </button>
               <button
                 type="button"
-                onClick={() => setViewMode('list')}
+                onClick={() => startTransition('fade', () => setViewMode('list'))}
                 className="text-[13px] text-stone-400 hover:text-stone-600 transition-colors"
               >
                 List view
