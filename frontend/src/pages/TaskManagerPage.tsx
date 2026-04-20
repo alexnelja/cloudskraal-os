@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { motion } from 'motion/react';
-import { Plus, GearSix, Bell, BellSlash } from '@phosphor-icons/react';
+import { AnimatePresence, motion } from 'motion/react';
+import { Bell, BellSlash, GearSix, CaretLeft } from '@phosphor-icons/react';
 import { useFieldDetection } from '../hooks/useFieldDetection';
 import { getTasks, completeTask, uncompleteTask, createTask, updateTask, deleteTask } from '../api/calendar';
 import { listTags, listStatuses, addTagToTask } from '../api/taskManager';
@@ -15,28 +15,71 @@ import TransitionBanner from '../components/tasks/TransitionBanner';
 import TodayView from '../components/tasks/TodayView';
 import BoardView from '../components/tasks/BoardView';
 import ListView from '../components/tasks/ListView';
-import TaskCreateForm from '../components/tasks/TaskCreateForm';
-import QuickInput from '../components/tasks/QuickInput';
-import type { ParsedTaskInput } from '../components/tasks/QuickInput';
 import TagManager from '../components/tasks/TagManager';
 import CopToast from '../components/tasks/CopToast';
+import TaskDetailSheet from '../components/tasks/TaskDetailSheet';
+import type { ParsedTaskInput } from '../components/tasks/QuickInput';
 
-type TabId = 'today' | 'board' | 'list';
+type ViewMode = 'home' | 'today' | 'upcoming' | 'all' | 'completed' | 'board' | 'list';
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'today', label: 'Today' },
-  { id: 'board', label: 'Board' },
-  { id: 'list', label: 'List' },
+interface SmartListCard {
+  id: ViewMode;
+  label: string;
+  color: string;
+  countFn: (tasks: Task[]) => number;
+}
+
+const SMART_LISTS: SmartListCard[] = [
+  {
+    id: 'today',
+    label: 'Today',
+    color: '#3b82f6',
+    countFn: (tasks) => {
+      const today = new Date().toISOString().slice(0, 10);
+      return tasks.filter((t) => {
+        if (t.status === 'completed' || t.status === 'skipped') return false;
+        if (!t.due_date) return true; // no-date tasks show in today
+        const diff = Math.round((new Date(t.due_date + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000);
+        return diff <= 1; // today + tomorrow + overdue
+      });
+    },
+  },
+  {
+    id: 'upcoming',
+    label: 'Upcoming',
+    color: '#f97316',
+    countFn: (tasks) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return tasks.filter((t) => {
+        if (t.status === 'completed' || t.status === 'skipped') return false;
+        if (!t.due_date) return false;
+        const due = new Date(t.due_date + 'T00:00:00');
+        return due > today;
+      }).length;
+    },
+  },
+  {
+    id: 'all',
+    label: 'All',
+    color: '#57534e',
+    countFn: (tasks) => tasks.filter((t) => t.status !== 'completed' && t.status !== 'skipped').length,
+  },
+  {
+    id: 'completed',
+    label: 'Completed',
+    color: '#22c55e',
+    countFn: (tasks) => tasks.filter((t) => t.status === 'completed').length,
+  },
 ];
 
 export default function TaskManagerPage() {
-  const [activeTab, setActiveTab] = useState<TabId>('today');
+  const [viewMode, setViewMode] = useState<ViewMode>('home');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [statuses, setStatuses] = useState<TaskStatusConfig[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [createOpen, setCreateOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [fields, setFields] = useState<Array<{ id: string; name: string; enterprise: string }>>([]);
   const [geojson, setGeojson] = useState<GeoJSON.FeatureCollection | null>(null);
@@ -70,10 +113,11 @@ export default function TaskManagerPage() {
   const handleGpsShow = useCallback(() => {
     if (detectedField) {
       setSelectedFieldId(detectedField.fieldId);
-      setActiveTab('today');
+      setViewMode('today');
     }
   }, [detectedField]);
 
+  // Data fetching
   const fetchData = useCallback(async () => {
     try {
       const [taskData, tagData, statusData, fieldData, geoData] = await Promise.all([
@@ -99,7 +143,7 @@ export default function TaskManagerPage() {
     fetchData();
   }, [fetchData]);
 
-  // Fetch weather and evaluate blocks
+  // Weather
   const loadWeather = useCallback(
     async (taskList: Task[]) => {
       try {
@@ -118,7 +162,7 @@ export default function TaskManagerPage() {
         };
         setWeatherToday(todayData);
 
-        const forecast: WeatherData[] = daily.time.slice(1).map((_, i) => ({
+        const forecast: WeatherData[] = daily.time.slice(1).map((_: any, i: number) => ({
           wind_speed_max: daily.windspeed_10m_max[i + 1] ?? 0,
           precipitation_sum: daily.precipitation_sum[i + 1] ?? 0,
           temperature_min: daily.temperature_2m_min[i + 1] ?? 10,
@@ -128,7 +172,6 @@ export default function TaskManagerPage() {
         const blocks = evaluateWeatherBlocks(taskList, todayData, forecast);
         setWeatherBlocks(blocks);
 
-        // PATCH blocked tasks
         for (const block of blocks) {
           if (block.severity === 'blocked') {
             await updateTask(block.taskId, {
@@ -150,7 +193,7 @@ export default function TaskManagerPage() {
     }
   }, [loading, tasks, loadWeather]);
 
-  // Notify overdue tasks once per session
+  // Notifications
   useEffect(() => {
     if (loading || !notificationsOn) return;
     if (sessionStorage.getItem('capex.overdue-notified')) return;
@@ -164,7 +207,6 @@ export default function TaskManagerPage() {
     }
   }, [loading, tasks, notificationsOn]);
 
-  // Detect weather unblocks and notify
   useEffect(() => {
     if (!notificationsOn) return;
     const currentBlockedIds = new Set(
@@ -176,8 +218,7 @@ export default function TaskManagerPage() {
         if (!currentBlockedIds.has(taskId)) {
           const task = tasks.find((t) => t.id === taskId);
           if (task) {
-            const fieldName = task.field_name || 'Field';
-            notifyWeatherUnblock(fieldName, 'Conditions improved');
+            notifyWeatherUnblock(task.field_name || 'Field', 'Conditions improved');
           }
         }
       }
@@ -185,7 +226,6 @@ export default function TaskManagerPage() {
     prevBlockedIdsRef.current = currentBlockedIds;
   }, [weatherBlocks, tasks, notificationsOn]);
 
-  // Toggle notification preference
   const handleToggleNotifications = useCallback(async () => {
     if (notificationsOn) {
       setNotificationsOn(false);
@@ -202,20 +242,15 @@ export default function TaskManagerPage() {
   const handleWeatherRefresh = useCallback(async () => {
     try {
       const farms = await getFarms();
-      if (farms.length > 0) {
-        clearForecastCache(farms[0].id);
-      }
+      if (farms.length > 0) clearForecastCache(farms[0].id);
     } catch { /* ignore */ }
     loadWeather(tasks);
   }, [tasks, loadWeather]);
 
-  // Check for usage period transition suggestions
+  // Transitions
   useEffect(() => {
     if (loading || fields.length === 0) return;
-
-    const dismissed: string[] = JSON.parse(
-      localStorage.getItem('transition_dismissed') || '[]',
-    );
+    const dismissed: string[] = JSON.parse(localStorage.getItem('transition_dismissed') || '[]');
     const all = checkTransitionTriggers(fields, tasks);
     setTransitionSuggestions(all.filter((s) => !dismissed.includes(s.fieldId)));
   }, [loading, fields, tasks]);
@@ -234,275 +269,282 @@ export default function TaskManagerPage() {
           status: 'pending' as const,
           priority: 'medium' as const,
           due_date: new Date().toISOString().slice(0, 10),
-          assigned_to: null,
-          depends_on_task_id: null,
-          recurrence_rule: null,
-          calendar_event_id: null,
-          notes: null,
-          status_id: null,
-          estimated_minutes: null,
-          actual_minutes: null,
-          blocked_reason: null,
-          blocked_until: null,
-          sort_order: 0,
-          verified_by: null,
-          verified_at: null,
+          assigned_to: null, depends_on_task_id: null, recurrence_rule: null,
+          calendar_event_id: null, notes: null, status_id: null,
+          estimated_minutes: null, actual_minutes: null,
+          blocked_reason: null, blocked_until: null,
+          sort_order: 0, verified_by: null, verified_at: null,
         });
-        const dismissed: string[] = JSON.parse(
-          localStorage.getItem('transition_dismissed') || '[]',
-        );
-        localStorage.setItem(
-          'transition_dismissed',
-          JSON.stringify([...dismissed, fieldId]),
-        );
+        const dismissed: string[] = JSON.parse(localStorage.getItem('transition_dismissed') || '[]');
+        localStorage.setItem('transition_dismissed', JSON.stringify([...dismissed, fieldId]));
         setTransitionSuggestions((prev) => prev.filter((s) => s.fieldId !== fieldId));
         await fetchData();
-      } catch (err) {
-        console.error('Failed to generate transition task:', err);
-      }
+      } catch (err) { console.error('Failed to generate transition task:', err); }
     },
     [fields, fetchData],
   );
 
   const handleTransitionDismiss = useCallback((fieldId: string) => {
-    const dismissed: string[] = JSON.parse(
-      localStorage.getItem('transition_dismissed') || '[]',
-    );
-    localStorage.setItem(
-      'transition_dismissed',
-      JSON.stringify([...dismissed, fieldId]),
-    );
+    const dismissed: string[] = JSON.parse(localStorage.getItem('transition_dismissed') || '[]');
+    localStorage.setItem('transition_dismissed', JSON.stringify([...dismissed, fieldId]));
     setTransitionSuggestions((prev) => prev.filter((s) => s.fieldId !== fieldId));
   }, []);
 
-  const handleComplete = useCallback(
-    async (id: string) => {
-      try {
-        const result = await completeTask(id);
-        await fetchData();
-        if (result.costs_logged && result.costs_logged.length > 0) {
-          setCopToast({
-            costsLogged: result.costs_logged,
-            taskTitle: result.title,
-            taskId: id,
-          });
-        }
-      } catch (err) {
-        console.error('Failed to complete task:', err);
+  // Task actions
+  const handleComplete = useCallback(async (id: string) => {
+    try {
+      const result = await completeTask(id);
+      await fetchData();
+      if (result.costs_logged && result.costs_logged.length > 0) {
+        setCopToast({ costsLogged: result.costs_logged, taskTitle: result.title, taskId: id });
       }
-    },
-    [fetchData],
-  );
+    } catch (err) { console.error('Failed to complete task:', err); }
+  }, [fetchData]);
 
-  const handleUndoComplete = useCallback(
-    async () => {
-      if (!copToast) return;
-      try {
-        await uncompleteTask(copToast.taskId);
-        setCopToast(null);
-        await fetchData();
-      } catch (err) {
-        console.error('Failed to undo task completion:', err);
-      }
-    },
-    [copToast, fetchData],
-  );
+  const handleUndoComplete = useCallback(async () => {
+    if (!copToast) return;
+    try {
+      await uncompleteTask(copToast.taskId);
+      setCopToast(null);
+      await fetchData();
+    } catch (err) { console.error('Failed to undo task completion:', err); }
+  }, [copToast, fetchData]);
 
-  const handleCreate = useCallback(
-    async (data: any) => {
-      try {
-        const { tag_ids, ...taskData } = data;
-        const newTask = await createTask({
-          ...taskData,
-          type: 'manual',
-          enterprise: null,
-          recurrence_rule: null,
-          calendar_event_id: null,
-          notes: null,
-          actual_minutes: null,
-          blocked_reason: null,
-          blocked_until: null,
-          sort_order: 0,
-          verified_by: null,
-          verified_at: null,
-        });
-        if (tag_ids?.length) {
-          await Promise.all(tag_ids.map((tagId: string) => addTagToTask(newTask.id, tagId)));
-        }
-        await fetchData();
-        setCreateOpen(false);
-      } catch (err) {
-        console.error('Failed to create task:', err);
-      }
-    },
-    [fetchData],
-  );
+  const handleStatusChange = useCallback(async (taskId: string, newStatusId: string) => {
+    try {
+      await updateTask(taskId, { status_id: newStatusId });
+      await fetchData();
+    } catch (err) { console.error('Failed to update task status:', err); }
+  }, [fetchData]);
 
-  const handleStatusChange = useCallback(
-    async (taskId: string, newStatusId: string) => {
-      try {
-        await updateTask(taskId, { status_id: newStatusId });
-        await fetchData();
-      } catch (err) {
-        console.error('Failed to update task status:', err);
-      }
-    },
-    [fetchData],
-  );
+  const handleTaskUpdate = useCallback(async (taskId: string, data: Record<string, any>) => {
+    try {
+      await updateTask(taskId, data);
+      await fetchData();
+    } catch (err) { console.error('Failed to update task:', err); }
+  }, [fetchData]);
 
-  const handleDelete = useCallback(
-    async (taskId: string) => {
-      try {
-        await deleteTask(taskId);
-        await fetchData();
-      } catch (err) {
-        console.error('Failed to delete task:', err);
-      }
-    },
-    [fetchData],
-  );
+  const handleDelete = useCallback(async (taskId: string) => {
+    try {
+      await deleteTask(taskId);
+      setSelectedTaskId(null);
+      await fetchData();
+    } catch (err) { console.error('Failed to delete task:', err); }
+  }, [fetchData]);
 
-  const handleReorder = useCallback(
-    async (taskId: string, newIndex: number) => {
-      try {
-        await updateTask(taskId, { sort_order: newIndex });
-        setTasks((prev) => {
-          const idx = prev.findIndex((t) => t.id === taskId);
-          if (idx === -1) return prev;
-          const updated = [...prev];
-          updated[idx] = { ...updated[idx], sort_order: newIndex };
-          return updated;
-        });
-      } catch (err) {
-        console.error('Failed to reorder task:', err);
-      }
-    },
-    [],
-  );
+  const handleReorder = useCallback(async (taskId: string, newIndex: number) => {
+    try {
+      await updateTask(taskId, { sort_order: newIndex });
+      setTasks((prev) => {
+        const idx = prev.findIndex((t) => t.id === taskId);
+        if (idx === -1) return prev;
+        const updated = [...prev];
+        updated[idx] = { ...updated[idx], sort_order: newIndex };
+        return updated;
+      });
+    } catch (err) { console.error('Failed to reorder task:', err); }
+  }, []);
 
-  const handleQuickCreate = useCallback(
-    async (parsed: ParsedTaskInput) => {
-      try {
-        const newTask = await createTask({
-          title: parsed.title,
-          description: null,
-          enterprise: null,
-          field_id: parsed.field_id,
-          type: 'manual',
-          status: 'pending',
-          priority: (parsed.priority as any) || 'medium',
-          due_date: parsed.due_date,
-          assigned_to: null,
-          depends_on_task_id: null,
-          recurrence_rule: null,
-          calendar_event_id: null,
-          notes: null,
-          status_id: null,
-          estimated_minutes: null,
-          actual_minutes: null,
-          blocked_reason: null,
-          blocked_until: null,
-          sort_order: 0,
-          verified_by: null,
-          verified_at: null,
-        });
-        if (parsed.tag_ids.length) {
-          await Promise.all(
-            parsed.tag_ids.map((tagId) => addTagToTask(newTask.id, tagId)),
-          );
-        }
-        await fetchData();
-      } catch (err) {
-        console.error('Failed to quick-create task:', err);
+  const handleQuickCreate = useCallback(async (parsed: ParsedTaskInput) => {
+    try {
+      const newTask = await createTask({
+        title: parsed.title,
+        description: null, enterprise: null,
+        field_id: parsed.field_id,
+        type: 'manual', status: 'pending',
+        priority: (parsed.priority as any) || 'medium',
+        due_date: parsed.due_date,
+        assigned_to: null, depends_on_task_id: null,
+        recurrence_rule: null, calendar_event_id: null,
+        notes: null, status_id: null,
+        estimated_minutes: null, actual_minutes: null,
+        blocked_reason: null, blocked_until: null,
+        sort_order: 0, verified_by: null, verified_at: null,
+      });
+      if (parsed.tag_ids.length) {
+        await Promise.all(parsed.tag_ids.map((tagId) => addTagToTask(newTask.id, tagId)));
       }
-    },
-    [fetchData],
-  );
+      await fetchData();
+    } catch (err) { console.error('Failed to quick-create task:', err); }
+  }, [fetchData]);
+
+  const handleSelectTask = useCallback((id: string) => {
+    setSelectedTaskId(id);
+  }, []);
+
+  const selectedTask = useMemo(() => {
+    if (!selectedTaskId) return null;
+    return tasks.find((t) => t.id === selectedTaskId) ?? null;
+  }, [tasks, selectedTaskId]);
+
+  // Tag counts for home view
+  const tagCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const task of tasks) {
+      if (task.status === 'completed' || task.status === 'skipped') continue;
+      for (const tag of task.tags ?? []) {
+        counts[tag.id] = (counts[tag.id] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [tasks]);
+
+  const isListView = viewMode !== 'home' && viewMode !== 'board' && viewMode !== 'list';
+  const activeListConfig = SMART_LISTS.find((l) => l.id === viewMode);
 
   return (
-    <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col">
+    <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col bg-[#f2f2f7]">
       {/* Header */}
-      <div className="px-6 pt-6 pb-2">
-        <h1 className="text-2xl font-serif text-stone-900 tracking-tight">Tasks</h1>
-      </div>
-
-      {/* Tab bar */}
-      <div className="flex items-center gap-1 px-6 py-2 border-b border-stone-200/60">
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <motion.button
-              key={tab.id}
+      <div className="px-5 pt-5 pb-2">
+        <div className="flex items-center justify-between">
+          {viewMode === 'home' ? (
+            <h1 className="text-[34px] font-bold text-stone-900 leading-tight">Tasks</h1>
+          ) : (
+            <button
               type="button"
-              onClick={() => setActiveTab(tab.id)}
-              whileTap={{ scale: 0.94 }}
-              className={`px-3 py-1 text-[11px] uppercase tracking-wide rounded-full whitespace-nowrap transition-colors ${
-                isActive ? 'text-white' : 'text-stone-700 hover:text-stone-900'
-              }`}
-              style={{
-                background: isActive
-                  ? 'linear-gradient(135deg, #d97706, #b45309)'
-                  : 'rgba(245, 240, 233, 0.6)',
-                boxShadow: isActive
-                  ? 'inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 6px -2px rgba(180, 83, 9, 0.4)'
-                  : 'none',
-              }}
+              onClick={() => setViewMode('home')}
+              className="flex items-center gap-1 text-blue-500 hover:text-blue-600 transition-colors"
             >
-              {tab.label}
-            </motion.button>
-          );
-        })}
-        <div className="flex-1" />
-        <button
-          type="button"
-          onClick={handleToggleNotifications}
-          className={`p-1.5 rounded-full transition-colors ${
-            notificationsOn
-              ? 'text-amber-600 hover:text-amber-800 hover:bg-amber-50'
-              : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
-          }`}
-          aria-label={notificationsOn ? 'Disable notifications' : 'Enable notifications'}
-          title={notificationsOn ? 'Notifications on' : 'Notifications off'}
-        >
-          {notificationsOn ? <Bell size={18} weight="fill" /> : <BellSlash size={18} />}
-        </button>
-        <button
-          type="button"
-          onClick={() => setTagManagerOpen(true)}
-          className="p-1.5 rounded-full text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-colors"
-          aria-label="Manage tags and statuses"
-        >
-          <GearSix size={18} />
-        </button>
+              <CaretLeft size={20} weight="bold" />
+              <span className="text-[17px]">Back</span>
+            </button>
+          )}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleToggleNotifications}
+              className={`p-2 rounded-full transition-colors ${
+                notificationsOn
+                  ? 'text-blue-500 hover:text-blue-600 hover:bg-blue-50'
+                  : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
+              }`}
+              aria-label={notificationsOn ? 'Disable notifications' : 'Enable notifications'}
+            >
+              {notificationsOn ? <Bell size={20} weight="fill" /> : <BellSlash size={20} />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTagManagerOpen(true)}
+              className="p-2 rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors"
+              aria-label="Manage tags and statuses"
+            >
+              <GearSix size={20} />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Quick input bar */}
-      {activeTab === 'today' && !loading && (
-        <QuickInput tags={tags} fields={fields} onSubmit={handleQuickCreate} />
-      )}
-
-      {/* Transition suggestions banner */}
-      {activeTab === 'today' && transitionSuggestions.length > 0 && (
-        <TransitionBanner
-          suggestions={transitionSuggestions}
-          onGenerate={handleTransitionGenerate}
-          onDismiss={handleTransitionDismiss}
-        />
+      {/* Transition banner - subtle, only on home */}
+      {viewMode === 'home' && transitionSuggestions.length > 0 && (
+        <div className="px-3 pb-2">
+          <TransitionBanner
+            suggestions={transitionSuggestions}
+            onGenerate={handleTransitionGenerate}
+            onDismiss={handleTransitionDismiss}
+          />
+        </div>
       )}
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-full">
-            <span className="text-sm text-stone-500">Loading tasks...</span>
+            <span className="text-[15px] text-stone-400">Loading tasks...</span>
           </div>
-        ) : activeTab === 'today' ? (
+        ) : viewMode === 'home' ? (
+          /* ===== HOME: Smart List Cards ===== */
+          <div className="h-full overflow-y-auto px-3 pb-6">
+            {/* Smart list cards grid */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {SMART_LISTS.map((card) => {
+                const count = card.countFn(tasks);
+                return (
+                  <motion.button
+                    key={card.id}
+                    type="button"
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setViewMode(card.id)}
+                    className="bg-white rounded-2xl shadow-sm border border-stone-200/40 p-4 text-left transition-shadow hover:shadow-md"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className="w-8 h-8 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: card.color + '18' }}
+                        >
+                          <span
+                            className="w-3.5 h-3.5 rounded-full"
+                            style={{ backgroundColor: card.color }}
+                          />
+                        </span>
+                        <span className="text-[15px] font-medium text-stone-700">{card.label}</span>
+                      </div>
+                      <span className="text-[24px] font-bold text-stone-400 leading-none">{count}</span>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+
+            {/* View toggles: Board / List */}
+            <div className="flex items-center gap-4 mb-4 px-2">
+              <button
+                type="button"
+                onClick={() => setViewMode('board')}
+                className="text-[13px] text-stone-400 hover:text-stone-600 transition-colors"
+              >
+                Board view
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className="text-[13px] text-stone-400 hover:text-stone-600 transition-colors"
+              >
+                List view
+              </button>
+            </div>
+
+            {/* My Tags section */}
+            {tags.length > 0 && (
+              <div className="px-2">
+                <h3 className="text-[13px] font-semibold uppercase tracking-wide text-stone-400 mb-3">My Tags</h3>
+                <div className="bg-white rounded-2xl shadow-sm border border-stone-200/40 overflow-hidden">
+                  {tags.map((tag, idx) => {
+                    const count = tagCounts[tag.id] || 0;
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => {
+                          // Navigate to All view with this tag pre-filtered
+                          // For now just go to All
+                          setViewMode('all');
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-stone-50 transition-colors ${
+                          idx > 0 ? 'border-t border-stone-100' : ''
+                        }`}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: tag.color }}
+                        />
+                        <span className="text-[15px] text-stone-700 flex-1">{tag.name}</span>
+                        <span className="text-[13px] text-stone-400">{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : isListView ? (
+          /* ===== SMART LIST VIEW ===== */
           <TodayView
             tasks={tasks}
             statuses={statuses}
             tags={tags}
             onComplete={handleComplete}
-            onSelectTask={setSelectedTaskId}
+            onSelectTask={handleSelectTask}
             selectedTaskId={selectedTaskId}
             onReorder={handleReorder}
             geojson={geojson}
@@ -519,13 +561,17 @@ export default function TaskManagerPage() {
             onGpsShow={handleGpsShow}
             gpsEnabled={gpsEnabled}
             onGpsToggle={handleGpsToggle}
+            onQuickCreate={handleQuickCreate}
+            listTitle={activeListConfig?.label ?? 'Tasks'}
+            listColor={activeListConfig?.color ?? '#57534e'}
+            filterMode={viewMode as 'today' | 'all' | 'upcoming' | 'completed'}
           />
-        ) : activeTab === 'board' ? (
+        ) : viewMode === 'board' ? (
           <BoardView
             tasks={tasks}
             statuses={statuses}
             onStatusChange={handleStatusChange}
-            onSelectTask={setSelectedTaskId}
+            onSelectTask={handleSelectTask}
           />
         ) : (
           <ListView
@@ -534,34 +580,21 @@ export default function TaskManagerPage() {
             tags={tags}
             onStatusChange={handleStatusChange}
             onDelete={handleDelete}
-            onSelectTask={setSelectedTaskId}
+            onSelectTask={handleSelectTask}
           />
         )}
       </div>
 
-      {/* Floating "+" button */}
-      <motion.button
-        type="button"
-        whileTap={{ scale: 0.9 }}
-        onClick={() => setCreateOpen(true)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white text-2xl"
-        style={{
-          background: 'linear-gradient(135deg, #d97706, #b45309)',
-          boxShadow: '0 4px 14px -3px rgba(180, 83, 9, 0.5)',
-        }}
-        aria-label="Create task"
-      >
-        <Plus weight="bold" size={24} />
-      </motion.button>
-
-      {/* Task creation form */}
-      <TaskCreateForm
-        open={createOpen}
+      {/* Task detail sheet */}
+      <TaskDetailSheet
+        task={selectedTask}
+        open={selectedTaskId !== null}
+        onDismiss={() => setSelectedTaskId(null)}
+        onSave={handleTaskUpdate}
+        onDelete={handleDelete}
         tags={tags}
         statuses={statuses}
         fields={fields}
-        onSave={handleCreate}
-        onDismiss={() => setCreateOpen(false)}
       />
 
       {/* Tag & status manager */}
@@ -570,9 +603,7 @@ export default function TaskManagerPage() {
         onDismiss={() => setTagManagerOpen(false)}
         tags={tags}
         statuses={statuses}
-        onTagsChanged={() => {
-          fetchData();
-        }}
+        onTagsChanged={() => fetchData()}
       />
 
       {/* COP auto-log toast */}

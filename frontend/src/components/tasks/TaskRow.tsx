@@ -1,9 +1,9 @@
-import { motion } from 'motion/react';
-import { Check, DotsSixVertical } from '@phosphor-icons/react';
+import { useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Check } from '@phosphor-icons/react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task } from '../../types/calendar';
-import { PRIORITY_COLORS } from '../../types/calendar';
 import type { TaskStatusConfig } from '../../types/taskManager';
 
 interface TaskRowProps {
@@ -25,7 +25,17 @@ function formatDueLabel(dueDate: string | null): string {
   if (diffDays === -1) return 'Yesterday';
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Tomorrow';
-  return `In ${diffDays}d`;
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  if (diffDays > 1 && diffDays <= 6) return dayNames[due.getDay()];
+  return due.toLocaleDateString('en-ZA', { month: 'short', day: 'numeric' });
+}
+
+function isDueOverdue(dueDate: string | null): boolean {
+  if (!dueDate) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate + 'T00:00:00');
+  return due < today;
 }
 
 export default function TaskRow({
@@ -37,10 +47,9 @@ export default function TaskRow({
   sortableId,
 }: TaskRowProps) {
   const isCompleted = task.status === 'completed';
-  const priorityColor = PRIORITY_COLORS[task.priority] ?? '#9ca3af';
-  const matchedStatus = statuses.find((s) => s.id === task.status_id);
-  const statusColor = matchedStatus?.color ?? task.status_color ?? '#9ca3af';
-  const statusName = matchedStatus?.name ?? task.status_name ?? task.status;
+  const overdue = isDueOverdue(task.due_date);
+  const isUrgent = task.priority === 'urgent' || task.priority === 'high';
+  const [completing, setCompleting] = useState(false);
 
   const {
     attributes,
@@ -59,110 +68,113 @@ export default function TaskRow({
       }
     : {};
 
+  const handleComplete = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isCompleted) return;
+    navigator.vibrate?.(15);
+    setCompleting(true);
+    // Animate the checkmark, then call onComplete after a brief delay
+    setTimeout(() => {
+      onComplete(task.id);
+    }, 400);
+  }, [isCompleted, onComplete, task.id]);
+
+  // Build metadata line: priority, tags (comma-separated text), field
+  const metaParts: string[] = [];
+  if (isUrgent) {
+    // Priority shown as text in metadata
+  }
+  if (task.tags && task.tags.length > 0) {
+    metaParts.push(task.tags.map((t) => t.name).join(', '));
+  }
+  if (task.field_name) {
+    metaParts.push(task.field_name);
+  }
+  if (task.blocked_reason) {
+    metaParts.push(`Blocked (${task.blocked_reason})`);
+  }
+  const metaLine = metaParts.join(' \u00B7 ');
+
   return (
-    <motion.li
-      ref={sortableId ? setNodeRef : undefined}
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ x: 2 }}
-      transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-      className="border-b border-stone-200/50 px-4 py-3 cursor-pointer transition-colors list-none"
-      style={{
-        ...sortableStyle,
-        background: selected
-          ? 'linear-gradient(90deg, rgba(254, 243, 199, 0.7), rgba(254, 243, 199, 0))'
-          : undefined,
-        borderLeft: selected ? '2px solid #d97706' : '2px solid transparent',
-      }}
-      onClick={() => onSelect(task.id)}
-    >
-      <div className="flex items-start gap-3">
-        {/* Drag handle */}
-        {sortableId && (
-          <button
-            type="button"
-            aria-label="Drag to reorder"
-            className="mt-0.5 shrink-0 text-stone-300 hover:text-stone-500 cursor-grab active:cursor-grabbing touch-none"
-            {...attributes}
-            {...listeners}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <DotsSixVertical size={16} weight="bold" />
-          </button>
-        )}
-
-        {/* Checkbox */}
-        <button
-          type="button"
-          aria-label="Complete task"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigator.vibrate?.(15);
-            onComplete(task.id);
+    <AnimatePresence>
+      {!completing || isCompleted ? (
+        <motion.li
+          ref={sortableId ? setNodeRef : undefined}
+          layout
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: isCompleted ? 0.5 : 1, y: 0 }}
+          exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
+          transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+          className="px-5 py-3.5 cursor-pointer transition-colors list-none"
+          style={{
+            ...sortableStyle,
+            backgroundColor: selected ? 'rgba(59, 130, 246, 0.06)' : undefined,
           }}
-          className={`mt-0.5 shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-            isCompleted
-              ? 'bg-emerald-500 border-emerald-500'
-              : 'border-stone-300 hover:border-amber-500'
-          }`}
+          onClick={() => onSelect(task.id)}
+          {...(sortableId ? { ...attributes, ...listeners } : {})}
         >
-          {isCompleted && <Check size={12} weight="bold" className="text-white" />}
-        </button>
-
-        {/* Center content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span
-              data-testid="priority-dot"
-              className="shrink-0 w-2 h-2 rounded-full"
-              style={{ backgroundColor: priorityColor }}
-            />
-            <span
-              className={`font-medium text-stone-900 truncate ${
-                isCompleted ? 'line-through opacity-50' : ''
+          <div className="flex items-start gap-3">
+            {/* Checkbox */}
+            <button
+              type="button"
+              aria-label="Complete task"
+              onClick={handleComplete}
+              className={`mt-0.5 shrink-0 w-[22px] h-[22px] rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
+                isCompleted || completing
+                  ? 'bg-[#22c55e] border-[#22c55e]'
+                  : 'border-stone-300 hover:border-stone-400'
               }`}
             >
-              {task.title}
-            </span>
-          </div>
+              {(isCompleted || completing) && (
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                >
+                  <Check size={12} weight="bold" className="text-white" />
+                </motion.span>
+              )}
+            </button>
 
-          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            {task.tags?.map((tag) => (
+            {/* Center content */}
+            <div className="flex-1 min-w-0">
               <span
-                key={tag.id}
-                className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                style={{
-                  backgroundColor: tag.color + '20',
-                  color: tag.color,
-                }}
+                className={`text-[15px] text-stone-900 ${
+                  isCompleted ? 'line-through opacity-50' : ''
+                }`}
               >
-                {tag.name}
+                {isUrgent && !isCompleted && (
+                  <span data-testid="priority-dot" className="text-amber-500 font-semibold mr-1">!</span>
+                )}
+                {task.title}
               </span>
-            ))}
-            {task.field_name && (
-              <span className="text-[10px] text-stone-400 font-mono">
-                {task.field_name}
+
+              {metaLine && (
+                <p className="text-[13px] text-stone-400 mt-0.5 truncate">
+                  {metaLine}
+                </p>
+              )}
+            </div>
+
+            {/* Right: due date */}
+            {task.due_date && (
+              <span className={`text-[13px] shrink-0 mt-0.5 ${
+                overdue && !isCompleted ? 'text-red-500 font-medium' : 'text-stone-400'
+              }`}>
+                {formatDueLabel(task.due_date)}
               </span>
             )}
           </div>
-        </div>
-
-        {/* Right side */}
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          <span className="text-[11px] text-stone-500 font-mono">
-            {formatDueLabel(task.due_date)}
-          </span>
-          <span
-            className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-            style={{
-              backgroundColor: statusColor + '20',
-              color: statusColor,
-            }}
-          >
-            {statusName}
-          </span>
-        </div>
-      </div>
-    </motion.li>
+        </motion.li>
+      ) : (
+        <motion.li
+          key={`completing-${task.id}`}
+          initial={{ opacity: 1 }}
+          animate={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="list-none overflow-hidden"
+        />
+      )}
+    </AnimatePresence>
   );
 }

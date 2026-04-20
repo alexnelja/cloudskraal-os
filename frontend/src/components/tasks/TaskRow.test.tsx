@@ -8,6 +8,7 @@ vi.mock('motion/react', () => ({
   motion: {
     div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
     li: ({ children, ...props }: any) => <li {...props}>{children}</li>,
+    span: ({ children, ...props }: any) => <span {...props}>{children}</span>,
   },
   AnimatePresence: ({ children }: any) => children,
 }));
@@ -69,7 +70,7 @@ describe('TaskRow', () => {
     expect(screen.getByText('Spray rooibos field')).toBeInTheDocument();
   });
 
-  it('renders tag pills with colors', () => {
+  it('renders tags as comma-separated text in metadata line', () => {
     render(
       <TaskRow
         task={baseTask}
@@ -78,13 +79,12 @@ describe('TaskRow', () => {
         onSelect={vi.fn()}
       />,
     );
-    const rooibosTag = screen.getByText('Rooibos');
-    expect(rooibosTag).toBeInTheDocument();
-    const sprayingTag = screen.getByText('Spraying');
-    expect(sprayingTag).toBeInTheDocument();
+    // Tags now rendered as plain text in metadata line
+    expect(screen.getByText(/Rooibos, Spraying/)).toBeInTheDocument();
   });
 
   it('clicking checkbox calls onComplete', () => {
+    vi.useFakeTimers();
     const onComplete = vi.fn();
     render(
       <TaskRow
@@ -96,10 +96,13 @@ describe('TaskRow', () => {
     );
     const checkbox = screen.getByRole('button', { name: /complete task/i });
     fireEvent.click(checkbox);
+    // onComplete is called after a 400ms timeout for animation
+    vi.advanceTimersByTime(500);
     expect(onComplete).toHaveBeenCalledWith('t1');
+    vi.useRealTimers();
   });
 
-  it('shows priority indicator', () => {
+  it('shows priority indicator for high/urgent tasks', () => {
     render(
       <TaskRow
         task={baseTask}
@@ -108,8 +111,10 @@ describe('TaskRow', () => {
         onSelect={vi.fn()}
       />,
     );
+    // Priority shown as "!" prefix for high/urgent
     const dot = screen.getByTestId('priority-dot');
     expect(dot).toBeInTheDocument();
+    expect(dot.textContent).toBe('!');
   });
 
   it('completed task has strikethrough styling', () => {

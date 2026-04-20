@@ -9,6 +9,8 @@ vi.mock('motion/react', () => ({
     div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
     li: ({ children, ...props }: any) => <li {...props}>{children}</li>,
     button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+    span: ({ children, ...props }: any) => <span {...props}>{children}</span>,
+    aside: ({ children, ...props }: any) => <aside {...props}>{children}</aside>,
   },
   AnimatePresence: ({ children }: any) => children,
 }));
@@ -16,7 +18,16 @@ vi.mock('motion/react', () => ({
 vi.mock('@phosphor-icons/react', () => ({
   Check: (props: any) => <svg data-testid="check-icon" {...props} />,
   SunHorizon: (props: any) => <svg data-testid="sun-icon" {...props} />,
-  DotsSixVertical: (props: any) => <svg data-testid="drag-handle-icon" {...props} />,
+  Cloud: (props: any) => <svg data-testid="cloud-icon" {...props} />,
+  Funnel: (props: any) => <svg data-testid="funnel-icon" {...props} />,
+  MapTrifold: (props: any) => <svg data-testid="map-icon" {...props} />,
+  Crosshair: (props: any) => <svg data-testid="crosshair-icon" {...props} />,
+  CaretDown: (props: any) => <svg data-testid="caret-icon" {...props} />,
+  CalendarBlank: (props: any) => <svg data-testid="calendar-icon" {...props} />,
+  Tag: (props: any) => <svg data-testid="tag-icon" {...props} />,
+  Flag: (props: any) => <svg data-testid="flag-icon" {...props} />,
+  MapPin: (props: any) => <svg data-testid="mappin-icon" {...props} />,
+  X: (props: any) => <svg data-testid="x-icon" {...props} />,
 }));
 
 vi.mock('@dnd-kit/core', () => ({
@@ -99,10 +110,9 @@ describe('TodayView', () => {
         selectedTaskId={null}
       />,
     );
+    // Group headers are now uppercase
     expect(screen.getByText('Overdue')).toBeInTheDocument();
-    // "Today" appears as both a group header and a due-date label
     expect(screen.getAllByText('Today').length).toBeGreaterThanOrEqual(1);
-    // "Tomorrow" appears as both a group header and a due-date label
     expect(screen.getAllByText('Tomorrow').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Overdue task')).toBeInTheDocument();
     expect(screen.getByText('Today task')).toBeInTheDocument();
@@ -123,27 +133,7 @@ describe('TodayView', () => {
     expect(screen.getByText(/no active tasks/i)).toBeInTheDocument();
   });
 
-  it('renders drag handles on task rows', () => {
-    const tasks = [
-      makeTask({ id: 't1', title: 'Task A', due_date: today }),
-      makeTask({ id: 't2', title: 'Task B', due_date: today }),
-    ];
-    render(
-      <TodayView
-        tasks={tasks}
-        statuses={statuses}
-        tags={tags}
-        onComplete={vi.fn()}
-        onSelectTask={vi.fn()}
-        selectedTaskId={null}
-        onReorder={vi.fn()}
-      />,
-    );
-    const handles = screen.getAllByLabelText('Drag to reorder');
-    expect(handles).toHaveLength(2);
-  });
-
-  it('tag filter pills filter displayed tasks', () => {
+  it('tag filter works via filter popover', () => {
     const tasks = [
       makeTask({
         id: 't1',
@@ -172,12 +162,31 @@ describe('TodayView', () => {
     expect(screen.getByText('Rooibos task')).toBeInTheDocument();
     expect(screen.getByText('Spraying task')).toBeInTheDocument();
 
-    // Click "Rooibos" filter pill
+    // Open filter popover and click "Rooibos" tag
+    const filterBtn = screen.getByTestId('funnel-icon').closest('button');
+    if (filterBtn) fireEvent.click(filterBtn);
+
+    // The tag buttons in the filter popover
     const rooibosPill = screen.getByRole('button', { name: /rooibos/i });
     fireEvent.click(rooibosPill);
 
     // Only rooibos task visible
     expect(screen.getByText('Rooibos task')).toBeInTheDocument();
     expect(screen.queryByText('Spraying task')).not.toBeInTheDocument();
+  });
+
+  it('shows inline add button when onQuickCreate provided', () => {
+    render(
+      <TodayView
+        tasks={[makeTask({ id: 't1', title: 'Task A', due_date: today })]}
+        statuses={statuses}
+        tags={tags}
+        onComplete={vi.fn()}
+        onSelectTask={vi.fn()}
+        selectedTaskId={null}
+        onQuickCreate={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('New Task')).toBeInTheDocument();
   });
 });
