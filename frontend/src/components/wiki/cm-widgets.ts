@@ -241,7 +241,13 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
             if (!document.body.contains(tooltip)) return;
             if (page) {
               const snippet = page.body.slice(0, 150).replace(/\[\[([^\]]+)\]\]/g, '$1').replace(/[#*=_~`>]/g, '');
-              tooltip.innerHTML = `<div class="cm-link-tooltip-title">${page.title}</div><div class="cm-link-tooltip-body">${snippet}${page.body.length > 150 ? '...' : ''}</div>`;
+              const titleEl = document.createElement('div');
+              titleEl.className = 'cm-link-tooltip-title';
+              titleEl.textContent = page.title;
+              const bodyEl = document.createElement('div');
+              bodyEl.className = 'cm-link-tooltip-body';
+              bodyEl.textContent = snippet + (page.body.length > 150 ? '...' : '');
+              tooltip.replaceChildren(titleEl, bodyEl);
             } else {
               tooltip.innerHTML = '<div class="cm-link-tooltip-empty">Page not found</div>';
             }

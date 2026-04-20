@@ -3,6 +3,7 @@ import { getWikiPage } from '../../api/wiki';
 import { WIKI_CATEGORIES } from '../../types/wiki';
 import type { WikiPage } from '../../types/wiki';
 import MarkdownIt from 'markdown-it';
+import DOMPurify from 'dompurify';
 
 const previewMd = new MarkdownIt({ html: false, linkify: false });
 
@@ -98,7 +99,7 @@ export default function WikiLinkPreview({ slug, anchorRect, onClose }: WikiLinkP
           </div>
           <div
             className="text-xs text-stone-600 leading-relaxed line-clamp-4 wiki-preview-content"
-            dangerouslySetInnerHTML={{ __html: snippetHtml }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(snippetHtml) }}
           />
           <div className="flex items-center gap-3 mt-2 text-[10px] text-stone-400">
             <span>{page.outgoing_links.length} links</span>

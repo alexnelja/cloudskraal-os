@@ -20,6 +20,7 @@ const { migrateMeasurements } = require('./migrate-measurements');
 const { migrateReclassifyLargeFields } = require('./migrate-reclassify-large-fields');
 const { initTaskManagerSchema, seedDefaultTags, seedDefaultStatuses } = require('./schema-tasks');
 const { migrateTaskStatusId } = require('./migrate-task-status-id');
+const { migrateAddIndexes } = require('./migrate-add-indexes');
 
 const DB_PATH = process.env.CAPEX_DB_PATH ?? path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -30,31 +31,55 @@ function getDb() {
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
+    db.pragma('busy_timeout = 5000');
+    db.pragma('synchronous = NORMAL');
+    db.pragma('cache_size = -32000'); // 32 MB
+
+    ensureMigrationsTable(db);
+
     initSchema(db);
-    initFarmSchema(db);
-    initCalendarSchema(db);
-    initWikiSchema(db);
-    initPhase2Schema(db);
-    initPhase3Schema(db);
-    initUsagePeriodsSchema(db);
-    migrateFieldCop(db);
-    initConversionFactorsSchema(db);
-    initEnterprisePricesSchema(db);
-    initAnnotationsSchema(db);
-    migrateAnnotationsCategory(db);
-    migrateTasksAnnotationLink(db);
-    migrateMapLayersLive(db);
-    migrateMapLayersExtra(db);
-    migrateMapLayersCleanupBasemaps(db);
-    migrateWikiPageLinks(db);
-    migrateMeasurements(db);
-    migrateReclassifyLargeFields(db);
-    initTaskManagerSchema(db);
-    seedDefaultTags(db);
-    seedDefaultStatuses(db);
-    migrateTaskStatusId(db);
+    runMigration(db, 'init-farm-schema', initFarmSchema);
+    runMigration(db, 'init-calendar-schema', initCalendarSchema);
+    runMigration(db, 'init-wiki-schema', initWikiSchema);
+    runMigration(db, 'init-phase2-schema', initPhase2Schema);
+    runMigration(db, 'init-phase3-schema', initPhase3Schema);
+    runMigration(db, 'init-usage-periods-schema', initUsagePeriodsSchema);
+    runMigration(db, 'migrate-field-cop', migrateFieldCop);
+    runMigration(db, 'init-conversion-factors-schema', initConversionFactorsSchema);
+    runMigration(db, 'init-enterprise-prices-schema', initEnterprisePricesSchema);
+    runMigration(db, 'init-annotations-schema', initAnnotationsSchema);
+    runMigration(db, 'migrate-annotations-category', migrateAnnotationsCategory);
+    runMigration(db, 'migrate-tasks-annotation-link', migrateTasksAnnotationLink);
+    runMigration(db, 'migrate-map-layers-live', migrateMapLayersLive);
+    runMigration(db, 'migrate-map-layers-extra', migrateMapLayersExtra);
+    runMigration(db, 'migrate-map-layers-cleanup-basemaps', migrateMapLayersCleanupBasemaps);
+    runMigration(db, 'migrate-wiki-page-links', migrateWikiPageLinks);
+    runMigration(db, 'migrate-measurements', migrateMeasurements);
+    runMigration(db, 'migrate-reclassify-large-fields', migrateReclassifyLargeFields);
+    runMigration(db, 'init-task-manager-schema', initTaskManagerSchema);
+    runMigration(db, 'seed-default-tags', seedDefaultTags);
+    runMigration(db, 'seed-default-statuses', seedDefaultStatuses);
+    runMigration(db, 'migrate-task-status-id', migrateTaskStatusId);
+    runMigration(db, 'add-indexes', migrateAddIndexes);
   }
   return db;
+}
+
+function ensureMigrationsTable(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      name TEXT PRIMARY KEY,
+      applied_at TEXT NOT NULL
+    )
+  `);
+}
+
+function runMigration(db, name, fn) {
+  const exists = db.prepare('SELECT name FROM schema_migrations WHERE name = ?').get(name);
+  if (exists) return;
+  fn(db);
+  db.prepare('INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)').run(name, new Date().toISOString());
+  console.log(`[migration] ${name} applied`);
 }
 
 function initSchema(db) {

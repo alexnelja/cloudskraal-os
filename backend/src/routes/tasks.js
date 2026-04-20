@@ -162,6 +162,16 @@ router.delete('/task-statuses/:id', (req, res) => {
   const existing = db.prepare('SELECT id FROM task_statuses WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Status not found' });
 
+  // Reassign tasks using this status to the default before deleting
+  const defaultStatus = db.prepare(
+    'SELECT id FROM task_statuses WHERE farm_id = ? AND is_default = 1 AND id != ? LIMIT 1'
+  ).get('cloudskraal', req.params.id);
+  if (defaultStatus) {
+    db.prepare('UPDATE tasks SET status_id = ? WHERE status_id = ?').run(defaultStatus.id, req.params.id);
+  } else {
+    db.prepare('UPDATE tasks SET status_id = NULL WHERE status_id = ?').run(req.params.id);
+  }
+
   db.prepare('DELETE FROM task_statuses WHERE id = ?').run(req.params.id);
   res.status(204).send();
 });

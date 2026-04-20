@@ -1,30 +1,29 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard,
+  SquaresFour,
   FolderOpen,
-  GitCompare,
-  ChevronLeft,
-  ChevronRight,
-  Wheat,
-  Map as MapIcon,
-  CalendarDays,
+  GitDiff,
+  CaretLeft,
+  CaretRight,
+  MapTrifold,
+  CalendarBlank,
   CheckSquare,
   BookOpen,
   Wrench,
-  Beef,
+  Cow,
   Factory,
   Users,
   Package,
-  BarChart3,
-} from 'lucide-react';
+  ChartBar,
+} from '@phosphor-icons/react';
 
 const navGroups = [
   {
     items: [
-      { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-      { to: '/map', icon: MapIcon, label: 'Farm Map' },
-      { to: '/calendar', icon: CalendarDays, label: 'Calendar' },
+      { to: '/', icon: SquaresFour, label: 'Dashboard' },
+      { to: '/map', icon: MapTrifold, label: 'Farm Map' },
+      { to: '/calendar', icon: CalendarBlank, label: 'Calendar' },
       { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
       { to: '/wiki', icon: BookOpen, label: 'Wiki' },
     ],
@@ -32,7 +31,7 @@ const navGroups = [
   {
     items: [
       { to: '/equipment', icon: Wrench, label: 'Equipment' },
-      { to: '/livestock', icon: Beef, label: 'Livestock' },
+      { to: '/livestock', icon: Cow, label: 'Livestock' },
       { to: '/production', icon: Factory, label: 'Production' },
     ],
   },
@@ -40,9 +39,9 @@ const navGroups = [
     items: [
       { to: '/employees', icon: Users, label: 'Employees' },
       { to: '/inventory', icon: Package, label: 'Inventory' },
-      { to: '/financials', icon: BarChart3, label: 'Financials' },
+      { to: '/financials', icon: ChartBar, label: 'Financials' },
       { to: '/projects', icon: FolderOpen, label: 'CapEx' },
-      { to: '/compare', icon: GitCompare, label: 'Compare' },
+      { to: '/compare', icon: GitDiff, label: 'Compare' },
     ],
   },
 ];
@@ -106,7 +105,7 @@ export default function Sidebar() {
         onClick={() => setCollapsed(!collapsed)}
         className="flex items-center justify-center py-4 border-t border-emerald-700 text-emerald-300 hover:text-white transition-colors"
       >
-        {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        {collapsed ? <CaretRight size={18} /> : <CaretLeft size={18} />}
       </button>
     </aside>
   );

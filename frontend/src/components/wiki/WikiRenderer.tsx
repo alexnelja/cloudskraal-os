@@ -196,7 +196,7 @@ export default function WikiRenderer({ body, onHeadingsReady, brokenSlugs, onChe
     if (mermaidBlocks.length === 0) return;
 
     import('mermaid').then(({ default: mermaid }) => {
-      mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'loose' });
+      mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict' });
       mermaidBlocks.forEach(async (block, i) => {
         const pre = block.parentElement;
         if (!pre || pre.dataset.mermaidRendered) return;

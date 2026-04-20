@@ -213,7 +213,7 @@ export default function TodayView({
                 >
                   <Cloud size={20} weight={blockedCount > 0 ? 'fill' : 'regular'} />
                   {blockedCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                       {blockedCount}
                     </span>
                   )}
@@ -276,7 +276,7 @@ export default function TodayView({
                 >
                   <Funnel size={20} weight={activeTagIds.size > 0 ? 'fill' : 'regular'} />
                   {activeTagIds.size > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-blue-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                       {activeTagIds.size}
                     </span>
                   )}
