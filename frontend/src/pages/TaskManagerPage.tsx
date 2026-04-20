@@ -1,17 +1,14 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { Bell, BellSlash, GearSix, CaretLeft } from '@phosphor-icons/react';
 import { useFieldDetection } from '../hooks/useFieldDetection';
 import { useViewTransition } from '../hooks/useViewTransition';
-import { getTasks, completeTask, uncompleteTask, createTask, updateTask, deleteTask } from '../api/calendar';
-import { listTags, listStatuses, addTagToTask } from '../api/taskManager';
-import { getFields, getFarms, getMapGeoJSON } from '../api/farms';
-import { fetchForecast, clearForecastCache } from '../api/weather';
+import { useTaskData } from '../hooks/useTaskData';
+import { useWeatherBlocking } from '../hooks/useWeatherBlocking';
+import { useTaskNotifications } from '../hooks/useTaskNotifications';
+import { createTask } from '../api/calendar';
 import type { Task } from '../types/calendar';
-import type { Tag, TaskStatusConfig } from '../types/taskManager';
-import { evaluateWeatherBlocks, type WeatherBlock, type WeatherData } from '../lib/weatherBlocking';
-import { requestNotificationPermission, isNotificationEnabled, notifyOverdueTasks, notifyWeatherUnblock } from '../lib/notifications';
 import { checkTransitionTriggers, type TransitionSuggestion } from '../lib/usagePeriodTriggers';
 import TransitionBanner from '../components/tasks/TransitionBanner';
 import TodayView from '../components/tasks/TodayView';
@@ -20,7 +17,6 @@ import ListView from '../components/tasks/ListView';
 import TagManager from '../components/tasks/TagManager';
 import CopToast from '../components/tasks/CopToast';
 import TaskDetailSheet from '../components/tasks/TaskDetailSheet';
-import type { ParsedTaskInput } from '../components/tasks/QuickInput';
 
 type ViewMode = 'home' | 'today' | 'upcoming' | 'all' | 'completed' | 'board' | 'list';
 
@@ -77,33 +73,56 @@ const SMART_LISTS: SmartListCard[] = [
 
 export default function TaskManagerPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { startTransition } = useViewTransition();
+
+  // --- Custom hooks ---
+  const {
+    tasks, tags, statuses, fields, geojson, loading,
+    fetchData,
+    handleComplete, handleUndoComplete, handleUndoCompletionToast,
+    handleStatusChange, handleTaskUpdate, handleDelete, handleReorder, handleQuickCreate,
+    copToast, setCopToast, completionToast, setCompletionToast,
+  } = useTaskData();
+
+  const { weatherBlocks, weatherToday, handleWeatherRefresh } = useWeatherBlocking(tasks, loading);
+  const { notificationsOn, handleToggleNotifications } = useTaskNotifications(tasks, weatherBlocks, loading);
+
+  // --- Local UI state ---
   const [viewMode, setViewMode] = useState<ViewMode>('home');
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [statuses, setStatuses] = useState<TaskStatusConfig[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [initialTagFilter, setInitialTagFilter] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
-  const [fields, setFields] = useState<Array<{ id: string; name: string; enterprise: string }>>([]);
-  const [geojson, setGeojson] = useState<GeoJSON.FeatureCollection | null>(null);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
-  const [weatherBlocks, setWeatherBlocks] = useState<WeatherBlock[]>([]);
-  const [weatherToday, setWeatherToday] = useState<WeatherData | null>(null);
-  const [copToast, setCopToast] = useState<{ costsLogged: Array<{ id: string; product_name: string; total_cost: number }>; taskTitle: string; taskId: string } | null>(null);
-  const [completionToast, setCompletionToast] = useState<{ taskId: string; title: string } | null>(null);
-  const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [transitionSuggestions, setTransitionSuggestions] = useState<TransitionSuggestion[]>([]);
-  const [notificationsOn, setNotificationsOn] = useState(() =>
-    localStorage.getItem('capex.notifications-enabled') === 'true' && isNotificationEnabled(),
-  );
-  const prevBlockedIdsRef = useRef<Set<string>>(new Set());
   const [gpsEnabled, setGpsEnabled] = useState(() =>
     localStorage.getItem('capex.gps-field-detection') === 'true',
   );
   const detectedField = useFieldDetection(geojson, gpsEnabled);
-  const { startTransition } = useViewTransition();
 
+  // --- Initial fetch ---
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // --- Auto-open task detail sheet from ?detail= query param ---
+  useEffect(() => {
+    if (loading) return;
+    const detailId = searchParams.get('detail');
+    if (detailId) {
+      const taskExists = tasks.some((t) => t.id === detailId);
+      if (taskExists) {
+        setSelectedTaskId(detailId);
+        if (viewMode === 'home') setViewMode('all');
+      }
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('detail');
+        return next;
+      }, { replace: true });
+    }
+  }, [loading, tasks, searchParams, setSearchParams, viewMode]);
+
+  // --- GPS ---
   const detectedFieldTaskCount = useMemo(() => {
     if (!detectedField) return 0;
     return tasks.filter((t) => t.field_id === detectedField.fieldId).length;
@@ -124,157 +143,7 @@ export default function TaskManagerPage() {
     }
   }, [detectedField]);
 
-  // Data fetching
-  const fetchData = useCallback(async () => {
-    try {
-      const [taskData, tagData, statusData, fieldData, geoData] = await Promise.all([
-        getTasks(),
-        listTags(),
-        listStatuses(),
-        getFields(),
-        getMapGeoJSON().catch(() => null),
-      ]);
-      setTasks(taskData);
-      setTags(tagData);
-      setStatuses(statusData);
-      setFields(fieldData.map((f) => ({ id: f.id, name: f.name, enterprise: f.enterprise })));
-      setGeojson(geoData);
-    } catch (err) {
-      console.error('Failed to load task data:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // Auto-open task detail sheet from ?detail= query param (e.g. after FAB quick-create)
-  useEffect(() => {
-    if (loading) return;
-    const detailId = searchParams.get('detail');
-    if (detailId) {
-      const taskExists = tasks.some((t) => t.id === detailId);
-      if (taskExists) {
-        setSelectedTaskId(detailId);
-        // Switch to a list view so the detail sheet makes sense
-        if (viewMode === 'home') setViewMode('all');
-      }
-      // Clear the query param so it doesn't re-trigger
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete('detail');
-        return next;
-      }, { replace: true });
-    }
-  }, [loading, tasks, searchParams, setSearchParams, viewMode]);
-
-  // Weather
-  const loadWeather = useCallback(
-    async (taskList: Task[]) => {
-      try {
-        const farms = await getFarms();
-        if (farms.length === 0 || farms[0].lat == null || farms[0].lng == null) return;
-        const farm = farms[0];
-        const result = await fetchForecast(farm.lat, farm.lng, farm.id);
-        if (!result) return;
-
-        const { daily } = result.data;
-        const todayData: WeatherData = {
-          wind_speed_max: daily.windspeed_10m_max[0] ?? 0,
-          precipitation_sum: daily.precipitation_sum[0] ?? 0,
-          temperature_min: daily.temperature_2m_min[0] ?? 10,
-          temperature_max: daily.temperature_2m_max[0] ?? 25,
-        };
-        setWeatherToday(todayData);
-
-        const forecast: WeatherData[] = daily.time.slice(1).map((_: any, i: number) => ({
-          wind_speed_max: daily.windspeed_10m_max[i + 1] ?? 0,
-          precipitation_sum: daily.precipitation_sum[i + 1] ?? 0,
-          temperature_min: daily.temperature_2m_min[i + 1] ?? 10,
-          temperature_max: daily.temperature_2m_max[i + 1] ?? 25,
-        }));
-
-        const blocks = evaluateWeatherBlocks(taskList, todayData, forecast);
-        setWeatherBlocks(blocks);
-
-        for (const block of blocks) {
-          if (block.severity === 'blocked') {
-            await updateTask(block.taskId, {
-              blocked_reason: block.message,
-              blocked_until: block.clearsAt,
-            }).catch(() => {});
-          }
-        }
-      } catch (err) {
-        console.error('Weather fetch failed:', err);
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (!loading && tasks.length > 0) {
-      loadWeather(tasks);
-    }
-  }, [loading, tasks, loadWeather]);
-
-  // Notifications
-  useEffect(() => {
-    if (loading || !notificationsOn) return;
-    if (sessionStorage.getItem('capex.overdue-notified')) return;
-    const today = new Date().toISOString().slice(0, 10);
-    const overdue = tasks.filter(
-      (t) => t.due_date && t.due_date < today && t.status !== 'completed' && t.status !== 'skipped',
-    );
-    if (overdue.length > 0) {
-      notifyOverdueTasks(overdue.length);
-      sessionStorage.setItem('capex.overdue-notified', '1');
-    }
-  }, [loading, tasks, notificationsOn]);
-
-  useEffect(() => {
-    if (!notificationsOn) return;
-    const currentBlockedIds = new Set(
-      weatherBlocks.filter((b) => b.severity === 'blocked').map((b) => b.taskId),
-    );
-    const prev = prevBlockedIdsRef.current;
-    if (prev.size > 0) {
-      for (const taskId of prev) {
-        if (!currentBlockedIds.has(taskId)) {
-          const task = tasks.find((t) => t.id === taskId);
-          if (task) {
-            notifyWeatherUnblock(task.field_name || 'Field', 'Conditions improved');
-          }
-        }
-      }
-    }
-    prevBlockedIdsRef.current = currentBlockedIds;
-  }, [weatherBlocks, tasks, notificationsOn]);
-
-  const handleToggleNotifications = useCallback(async () => {
-    if (notificationsOn) {
-      setNotificationsOn(false);
-      localStorage.setItem('capex.notifications-enabled', 'false');
-    } else {
-      const granted = await requestNotificationPermission();
-      if (granted) {
-        setNotificationsOn(true);
-        localStorage.setItem('capex.notifications-enabled', 'true');
-      }
-    }
-  }, [notificationsOn]);
-
-  const handleWeatherRefresh = useCallback(async () => {
-    try {
-      const farms = await getFarms();
-      if (farms.length > 0) clearForecastCache(farms[0].id);
-    } catch { /* ignore */ }
-    loadWeather(tasks);
-  }, [tasks, loadWeather]);
-
-  // Transitions
+  // --- Transitions ---
   useEffect(() => {
     if (loading || fields.length === 0) return;
     const dismissed: string[] = JSON.parse(localStorage.getItem('transition_dismissed') || '[]');
@@ -317,113 +186,22 @@ export default function TaskManagerPage() {
     setTransitionSuggestions((prev) => prev.filter((s) => s.fieldId !== fieldId));
   }, []);
 
-  // Task actions
-  const handleComplete = useCallback(async (id: string) => {
-    try {
-      // Grab the title before the task disappears from the list
-      const taskTitle = tasks.find((t) => t.id === id)?.title ?? 'Task';
-      const result = await completeTask(id);
-      await fetchData();
-      if (result.costs_logged && result.costs_logged.length > 0) {
-        setCopToast({ costsLogged: result.costs_logged, taskTitle: result.title, taskId: id });
-      } else {
-        // Show lightweight completion toast with undo for non-COP completions
-        if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
-        setCompletionToast({ taskId: id, title: taskTitle });
-        completionTimerRef.current = setTimeout(() => {
-          setCompletionToast(null);
-        }, 4000);
-      }
-    } catch (err) { console.error('Failed to complete task:', err); }
-  }, [fetchData, tasks]);
-
-  const handleUndoComplete = useCallback(async () => {
-    if (!copToast) return;
-    try {
-      await uncompleteTask(copToast.taskId);
-      setCopToast(null);
-      await fetchData();
-    } catch (err) { console.error('Failed to undo task completion:', err); }
-  }, [copToast, fetchData]);
-
-  const handleUndoCompletionToast = useCallback(async () => {
-    if (!completionToast) return;
-    if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
-    try {
-      await uncompleteTask(completionToast.taskId);
-      setCompletionToast(null);
-      await fetchData();
-    } catch (err) { console.error('Failed to undo task completion:', err); }
-  }, [completionToast, fetchData]);
-
-  const handleStatusChange = useCallback(async (taskId: string, newStatusId: string) => {
-    try {
-      await updateTask(taskId, { status_id: newStatusId });
-      await fetchData();
-    } catch (err) { console.error('Failed to update task status:', err); }
-  }, [fetchData]);
-
-  const handleTaskUpdate = useCallback(async (taskId: string, data: Record<string, any>) => {
-    try {
-      await updateTask(taskId, data);
-      await fetchData();
-    } catch (err) { console.error('Failed to update task:', err); }
-  }, [fetchData]);
-
-  const handleDelete = useCallback(async (taskId: string) => {
-    try {
-      await deleteTask(taskId);
-      setSelectedTaskId(null);
-      await fetchData();
-    } catch (err) { console.error('Failed to delete task:', err); }
-  }, [fetchData]);
-
-  const handleReorder = useCallback(async (taskId: string, newIndex: number) => {
-    try {
-      await updateTask(taskId, { sort_order: newIndex });
-      setTasks((prev) => {
-        const idx = prev.findIndex((t) => t.id === taskId);
-        if (idx === -1) return prev;
-        const updated = [...prev];
-        updated[idx] = { ...updated[idx], sort_order: newIndex };
-        return updated;
-      });
-    } catch (err) { console.error('Failed to reorder task:', err); }
-  }, []);
-
-  const handleQuickCreate = useCallback(async (parsed: ParsedTaskInput) => {
-    try {
-      const newTask = await createTask({
-        title: parsed.title,
-        description: null, enterprise: null,
-        field_id: parsed.field_id,
-        type: 'manual', status: 'pending',
-        priority: (parsed.priority as any) || 'medium',
-        due_date: parsed.due_date,
-        assigned_to: null, depends_on_task_id: null,
-        recurrence_rule: null, calendar_event_id: null,
-        notes: null, status_id: null,
-        estimated_minutes: null, actual_minutes: null,
-        blocked_reason: null, blocked_until: null,
-        sort_order: 0, verified_by: null, verified_at: null,
-      });
-      if (parsed.tag_ids.length) {
-        await Promise.all(parsed.tag_ids.map((tagId) => addTagToTask(newTask.id, tagId)));
-      }
-      await fetchData();
-    } catch (err) { console.error('Failed to quick-create task:', err); }
-  }, [fetchData]);
-
+  // --- Task selection ---
   const handleSelectTask = useCallback((id: string) => {
     setSelectedTaskId(id);
   }, []);
+
+  const handleDeleteWithDeselect = useCallback(async (taskId: string) => {
+    setSelectedTaskId(null);
+    await handleDelete(taskId);
+  }, [handleDelete]);
 
   const selectedTask = useMemo(() => {
     if (!selectedTaskId) return null;
     return tasks.find((t) => t.id === selectedTaskId) ?? null;
   }, [tasks, selectedTaskId]);
 
-  // Tag counts for home view
+  // --- Tag counts for home view ---
   const tagCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const task of tasks) {
@@ -625,7 +403,7 @@ export default function TaskManagerPage() {
             statuses={statuses}
             tags={tags}
             onStatusChange={handleStatusChange}
-            onDelete={handleDelete}
+            onDelete={handleDeleteWithDeselect}
             onSelectTask={handleSelectTask}
           />
         )}
@@ -637,7 +415,7 @@ export default function TaskManagerPage() {
         open={selectedTaskId !== null}
         onDismiss={() => setSelectedTaskId(null)}
         onSave={handleTaskUpdate}
-        onDelete={handleDelete}
+        onDelete={handleDeleteWithDeselect}
         tags={tags}
         statuses={statuses}
         fields={fields}
