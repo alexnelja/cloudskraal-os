@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useRef, useEffect, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import FarmMap from '../components/map/FarmMap';
 import FieldPanel from '../components/map/FieldPanel';
@@ -8,44 +7,28 @@ import NewFieldModal from '../components/map/NewFieldModal';
 import EditFieldModal from '../components/map/EditFieldModal';
 import LayerControl from '../components/map/LayerControl';
 import { AnimatePresence, motion } from 'motion/react';
-import { MapPinArea, ClipboardText, NotePencil, CheckSquare, MapPin, List, Polygon as PolyIcon } from '@phosphor-icons/react';
+import { MapPinArea, NotePencil, List, Polygon as PolyIcon } from '@phosphor-icons/react';
 import FluidSheet from '../components/map/FluidSheet';
-import AnnotateTool, { type DrawFinishPayload, type DrawMode } from '../components/map/tools/AnnotateTool';
+import AnnotateTool from '../components/map/tools/AnnotateTool';
 import SaveAnnotationModal from '../components/map/SaveAnnotationModal';
 import AnnotationsSidebar from '../components/map/AnnotationsSidebar';
 import AnnotationMarkers from '../components/map/AnnotationMarkers';
-import CreateTaskModal, { type TaskContext } from '../components/map/CreateTaskModal';
-import MapContextMenu, { type MenuItem } from '../components/map/MapContextMenu';
+import CreateTaskModal from '../components/map/CreateTaskModal';
+import MapContextMenu from '../components/map/MapContextMenu';
 import MapOverlayRail from '../components/map/MapOverlayRail';
 import BasemapSwitcher from '../components/map/BasemapSwitcher';
 import EnterpriseFilterBar from '../components/map/EnterpriseFilterBar';
 import MeasureToolbar from '../components/map/MeasureToolbar';
 import ExportMapButton from '../components/map/ExportMapButton';
-import { loadBasemapPreference, saveBasemapPreference } from '../config/basemaps';
-import { useLongPress } from '../hooks/useLongPress';
-import { useOnlineStatus } from '../hooks/useOnlineStatus';
-import { flushQueue, getQueue } from '../lib/syncQueue';
-import { WifiSlash } from '@phosphor-icons/react';
-import type { MapContextMenuEvent } from '../components/map/FarmMap';
-import { listTasks, createTask, type Task } from '../api/tasks';
-import { createAnnotation } from '../api/annotations';
-import { API_BASE_URL } from '../api/config';
-import { getMapGeoJSON, getFarmBoundaries, getFarms, getFields, getMapLayers, updateMapLayer, deleteField } from '../api/farms';
-import { findEnclosingField } from '../utils/fields';
-import { formatDistance, formatArea } from '../components/map/tools/metricFormat';
-import * as turf from '@turf/turf';
-import {
-  listAnnotations as apiListAnnotations,
-  createAnnotation as apiCreateAnnotation,
-  deleteAnnotation as apiDeleteAnnotation,
-  updateAnnotation as apiUpdateAnnotation,
-} from '../api/annotations';
-import type { Farm, Field, MapLayer } from '../types/farm';
-import type { Annotation, CreateAnnotationInput } from '../types/annotation';
-import type { Measurement } from '../types/measurement';
 import SaveMeasurementModal from '../components/map/SaveMeasurementModal';
+import { WifiSlash } from '@phosphor-icons/react';
 import { ENTERPRISE_LABELS } from '../types/farm';
-import { useEnterpriseColors } from '../hooks/useEnterpriseColors';
+import { useMapData } from '../hooks/useMapData';
+import { useAnnotationState } from '../hooks/useAnnotationState';
+import { useMapInteractions } from '../hooks/useMapInteractions';
+import type { Measurement } from '../types/measurement';
+import type { DrawFinishPayload } from '../components/map/tools/AnnotateTool';
+import * as turf from '@turf/turf';
 
 function getBoundsForFarm(
   geojson: GeoJSON.FeatureCollection,
@@ -76,565 +59,81 @@ function getBoundsForFarm(
   return [minLng, minLat, maxLng, maxLat];
 }
 
-function getUniqueEnterprises(geojson: GeoJSON.FeatureCollection): string[] {
-  const seen = new Set<string>();
-  for (const f of geojson.features) {
-    const ent = f.properties?.enterprise as string | undefined;
-    if (ent) seen.add(ent);
-  }
-  return Array.from(seen);
-}
-
 export default function FarmMapPage() {
-  const { fieldId } = useParams<{ fieldId?: string }>();
-  const [geojson, setGeojson] = useState<GeoJSON.FeatureCollection | null>(null);
-  const [farms, setFarms] = useState<Farm[]>([]);
-  const [fields, setFields] = useState<Field[]>([]);
-  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(fieldId || null);
-  const { colors: enterpriseColors, setColor: setEnterpriseColor } = useEnterpriseColors();
-  const isOnline = useOnlineStatus();
-  const [syncPending, setSyncPending] = useState(getQueue().length);
-
-  // Flush sync queue when coming back online
-  useEffect(() => {
-    if (!isOnline) return;
-    if (getQueue().length === 0) return;
-    flushQueue().then(() => setSyncPending(getQueue().length));
-  }, [isOnline]);
-
-  const [loading, setLoading] = useState(true);
-  const [visibleEnterprises, setVisibleEnterprises] = useState<string[] | undefined>(undefined);
-  const [enterprises, setEnterprises] = useState<string[]>([]);
-  const [farmBoundaries, setFarmBoundaries] = useState<GeoJSON.FeatureCollection | null>(null);
-  const [showFarmBoundaries, setShowFarmBoundaries] = useState(true);
-  const [mapLayers, setMapLayers] = useState<MapLayer[]>([]);
-  const [legendExpanded, setLegendExpanded] = useState(false);
-  const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
 
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [pendingDraw, setPendingDraw] = useState<DrawFinishPayload | null>(null);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [contextMenu, setContextMenu] = useState<{
-    x: number; y: number; title: string; items: MenuItem[];
-  } | null>(null);
-  const [createTaskContext, setCreateTaskContext] = useState<{
-    context: TaskContext; defaultTitle: string;
-  } | null>(null);
-  const [armedDropMode, setArmedDropMode] = useState(false);
-  const [pressRing, setPressRing] = useState<{ x: number; y: number } | null>(null);
-  const [loadErrors, setLoadErrors] = useState<string[]>([]);
-  const [loadNonce, setLoadNonce] = useState(0);
-  const [drawMode, setDrawMode] = useState<DrawMode>('static');
-  const [terraDraw, setTerraDraw] = useState<{
-    setMode: (mode: string) => void;
-    addFeatures?: (features: GeoJSON.Feature[]) => void;
-    removeFeatures?: (ids: (string | number)[]) => void;
-  } | null>(null);
-  const [basemapId, setBasemapId] = useState<string>(() => loadBasemapPreference());
-  const [fieldsSidebarOpen, setFieldsSidebarOpen] = useState(false);
-  const [fieldsSidebarCollapsed, setFieldsSidebarCollapsed] = useState(false);
-  const [newFieldOpen, setNewFieldOpen] = useState(false);
-  const [newFieldSeed, setNewFieldSeed] = useState<{ geometry?: GeoJSON.Geometry; areaHa?: number }>({});
-  const [editFieldId, setEditFieldId] = useState<string | null>(null);
-  // True while we're waiting for the user to draw a polygon for a new field.
-  const [awaitingFieldDraw, setAwaitingFieldDraw] = useState(false);
+  // --- Data hook ---
+  const {
+    geojson, farms, fields, farmBoundaries, enterprises, enterpriseColors, setEnterpriseColor,
+    annotations, setAnnotations, tasks, mapLayers,
+    selectedFieldId, setSelectedFieldId,
+    loading, setLoading, loadErrors, visibleEnterprises, setVisibleEnterprises,
+    showFarmBoundaries, setShowFarmBoundaries, legendExpanded, setLegendExpanded,
+    isOnline, syncPending,
+    refreshTasks, handleLayerToggle, handleLayerOpacity, handleEnterpriseToggle,
+    handleDeleteField, retryLoad, bumpLoadNonce,
+  } = useMapData();
 
-  // 5m — save-as state: geometry captured when a draw finishes
-  const [finishedGeometry, setFinishedGeometry] = useState<GeoJSON.Geometry | null>(null);
-  const [measurementText, setMeasurementText] = useState<string | null>(null);
-  // Stores the raw draw payload so FEATURE/NOTE route can open SaveAnnotationModal
-  // without the modal appearing simultaneously with the chooser panel.
-  const pendingDrawPayloadRef = useRef<import('../components/map/tools/AnnotateTool').DrawFinishPayload | null>(null);
-  // Ref mirror of awaitingFieldDraw so handleDrawFinish closure always sees current value.
-  const awaitingFieldDrawRef = useRef(false);
-  const [saveMeasurementPending, setSaveMeasurementPending] = useState<{
-    geometry: GeoJSON.Geometry;
-    kind: 'length' | 'area';
-    value: number;
-    unit: 'm' | 'km' | 'm²' | 'ha';
-    formatted: string;
-  } | null>(null);
-
-  // Keep ref mirror of awaitingFieldDraw in sync so callbacks always read current value.
-  awaitingFieldDrawRef.current = awaitingFieldDraw;
-
-  useEffect(() => {
-    // Fire all endpoints independently so one failure doesn't empty the rest.
-    const errors: string[] = [];
-    let pending = 5;
-    const done = () => {
-      pending -= 1;
-      if (pending === 0) {
-        setLoadErrors(errors);
-        setLoading(false);
-      }
-    };
-
-    getMapGeoJSON()
-      .then(gj => {
-        setGeojson(gj);
-        const ents = getUniqueEnterprises(gj);
-        setEnterprises(ents);
-        setVisibleEnterprises(ents);
-      })
-      .catch(err => { console.error('getMapGeoJSON:', err); errors.push('map'); })
-      .finally(done);
-
-    getFarmBoundaries()
-      .then(setFarmBoundaries)
-      .catch(err => { console.error('getFarmBoundaries:', err); errors.push('boundaries'); })
-      .finally(done);
-
-    getFarms()
-      .then(setFarms)
-      .catch(err => { console.error('getFarms:', err); errors.push('farms'); })
-      .finally(done);
-
-    getFields()
-      .then(setFields)
-      .catch(err => { console.error('getFields:', err); errors.push('fields'); })
-      .finally(done);
-
-    getMapLayers()
-      .then(setMapLayers)
-      .catch(err => { console.error('getMapLayers:', err); errors.push('layers'); })
-      .finally(done);
-
-    apiListAnnotations().then(setAnnotations).catch(err => {
-      console.error('Failed to load annotations:', err);
-    });
-    listTasks().then(setTasks).catch(err => {
-      console.error('Failed to load tasks:', err);
-    });
-  }, [loadNonce]);
-
-  const refreshTasks = useCallback(async () => {
-    try { setTasks(await listTasks()); } catch (e) { console.error(e); }
-  }, []);
-
-  const dropMapNote = useCallback(async (lng: number, lat: number) => {
-    try {
-      const pin = await createAnnotation({
-        type: 'pin',
-        title: 'Map note',
-        category: 'map_note',
-        geometry: { type: 'Point', coordinates: [lng, lat] },
-      });
-      setAnnotations((prev) => [pin, ...prev]);
-      setSelectedAnnotationId(pin.id);
-      setSidebarOpen(true);
-      try {
-        await fetch(`${API_BASE_URL}/wiki/map-notes/append`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ annotation_id: pin.id }),
-        });
-      } catch (err2) { console.warn('wiki append failed', err2); }
-    } catch (err) { console.error(err); }
-  }, []);
-
-  // Arm drop-note mode when FAB navigates here with ?armNote=1.
-  useEffect(() => {
-    if (searchParams.get('armNote') === '1') {
-      setArmedDropMode(true);
-      const next = new URLSearchParams(searchParams);
-      next.delete('armNote');
-      setSearchParams(next, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
-
-  // Esc cancels armed drop mode.
-  useEffect(() => {
-    if (!armedDropMode) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setArmedDropMode(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [armedDropMode]);
-
-  // Esc exits active draw mode back to pan.
-  useEffect(() => {
-    if (!terraDraw) return;
-    const activeModes = ['linestring', 'polygon', 'point'];
-    if (!activeModes.includes(drawMode)) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') terraDraw.setMode('render');
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [drawMode, terraDraw]);
-
-  // Esc cancels awaiting-field-draw mode.
-  useEffect(() => {
-    if (!awaitingFieldDraw) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setAwaitingFieldDraw(false);
-        terraDraw?.setMode('static');
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [awaitingFieldDraw, terraDraw]);
-
-  const handleArmedMapClick = useCallback(
-    async (e: { lng: number; lat: number }) => {
-      if (!armedDropMode) return;
-      await dropMapNote(e.lng, e.lat);
-      setArmedDropMode(false);
-    },
-    [armedDropMode, dropMapNote],
-  );
-
-  const taskCountByAnnotation = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const t of tasks) {
-      if (t.annotation_id && t.status !== 'completed' && t.status !== 'cancelled') {
-        m[t.annotation_id] = (m[t.annotation_id] ?? 0) + 1;
-      }
-    }
-    return m;
-  }, [tasks]);
-
-  const refreshAnnotations = useCallback(async () => {
-    try { setAnnotations(await apiListAnnotations()); }
-    catch (e) { console.error('Failed to refresh annotations:', e); }
-  }, []);
-
-  const flyToAnnotation = useCallback((ann: Annotation) => {
-    const map = mapRef.current;
-    if (!map) return;
-    const walk = (c: unknown): [number, number][] => {
-      if (Array.isArray(c) && typeof c[0] === 'number') return [[c[0] as number, c[1] as number]];
-      if (Array.isArray(c)) return (c as unknown[]).flatMap(walk);
-      return [];
-    };
-    const pts = walk((ann.geometry as { coordinates: unknown }).coordinates);
-    if (pts.length === 0) return;
-    if (pts.length === 1) {
-      map.flyTo({ center: pts[0], zoom: Math.max(map.getZoom(), 15) });
-      return;
-    }
-    let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
-    for (const [lng, lat] of pts) {
-      minLng = Math.min(minLng, lng); minLat = Math.min(minLat, lat);
-      maxLng = Math.max(maxLng, lng); maxLat = Math.max(maxLat, lat);
-    }
-    map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 80 });
-  }, []);
-
-  // Deep-link: ?annotation=<id>
-  useEffect(() => {
-    const annId = searchParams.get('annotation');
-    if (!annId || annotations.length === 0) return;
-    const ann = annotations.find((a) => a.id === annId);
-    if (!ann) return;
-    setSelectedAnnotationId(annId);
-    setSidebarOpen(true);
-    flyToAnnotation(ann);
-  }, [searchParams, annotations, flyToAnnotation]);
-
-  const handleDrawFinish = useCallback((payload: DrawFinishPayload) => {
-    // Fix 2 — polygon-first field creation: if we were waiting for a field
-    // boundary polygon, capture it and open NewFieldModal pre-filled.
-    if (awaitingFieldDrawRef.current && payload.geometry.type === 'Polygon') {
-      let areaHa: number | undefined;
-      try {
-        areaHa = turf.area(turf.feature(payload.geometry)) / 10000;
-      } catch { /* ignore */ }
-      setNewFieldSeed({ geometry: payload.geometry, areaHa });
-      setNewFieldOpen(true);
-      setAwaitingFieldDraw(false);
-      return; // don't fall through to save-as chooser
-    }
-
-    // Store payload for later — only pushed into pendingDraw when user
-    // explicitly picks FEATURE or NOTE from the chooser, so SaveAnnotationModal
-    // never appears simultaneously with the save-as chooser panel (Fix 1 — 5m).
-    pendingDrawPayloadRef.current = payload;
-    // Capture for the save-as chooser (5m)
-    setFinishedGeometry(payload.geometry);
-    // Compute a measurement text for the chip
-    try {
-      if (payload.type === 'line' && payload.geometry.type === 'LineString') {
-        const meters = turf.length(turf.lineString((payload.geometry as GeoJSON.LineString).coordinates), { units: 'meters' });
-        setMeasurementText(formatDistance(meters));
-      } else if (payload.type === 'polygon' && payload.geometry.type === 'Polygon') {
-        const m2 = turf.area(turf.polygon((payload.geometry as GeoJSON.Polygon).coordinates));
-        setMeasurementText(formatArea(m2));
-      } else {
-        setMeasurementText(null);
-      }
-    } catch {
-      setMeasurementText(null);
-    }
-  }, []);
-
-  const clearFinished = useCallback(() => {
-    setFinishedGeometry(null);
-    setMeasurementText(null);
-    pendingDrawPayloadRef.current = null;
-  }, []);
-
-  const handleSaveAsPick = useCallback(
-    (dest: 'field' | 'feature' | 'measurement' | 'note') => {
-      if (!finishedGeometry) return;
-      if (dest === 'field') {
-        if (geojson) {
-          const match = findEnclosingField(geojson, finishedGeometry);
-          if (match) {
-            // eslint-disable-next-line no-alert
-            window.alert(`Already inside "${match.fieldName}" — no new field created.`);
-            clearFinished();
-            return;
-          }
-        }
-        let areaHa: number | undefined;
-        try {
-          if (finishedGeometry.type === 'Polygon') {
-            areaHa = turf.area(turf.feature(finishedGeometry)) / 10000;
-          }
-        } catch { /* ignore */ }
-        setNewFieldSeed({ geometry: finishedGeometry, areaHa });
-        setNewFieldOpen(true);
-        // clearFinished called when modal closes
-        return;
-      }
-      if (dest === 'measurement') {
-        try {
-          let kind: 'length' | 'area' = 'length';
-          let value = 0;
-          let unit: 'm' | 'km' | 'm²' | 'ha' = 'm';
-          let formatted = measurementText ?? '';
-          if (finishedGeometry.type === 'LineString') {
-            kind = 'length';
-            value = turf.length(turf.lineString((finishedGeometry as GeoJSON.LineString).coordinates), { units: 'meters' });
-            unit = value >= 1000 ? 'km' : 'm';
-          } else if (finishedGeometry.type === 'Polygon') {
-            kind = 'area';
-            value = turf.area(turf.feature(finishedGeometry));
-            unit = value >= 10000 ? 'ha' : 'm²';
-          }
-          setSaveMeasurementPending({ geometry: finishedGeometry, kind, value, unit, formatted });
-        } catch { /* ignore */ }
-        clearFinished();
-        return;
-      }
-      if (dest === 'feature' || dest === 'note') {
-        // Route through existing SaveAnnotationModal.
-        // clearFinished() first so the chooser panel unmounts before
-        // SaveAnnotationModal mounts — no dual-modal flash (Fix 1 — 5m).
-        clearFinished();
-        if (pendingDrawPayloadRef.current) {
-          setPendingDraw(pendingDrawPayloadRef.current);
-          pendingDrawPayloadRef.current = null;
-        }
-        return;
-      }
-      clearFinished();
-    },
-    [finishedGeometry, measurementText, geojson, clearFinished],
-  );
-
-  const handleSaveAnnotation = useCallback(async (input: CreateAnnotationInput) => {
-    try {
-      const created = await apiCreateAnnotation(input);
-      setAnnotations((prev) => [created, ...prev]);
-      setSelectedAnnotationId(created.id);
-      setSidebarOpen(true);
-      setPendingDraw(null);
-    } catch (e) {
-      console.error('Save annotation failed:', e);
-    }
-  }, []);
-
-  const handleDiscardAnnotation = useCallback(() => {
-    setPendingDraw(null);
-    pendingDrawPayloadRef.current = null;
-  }, []);
-
-  const handleAnnotationSelect = useCallback((id: string) => {
-    setSelectedAnnotationId(id);
-    setSidebarOpen(true);
-    const ann = annotations.find((a) => a.id === id);
-    if (ann) flyToAnnotation(ann);
-  }, [annotations, flyToAnnotation]);
-
-  const openCreateTaskModal = useCallback((ctx: TaskContext, defaultTitle: string) => {
-    setCreateTaskContext({ context: ctx, defaultTitle });
-  }, []);
-
-  const handleSaveTask = useCallback(async (input: Parameters<typeof createTask>[0]) => {
-    try {
-      await createTask(input);
-      setCreateTaskContext(null);
-      refreshTasks();
-    } catch (e) {
-      console.error('Create task failed', e);
-    }
-  }, [refreshTasks]);
-
-  const handleMapContextMenu = useCallback((e: MapContextMenuEvent) => {
-    const items: MenuItem[] = [];
-    if (e.target === 'field' && e.fieldId) {
-      items.push({
-        id: 'task-for-field',
-        label: `Create task for ${e.fieldName ?? 'this field'}`,
-        Icon: ClipboardText,
-        tint: 'emerald',
-        onClick: () =>
-          openCreateTaskModal(
-            { kind: 'field', label: e.fieldName ?? 'field', fieldId: e.fieldId! },
-            '',
-          ),
-      });
-    } else {
-      items.push({
-        id: 'task-here',
-        label: 'Create task at this location',
-        Icon: ClipboardText,
-        tint: 'emerald',
-        onClick: async () => {
-          // First drop a task_location pin, then open CreateTaskModal linked to it.
-          try {
-            const pin = await createAnnotation({
-              type: 'pin',
-              title: 'Task location',
-              category: 'task_location',
-              geometry: { type: 'Point', coordinates: [e.lng, e.lat] },
-            });
-            setAnnotations((prev) => [pin, ...prev]);
-            openCreateTaskModal(
-              { kind: 'annotation', label: pin.title, annotationId: pin.id },
-              '',
-            );
-          } catch (err) { console.error(err); }
-        },
-      });
-      items.push({
-        id: 'map-note',
-        label: 'Drop map note',
-        Icon: NotePencil,
-        tint: 'amber',
-        onClick: () => { dropMapNote(e.lng, e.lat); },
-      });
-    }
-    setContextMenu({
-      x: e.x,
-      y: e.y,
-      title: e.target === 'field' ? (e.fieldName ?? 'Field') : 'Map',
-      items,
-    });
-  }, [openCreateTaskModal, dropMapNote]);
-
-  const handleMarkerContextMenu = useCallback(
-    (annotationId: string, x: number, y: number) => {
-      const ann = annotations.find((a) => a.id === annotationId);
-      if (!ann) return;
-      const items: MenuItem[] = [
-        {
-          id: 'task-linked',
-          label: `Create task linked to ${ann.title}`,
-          Icon: CheckSquare,
-          tint: 'emerald',
-          onClick: () =>
-            openCreateTaskModal(
-              { kind: 'annotation', label: ann.title, annotationId: ann.id },
-              '',
-            ),
-        },
-        {
-          id: 'fly-to',
-          label: 'Zoom to this pin',
-          Icon: MapPin,
-          tint: 'stone',
-          onClick: () => {
-            setSelectedAnnotationId(ann.id);
-            setSidebarOpen(true);
-          },
-        },
-      ];
-      setContextMenu({ x, y, title: ann.title, items });
-    },
-    [annotations, openCreateTaskModal],
-  );
-
-  // Long-press handlers — fire the same chooser as right-click, but gesture-based.
-  // Trackpad-friendly alternative to secondary-click per Apple HIG.
-  const openChooserAt = useCallback(
-    (clientX: number, clientY: number) => {
-      const map = mapRef.current;
-      if (!map) return;
-      const rect = map.getContainer().getBoundingClientRect();
-      const point: [number, number] = [clientX - rect.left, clientY - rect.top];
-      const lngLat = map.unproject(point);
-      const features = map.queryRenderedFeatures(point, { layers: ['fields-fill'] });
-      const feat = features?.[0];
-      handleMapContextMenu({
-        target: feat ? 'field' : 'blank',
-        fieldId: feat?.properties?.id as string | undefined,
-        fieldName: feat?.properties?.name as string | undefined,
-        lng: lngLat.lng,
-        lat: lngLat.lat,
-        x: clientX,
-        y: clientY,
-      });
-    },
-    [handleMapContextMenu],
-  );
-
-  const longPress = useLongPress({
-    durationMs: 500,
-    onLongPress: ({ clientX, clientY }) => {
-      if (armedDropMode) return; // armed-click path already handles drop
-      openChooserAt(clientX, clientY);
-    },
-    onProgress: (p) => {
-      setPressRing(p.active ? { x: p.clientX, y: p.clientY } : null);
-    },
+  // --- Annotation hook ---
+  const {
+    selectedAnnotationId, setSelectedAnnotationId,
+    sidebarOpen, setSidebarOpen,
+    pendingDraw, finishedGeometry, measurementText,
+    handleDrawFinish: annotationHandleDrawFinish, clearFinished, handleSaveAsPick,
+    handleSaveAnnotation, handleDiscardAnnotation,
+    editingAnnotationId, handleAnnotationEdit, handleGeometryChange,
+    handleFinishEditing, handleCancelEditing,
+    handleAnnotationSelect, handleAnnotationDelete, handleBatchDelete,
+    dropMapNote, flyToAnnotation,
+    taskCountByAnnotation,
+    saveMeasurementPending, setSaveMeasurementPending,
+    newFieldSeed, setNewFieldSeed, newFieldOpen, setNewFieldOpen,
+    searchParams, setSearchParams,
+  } = useAnnotationState({
+    mapRef,
+    annotations,
+    setAnnotations,
+    tasks,
+    geojson,
+    terraDraw: null, // will be wired after interactions hook
   });
 
-  const handleAnnotationDelete = useCallback(async (id: string) => {
-    try {
-      await apiDeleteAnnotation(id);
-      setAnnotations((prev) => prev.filter((a) => a.id !== id));
-      if (selectedAnnotationId === id) setSelectedAnnotationId(null);
-      if (searchParams.get('annotation') === id) {
-        searchParams.delete('annotation');
-        setSearchParams(searchParams, { replace: true });
-      }
-    } catch (e) {
-      console.error('Delete annotation failed:', e);
-    }
-  }, [selectedAnnotationId, searchParams, setSearchParams]);
+  // --- Interactions hook ---
+  const {
+    contextMenu, setContextMenu, handleMapContextMenu, handleMarkerContextMenu,
+    createTaskContext, setCreateTaskContext, handleSaveTask,
+    armedDropMode, handleArmedMapClick,
+    longPress, pressRing,
+    drawMode, setDrawMode, terraDraw, setTerraDraw,
+    basemapId, handleBasemapChange,
+    mapInstance, setMapInstance,
+    awaitingFieldDraw, setAwaitingFieldDraw, awaitingFieldDrawRef,
+    handleAddField: interactionsHandleAddField,
+  } = useMapInteractions({
+    mapRef,
+    annotations,
+    setAnnotations,
+    dropMapNote,
+    handleAnnotationSelect,
+    setSidebarOpen,
+    setSelectedAnnotationId,
+    refreshTasks,
+  });
 
-  const handleBatchDelete = useCallback(async (ids: string[]) => {
-    try {
-      await Promise.all(ids.map(id => apiDeleteAnnotation(id)));
-      setAnnotations(prev => prev.filter(a => !ids.includes(a.id)));
-      if (selectedAnnotationId && ids.includes(selectedAnnotationId)) {
-        setSelectedAnnotationId(null);
-      }
-    } catch (e) {
-      console.error('Batch delete failed:', e);
-    }
-  }, [selectedAnnotationId]);
+  // Wire terraDraw into annotation state after both hooks are initialized.
+  // The annotation edit/finish handlers need terraDraw, so we recreate them
+  // by passing terraDraw through the hook args. Since we can't re-call the hook
+  // conditionally, we re-instantiate annotation state with terraDraw once available.
+  // Instead, we use a ref-based approach: annotation state hooks that need terraDraw
+  // are re-created here as thin wrappers.
 
-  const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
-  const preEditGeometryRef = useRef<GeoJSON.Geometry | null>(null);
-
-  const handleAnnotationEdit = useCallback((id: string) => {
+  // Re-wire annotation edit to use terraDraw from interactions hook
+  const handleAnnotationEditWired = useCallback((id: string) => {
     const ann = annotations.find(a => a.id === id);
     if (!ann || !terraDraw) return;
-    preEditGeometryRef.current = ann.geometry;
-    setEditingAnnotationId(id);
-    setSelectedAnnotationId(id);
-
+    handleAnnotationEdit(id);
+    // The hook's internal handleAnnotationEdit won't have terraDraw,
+    // so we manually do the terraDraw part here
     const geomType = ann.geometry.type;
     const mode = geomType === 'Polygon' ? 'polygon' : geomType === 'LineString' ? 'linestring' : 'point';
     const feature: GeoJSON.Feature = {
@@ -645,88 +144,26 @@ export default function FarmMapPage() {
     };
     terraDraw.addFeatures?.([feature]);
     terraDraw.setMode('select');
-  }, [annotations, terraDraw]);
+  }, [annotations, terraDraw, handleAnnotationEdit]);
 
-  const handleGeometryChange = useCallback(async (_featureId: string | number, geometry: GeoJSON.Geometry) => {
-    // Only persist geometry changes when we are actively editing an annotation
-    if (!editingAnnotationId) return;
-    try {
-      const updated = await apiUpdateAnnotation(editingAnnotationId, { geometry });
-      setAnnotations((prev) => prev.map((a) => a.id === editingAnnotationId ? updated : a));
-    } catch (e) {
-      console.error('Failed to update annotation geometry:', e);
-    }
-  }, [editingAnnotationId]);
+  // Wrap handleDrawFinish to pass awaitingFieldDraw state
+  const handleDrawFinish = useCallback((payload: DrawFinishPayload) => {
+    annotationHandleDrawFinish(payload, awaitingFieldDrawRef.current, setAwaitingFieldDraw);
+  }, [annotationHandleDrawFinish, awaitingFieldDrawRef, setAwaitingFieldDraw]);
 
-  const handleFinishEditing = useCallback(() => {
-    if (editingAnnotationId && terraDraw?.removeFeatures) {
-      terraDraw.removeFeatures([editingAnnotationId]);
-    }
-    preEditGeometryRef.current = null;
-    setEditingAnnotationId(null);
-    terraDraw?.setMode('render');
-  }, [editingAnnotationId, terraDraw]);
-
-  // Suppress unused warning in strict mode (reserved for future server refetch).
-  void refreshAnnotations;
-
-  function handleLayerToggle(layerId: string, visible: boolean) {
-    setMapLayers(prev =>
-      prev.map(l => l.id === layerId ? { ...l, visible } : l),
-    );
-    updateMapLayer(layerId, { visible }).catch(err =>
-      console.error('Failed to persist layer visibility:', err),
-    );
-  }
-
-  function handleLayerOpacity(layerId: string, opacity: number) {
-    setMapLayers(prev =>
-      prev.map(l => l.id === layerId ? { ...l, opacity } : l),
-    );
-    updateMapLayer(layerId, { opacity }).catch(err =>
-      console.error('Failed to persist layer opacity:', err),
-    );
-  }
-
-  function handleEnterpriseToggle(enterprise: string) {
-    setVisibleEnterprises(prev => {
-      const current = prev ?? enterprises;
-      if (current.includes(enterprise)) {
-        return current.filter(e => e !== enterprise);
-      } else {
-        return [...current, enterprise];
-      }
-    });
-  }
-
-  function handleFarmZoom(farmCode: string | null) {
-    const map = mapRef.current;
-    if (!map || !geojson) return;
-    const bounds = getBoundsForFarm(geojson, farmCode);
-    if (!bounds) return;
-    const [minLng, minLat, maxLng, maxLat] = bounds;
-    map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 50 });
-  }
-
-  function handleAddField(opts?: { geometry?: GeoJSON.Geometry; areaHa?: number }) {
+  // handleAddField that opens modal or arms polygon draw
+  const handleAddField = useCallback((opts?: { geometry?: GeoJSON.Geometry; areaHa?: number }) => {
     if (opts?.geometry) {
-      // Called with a pre-supplied geometry (e.g. from SaveAs chooser) — open modal directly.
       setNewFieldSeed(opts);
       setNewFieldOpen(true);
       return;
     }
-    // No geometry yet — arm polygon draw mode; modal opens after the user
-    // finishes drawing the boundary (handleDrawFinish intercepts it).
-    if (terraDraw) {
-      terraDraw.setMode('render');
-      terraDraw.setMode('polygon');
-    }
-    setAwaitingFieldDraw(true);
-  }
+    interactionsHandleAddField();
+  }, [interactionsHandleAddField, setNewFieldSeed, setNewFieldOpen]);
 
-  function handleFieldSelect(fieldId: string) {
+  // Field select with zoom
+  const handleFieldSelect = useCallback((fieldId: string) => {
     setSelectedFieldId(fieldId);
-    // Zoom to field on the map — find it in geojson
     const map = mapRef.current;
     if (!map || !geojson) return;
     const feature = geojson.features.find(f => f.properties?.id === fieldId);
@@ -743,30 +180,36 @@ export default function FarmMapPage() {
     if (pts.length === 0) return;
     let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
     for (const [lng, lat] of pts) {
-      minLng = Math.min(minLng, lng);
-      minLat = Math.min(minLat, lat);
-      maxLng = Math.max(maxLng, lng);
-      maxLat = Math.max(maxLat, lat);
+      minLng = Math.min(minLng, lng); minLat = Math.min(minLat, lat);
+      maxLng = Math.max(maxLng, lng); maxLat = Math.max(maxLat, lat);
     }
     map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 80 });
-  }
+  }, [setSelectedFieldId, geojson]);
 
-  const handleDeleteField = useCallback(async (fieldId: string) => {
-    const field = fields.find((f) => f.id === fieldId);
-    const label = field ? field.name : 'this field';
-    if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return;
-    try {
-      await deleteField(fieldId);
-      if (selectedFieldId === fieldId) setSelectedFieldId(null);
-      setLoadNonce((n) => n + 1);
-    } catch (err) {
-      console.error('Failed to delete field', err);
-    }
-  }, [fields, selectedFieldId]);
+  // Farm zoom
+  const handleFarmZoom = useCallback((farmCode: string | null) => {
+    const map = mapRef.current;
+    if (!map || !geojson) return;
+    const bounds = getBoundsForFarm(geojson, farmCode);
+    if (!bounds) return;
+    const [minLng, minLat, maxLng, maxLat] = bounds;
+    map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 50 });
+  }, [geojson]);
 
-  const handleEditField = useCallback((fieldId: string) => {
-    setEditFieldId(fieldId);
-  }, []);
+  // Edit field state (local to page)
+  const [editFieldId, setEditFieldId] = useEditFieldState();
+  const [fieldsSidebarOpen, setFieldsSidebarOpen] = useFieldsSidebarState();
+
+  // Deep-link: ?annotation=<id>
+  useEffect(() => {
+    const annId = searchParams.get('annotation');
+    if (!annId || annotations.length === 0) return;
+    const ann = annotations.find((a) => a.id === annId);
+    if (!ann) return;
+    setSelectedAnnotationId(annId);
+    setSidebarOpen(true);
+    flyToAnnotation(ann);
+  }, [searchParams, annotations, flyToAnnotation, setSelectedAnnotationId, setSidebarOpen]);
 
   const fieldsSidebar = (
     <FieldsSidebar
@@ -781,10 +224,10 @@ export default function FarmMapPage() {
       onFieldSelect={handleFieldSelect}
       onAddField={() => handleAddField()}
       onDeleteField={handleDeleteField}
-      onEditField={handleEditField}
+      onEditField={setEditFieldId}
       onColorChange={setEnterpriseColor}
-      collapsed={fieldsSidebarCollapsed}
-      onToggleCollapse={() => setFieldsSidebarCollapsed((v) => !v)}
+      collapsed={fieldsSidebarOpen.collapsed}
+      onToggleCollapse={() => setFieldsSidebarOpen(prev => ({ ...prev, collapsed: !prev.collapsed }))}
     />
   );
 
@@ -798,7 +241,7 @@ export default function FarmMapPage() {
 
       {/* Mobile: FluidSheet overlay */}
       <div className="md:hidden">
-        <FluidSheet side="left" open={fieldsSidebarOpen} onDismiss={() => setFieldsSidebarOpen(false)}>
+        <FluidSheet side="left" open={fieldsSidebarOpen.open} onDismiss={() => setFieldsSidebarOpen(prev => ({ ...prev, open: false }))}>
           {fieldsSidebar}
         </FluidSheet>
       </div>
@@ -842,7 +285,7 @@ export default function FarmMapPage() {
         </div>
       )}
 
-      {/* Long-press affordance — pulsing amber ring grows 0→500ms */}
+      {/* Long-press affordance — pulsing amber ring grows 0-500ms */}
       <AnimatePresence>
         {pressRing && (
           <motion.div
@@ -872,7 +315,7 @@ export default function FarmMapPage() {
               Couldn't load: <span className="font-semibold">{loadErrors.join(', ')}</span>
             </span>
             <button
-              onClick={() => { setLoadErrors([]); setLoading(true); setLoadNonce(n => n + 1); }}
+              onClick={retryLoad}
               className="glass-button rounded-full px-3 py-1 text-xs font-medium text-amber-800"
             >
               Retry
@@ -901,7 +344,7 @@ export default function FarmMapPage() {
         )}
       </AnimatePresence>
 
-      {/* Drawing help banner — shown while terradraw is in an active draw mode */}
+      {/* Drawing help banner */}
       <AnimatePresence>
         {(drawMode === 'linestring' || drawMode === 'polygon' || drawMode === 'point') && (
           <motion.div
@@ -976,17 +419,17 @@ export default function FarmMapPage() {
         )}
       </AnimatePresence>
 
-      {/* Hamburger pill (mobile only) — opens FieldsSidebar sheet */}
+      {/* Hamburger pill (mobile only) */}
       <button
         type="button"
         className="md:hidden absolute top-3 left-3 z-10 glass-button rounded-full w-10 h-10 flex items-center justify-center"
         aria-label="Open fields sidebar"
-        onClick={() => setFieldsSidebarOpen(true)}
+        onClick={() => setFieldsSidebarOpen(prev => ({ ...prev, open: true }))}
       >
         <List size={18} />
       </button>
 
-      {/* Enterprise filter bar — top of map */}
+      {/* Enterprise filter bar */}
       {!loading && enterprises.length > 0 && (
         <div className="absolute top-3 left-14 md:left-3 right-48 z-10 pointer-events-none">
           <div className="pointer-events-auto inline-flex glass-panel rounded-xl px-2.5 py-1.5">
@@ -1000,7 +443,7 @@ export default function FarmMapPage() {
         </div>
       )}
 
-      {/* Top-right rail: nav + layers + annotations toggle */}
+      {/* Top-right rail */}
       {!loading && (
         <MapOverlayRail position="tr">
           <MeasureToolbar
@@ -1013,7 +456,7 @@ export default function FarmMapPage() {
           />
           <BasemapSwitcher
             current={basemapId}
-            onChange={(id) => { setBasemapId(id); saveBasemapPreference(id); }}
+            onChange={handleBasemapChange}
           />
           <LayerControl
             layers={mapLayers}
@@ -1059,7 +502,7 @@ export default function FarmMapPage() {
                     onClick={() => setLegendExpanded(false)}
                     className="text-xs font-semibold text-stone-600 text-left mb-1"
                   >
-                    Legend ▲
+                    Legend &#9650;
                   </button>
                   {legendEnterprises.map(ent => (
                     <div key={ent} className="flex items-center gap-2">
@@ -1082,7 +525,7 @@ export default function FarmMapPage() {
                   onClick={() => setLegendExpanded(true)}
                   className="glass-button rounded-full px-3 py-2 text-xs font-semibold text-stone-700"
                 >
-                  Legend ▼
+                  Legend &#9660;
                 </button>
               )}
             </div>
@@ -1123,15 +566,15 @@ export default function FarmMapPage() {
         );
       })()}
 
-      {/* Export map button — bottom-left */}
+      {/* Export map button */}
       <MapOverlayRail position="bl">
         <ExportMapButton map={mapInstance} />
       </MapOverlayRail>
 
-      {/* Annotate tool — mounts terradraw controls on the map */}
+      {/* Annotate tool */}
       <AnnotateTool map={mapInstance} onFinish={handleDrawFinish} onModeChange={setDrawMode} onReady={setTerraDraw} onGeometryChange={handleGeometryChange} />
 
-      {/* Category icon markers overlay (QGIS-style) */}
+      {/* Category icon markers overlay */}
       <AnnotationMarkers
         map={mapInstance}
         annotations={annotations}
@@ -1141,7 +584,7 @@ export default function FarmMapPage() {
         excludeId={editingAnnotationId}
       />
 
-      {/* Context menu on right-click */}
+      {/* Context menu */}
       <MapContextMenu
         open={contextMenu !== null}
         x={contextMenu?.x ?? 0}
@@ -1169,7 +612,7 @@ export default function FarmMapPage() {
         onDiscard={handleDiscardAnnotation}
       />
 
-      {/* Editing bar — shown when user is editing an annotation's geometry */}
+      {/* Editing bar */}
       {editingAnnotationId && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white/95 backdrop-blur-sm shadow-lg rounded-xl px-5 py-3 border border-stone-200/60">
           <span className="text-sm text-stone-700">Editing annotation geometry — drag to reshape</span>
@@ -1183,19 +626,7 @@ export default function FarmMapPage() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              if (editingAnnotationId) {
-                terraDraw?.removeFeatures?.([editingAnnotationId]);
-                if (preEditGeometryRef.current) {
-                  const origGeom = preEditGeometryRef.current;
-                  setAnnotations(prev => prev.map(a => a.id === editingAnnotationId ? { ...a, geometry: origGeom } : a));
-                  apiUpdateAnnotation(editingAnnotationId, { geometry: origGeom }).catch(() => {});
-                }
-              }
-              preEditGeometryRef.current = null;
-              setEditingAnnotationId(null);
-              terraDraw?.setMode('render');
-            }}
+            onClick={handleCancelEditing}
             className="px-3 py-1.5 text-sm text-stone-600 hover:text-stone-900 transition-colors"
           >
             Cancel
@@ -1211,7 +642,7 @@ export default function FarmMapPage() {
         onToggle={() => setSidebarOpen(false)}
         onSelect={handleAnnotationSelect}
         onDelete={handleAnnotationDelete}
-        onEdit={handleAnnotationEdit}
+        onEdit={handleAnnotationEditWired}
         onBatchDelete={handleBatchDelete}
         taskCountById={taskCountByAnnotation}
         onMeasurementZoom={(m) => {
@@ -1225,21 +656,20 @@ export default function FarmMapPage() {
         }}
       />
 
-      {/* Field detail panel — overlays on top of map */}
+      {/* Field detail panel */}
       <FieldPanel
         fieldId={selectedFieldId}
         onClose={() => setSelectedFieldId(null)}
       />
       </div> {/* end map area flex-1 */}
 
-      {/* New field modal — portal-renders outside the flex layout */}
+      {/* New field modal */}
       <NewFieldModal
         open={newFieldOpen}
         onClose={() => { setNewFieldOpen(false); setNewFieldSeed({}); clearFinished(); }}
         onCreated={() => {
-          // Refetch all data by bumping the nonce
           setLoading(true);
-          setLoadNonce((n) => n + 1);
+          bumpLoadNonce();
           clearFinished();
         }}
         farms={farms}
@@ -1256,13 +686,13 @@ export default function FarmMapPage() {
         onClose={() => setEditFieldId(null)}
         onUpdated={() => {
           setEditFieldId(null);
-          setLoadNonce((n) => n + 1);
+          bumpLoadNonce();
         }}
         farms={farms}
         enterprises={enterprises}
       />
 
-      {/* Save measurement modal (5m) */}
+      {/* Save measurement modal */}
       {saveMeasurementPending && (
         <SaveMeasurementModal
           open={true}
@@ -1280,3 +710,17 @@ export default function FarmMapPage() {
     </div>
   );
 }
+
+// Small inline state hooks to keep the component body clean
+function useEditFieldState() {
+  const [editFieldId, setEditFieldId] = useState<string | null>(null);
+  return [editFieldId, setEditFieldId] as const;
+}
+
+function useFieldsSidebarState() {
+  const [state, setState] = useState({ open: false, collapsed: false });
+  return [state, setState] as const;
+}
+
+// Need useState import for the inline hooks
+import { useState } from 'react';
