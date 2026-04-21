@@ -12,20 +12,31 @@ import WikiAnnotationBlock from './WikiAnnotationBlock';
 const md = new MarkdownIt({ html: false, linkify: true, typographer: true });
 md.use(footnotePlugin);
 
-// Allowed tags/attrs for DOMPurify — strict whitelist
+// Allowed tags/attrs for DOMPurify — strict whitelist.
+// `input` is intentionally NOT allowed: wiki task checkboxes are injected
+// by `applyWikiTaskBoxes` AFTER sanitization, using a trusted span scaffold.
+// `style` is intentionally NOT allowed: CSS expression injection vector.
 const PURIFY_CONFIG = {
   ALLOWED_TAGS: [
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a', 'strong', 'em', 'del', 's',
     'code', 'pre', 'mark', 'div', 'span', 'ul', 'ol', 'li', 'blockquote', 'hr',
     'table', 'thead', 'tbody', 'tr', 'th', 'td', 'br', 'img',
-    'input', 'sup', 'sub', 'section', 'nav',
+    'sup', 'sub', 'section', 'nav',
   ],
   ALLOWED_ATTR: [
-    'href', 'class', 'id', 'style', 'data-wiki-link', 'data-level', 'data-heading-id',
-    'data-callout', 'data-mermaid-rendered', 'type', 'checked', 'disabled',
+    'href', 'class', 'id', 'data-wiki-link', 'data-level', 'data-heading-id',
+    'data-callout', 'data-mermaid-rendered', 'data-checkbox-idx',
     'src', 'alt', 'title',
     'data-embed-type', 'data-embed-id',
+    'role', 'tabindex', 'aria-checked', 'aria-label',
   ],
+};
+
+// Strict SVG profile for mermaid output — strips any script/foreign content
+// mermaid might emit, while preserving valid diagram SVGs.
+const MERMAID_PURIFY_CONFIG = {
+  USE_PROFILES: { svg: true, svgFilters: true },
+  ADD_ATTR: ['class'],
 };
 
 function titleToSlug(title: string): string {
@@ -111,17 +122,20 @@ function renderMarkdown(body: string, brokenSlugs?: Set<string>): { html: string
     return `<h${level} id="${id}" class="wiki-foldable-heading" data-level="${level}"><span class="wiki-fold-toggle" data-heading-id="${id}">&#9654;</span>${text}</h${level}>`;
   });
 
-  // Convert task list items to interactive checkboxes
+  // Convert task list items to interactive checkboxes.
+  // We use a custom span (role="checkbox") instead of <input> so the DOMPurify
+  // whitelist can omit `input` entirely — closing the attack surface that
+  // would otherwise accept arbitrary form controls.
   let checkboxIndex = 0;
   html = html.replace(/<li>([\s\S]*?)<\/li>/g, (match, content) => {
     const trimmed = content.trim();
     if (trimmed.startsWith('[ ] ')) {
       const idx = checkboxIndex++;
-      return `<li class="wiki-task-item"><input type="checkbox" data-checkbox-idx="${idx}" class="wiki-checkbox" />${trimmed.slice(4)}</li>`;
+      return `<li class="wiki-task-item"><span class="wiki-checkbox" role="checkbox" aria-checked="false" tabindex="0" data-checkbox-idx="${idx}"></span>${trimmed.slice(4)}</li>`;
     }
     if (trimmed.startsWith('[x] ') || trimmed.startsWith('[X] ')) {
       const idx = checkboxIndex++;
-      return `<li class="wiki-task-item wiki-task-done"><input type="checkbox" checked data-checkbox-idx="${idx}" class="wiki-checkbox" />${trimmed.slice(4)}</li>`;
+      return `<li class="wiki-task-item wiki-task-done"><span class="wiki-checkbox wiki-checkbox-checked" role="checkbox" aria-checked="true" tabindex="0" data-checkbox-idx="${idx}"></span>${trimmed.slice(4)}</li>`;
     }
     return match;
   });
@@ -205,7 +219,10 @@ export default function WikiRenderer({ body, onHeadingsReady, brokenSlugs, onChe
           const { svg } = await mermaid.render(`mermaid-${Date.now()}-${i}`, block.textContent ?? '');
           const wrapper = document.createElement('div');
           wrapper.className = 'wiki-mermaid';
-          wrapper.innerHTML = svg;
+          // Sanitize mermaid output through DOMPurify's SVG profile — mermaid
+          // is trusted source but we defense-in-depth against diagram payloads
+          // that could embed <foreignObject> with script content.
+          wrapper.innerHTML = DOMPurify.sanitize(svg, MERMAID_PURIFY_CONFIG) as unknown as string;
           pre.replaceWith(wrapper);
         } catch {
           // Leave as code block if mermaid syntax is invalid
@@ -218,8 +235,8 @@ export default function WikiRenderer({ body, onHeadingsReady, brokenSlugs, onChe
     const target = e.target as HTMLElement;
 
     // Interactive checkbox toggle
-    if (target.tagName === 'INPUT' && target.classList.contains('wiki-checkbox') && onCheckboxToggle) {
-      const idx = parseInt((target as HTMLInputElement).dataset.checkboxIdx ?? '-1');
+    if (target.classList.contains('wiki-checkbox') && onCheckboxToggle) {
+      const idx = parseInt(target.dataset.checkboxIdx ?? '-1');
       if (idx >= 0) {
         // Find the nth checkbox pattern in the raw body and toggle it
         let count = 0;
@@ -261,6 +278,15 @@ export default function WikiRenderer({ body, onHeadingsReady, brokenSlugs, onChe
     }
   }, [navigate, body, onCheckboxToggle]);
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    // Keyboard-activate wiki checkboxes — role="checkbox" needs Space/Enter handling
+    if (target.classList.contains('wiki-checkbox') && (e.key === ' ' || e.key === 'Enter')) {
+      e.preventDefault();
+      target.click();
+    }
+  }, []);
+
   const handleMouseOver = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'A' && target.dataset.wikiLink) {
@@ -290,6 +316,7 @@ export default function WikiRenderer({ body, onHeadingsReady, brokenSlugs, onChe
         ref={containerRef}
         className="wiki-content"
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
         onMouseOver={handleMouseOver}
         onMouseOut={handleMouseOut}
         dangerouslySetInnerHTML={{ __html: html }}
