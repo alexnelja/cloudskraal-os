@@ -33,6 +33,8 @@ const annotationsRoutes = require('./routes/annotations');
 const measurementsRoutes = require('./routes/measurements');
 const taskManagerRoutes = require('./routes/tasks');
 
+const rateLimit = require('express-rate-limit');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -50,6 +52,23 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
+
+// Rate limiting — applied after cors/json, before routes
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(globalLimiter);
+
+const calendarSyncLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/calendar/sync', calendarSyncLimiter);
 
 // Input validation for write methods
 const { validateBody } = require('./middleware/validate');
