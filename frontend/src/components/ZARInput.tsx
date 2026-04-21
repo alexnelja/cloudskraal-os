@@ -6,9 +6,10 @@ interface ZARInputProps {
   onChange: (value: number) => void;
   className?: string;
   placeholder?: string;
+  id?: string;
 }
 
-export default function ZARInput({ value, onChange, className = '', placeholder }: ZARInputProps) {
+export default function ZARInput({ value, onChange, className = '', placeholder, id }: ZARInputProps) {
   const [editing, setEditing] = useState(false);
   const [rawValue, setRawValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -30,8 +31,9 @@ export default function ZARInput({ value, onChange, className = '', placeholder 
 
   return (
     <input
+      id={id}
       ref={inputRef}
-      type={editing ? 'text' : 'text'}
+      type="text"
       value={editing ? rawValue : value === 0 ? '' : formatZAR(value)}
       onChange={handleChange}
       onFocus={handleFocus}

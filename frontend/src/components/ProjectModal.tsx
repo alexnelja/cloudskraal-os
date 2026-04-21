@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
 import type { CreateProjectPayload, ProjectType } from '../types';
 import ZARInput from './ZARInput';
+import Sheet from './ui/Sheet';
 
 const PROJECT_TYPES: { value: ProjectType; label: string }[] = [
   { value: 'equipment', label: 'Equipment' },
@@ -23,6 +23,16 @@ interface ProjectModalProps {
   title?: string;
 }
 
+const labelCls = 'md-label-large block mb-1';
+const labelStyle = { color: 'var(--md-sys-color-on-surface-variant)' } as const;
+const inputCls =
+  'md-body-medium w-full md-shape-medium px-3 py-2 focus:outline-none focus:ring-2';
+const inputStyle = {
+  backgroundColor: 'var(--md-sys-color-surface-container-low)',
+  border: '1px solid var(--md-sys-color-outline-variant)',
+  color: 'var(--md-sys-color-on-surface)',
+} as const;
+
 export default function ProjectModal({
   open,
   onClose,
@@ -39,117 +49,133 @@ export default function ProjectModal({
     salvageValue: initialData?.salvageValue || 0,
   });
 
-  if (!open) return null;
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(form);
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200">
-          <h2 className="text-lg font-semibold text-stone-800">{title}</h2>
-          <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
-            <X size={20} />
-          </button>
+    <Sheet open={open} onClose={onClose} title={title} id="project-modal">
+      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <div>
+          <label htmlFor="project-name" className={labelCls} style={labelStyle}>
+            Project Name <span aria-hidden="true">*</span>
+            <span className="sr-only"> (required)</span>
+          </label>
+          <input
+            id="project-name"
+            type="text"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+            autoComplete="off"
+            className={inputCls}
+            style={inputStyle}
+            placeholder="e.g. New Tractor Purchase"
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <div>
+          <label htmlFor="project-type" className={labelCls} style={labelStyle}>
+            Type
+          </label>
+          <select
+            id="project-type"
+            value={form.type}
+            onChange={(e) => setForm({ ...form, type: e.target.value as ProjectType })}
+            className={inputCls}
+            style={inputStyle}
+          >
+            {PROJECT_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="project-desc" className={labelCls} style={labelStyle}>
+            Description
+          </label>
+          <textarea
+            id="project-desc"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            rows={3}
+            className={`${inputCls} resize-none`}
+            style={inputStyle}
+            placeholder="Brief description of the capital expenditure…"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="project-outlay" className={labelCls} style={labelStyle}>
+            Initial Outlay (ZAR)
+          </label>
+          <ZARInput
+            id="project-outlay"
+            value={form.initialOutlay}
+            onChange={(v) => setForm({ ...form, initialOutlay: v })}
+            className="w-full"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Project Name</label>
+            <label htmlFor="project-life" className={labelCls} style={labelStyle}>
+              Useful Life (Years)
+            </label>
             <input
-              type="text"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
-              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="e.g. New Tractor Purchase"
+              id="project-life"
+              type="number"
+              min={1}
+              max={50}
+              value={form.usefulLifeYears}
+              onChange={(e) =>
+                setForm({ ...form, usefulLifeYears: parseInt(e.target.value) || 1 })
+              }
+              className={inputCls}
+              style={inputStyle}
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Type</label>
-            <select
-              value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value as ProjectType })}
-              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            >
-              {PROJECT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Description</label>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              rows={3}
-              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
-              placeholder="Brief description of the capital expenditure..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">
-              Initial Outlay (ZAR)
+            <label htmlFor="project-salvage" className={labelCls} style={labelStyle}>
+              Salvage Value (ZAR)
             </label>
             <ZARInput
-              value={form.initialOutlay}
-              onChange={(v) => setForm({ ...form, initialOutlay: v })}
+              id="project-salvage"
+              value={form.salvageValue}
+              onChange={(v) => setForm({ ...form, salvageValue: v })}
               className="w-full"
             />
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                Useful Life (Years)
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={50}
-                value={form.usefulLifeYears}
-                onChange={(e) => setForm({ ...form, usefulLifeYears: parseInt(e.target.value) || 1 })}
-                className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                Salvage Value (ZAR)
-              </label>
-              <ZARInput
-                value={form.salvageValue}
-                onChange={(v) => setForm({ ...form, salvageValue: v })}
-                className="w-full"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t border-stone-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-stone-600 hover:text-stone-800 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 bg-emerald-700 text-white text-sm font-medium rounded-lg hover:bg-emerald-800 transition-colors"
-            >
-              Create Project
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div
+          className="flex justify-end gap-2 pt-4"
+          style={{ borderTop: '1px solid var(--md-sys-color-outline-variant)' }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            className="md-label-large md-shape-full px-5 py-2.5 md-duration-short3 md-ease-standard transition-colors"
+            style={{ color: 'var(--md-sys-color-primary)' }}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="md-label-large md-shape-full px-5 py-2.5 md-duration-short3 md-ease-standard transition-colors"
+            style={{
+              backgroundColor: 'var(--md-sys-color-primary)',
+              color: 'var(--md-sys-color-on-primary)',
+            }}
+          >
+            Create Project
+          </button>
+        </div>
+      </form>
+    </Sheet>
   );
 }
