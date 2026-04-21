@@ -600,6 +600,19 @@ body {
 .md-shape-extra-large { border-radius: var(--md-sys-shape-corner-extra-large); }
 .md-shape-full { border-radius: var(--md-sys-shape-corner-full); }
 
+/* Loader spinner — consumed by <LoadingOverlay variant="spinner"> */
+.md-loader-spinner {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid;
+  border-radius: var(--md-sys-shape-corner-full);
+  animation: md-spin var(--md-sys-motion-duration-long2) linear infinite;
+}
+@keyframes md-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ═════════════════════════════════════════════════════════════════════════
    MD3 Shell — Phase 1
    Positioning + theming for @material/web nav components (Lit custom

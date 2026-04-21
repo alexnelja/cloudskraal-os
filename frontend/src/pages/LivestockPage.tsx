@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Beef, ChevronDown, ChevronUp } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { getLivestockGroups, getLivestockDashboard, getBreedingSeasons, getShearingRecords, updateLivestockGroup, updateBreedingSeason, updateShearingRecord } from '../api/livestock';
 import type { LivestockGroup, LivestockDashboard, BreedingSeason, ShearingRecord } from '../types/phase2';
 import EditableCell, { StepperCell } from '../components/EditableCell';
@@ -55,8 +56,8 @@ export default function LivestockPage() {
 
   if (loading) {
     return (
-      <div className="h-[calc(100vh-5rem)] md:h-screen flex items-center justify-center">
-        <p className="text-stone-400 text-sm">Loading livestock data...</p>
+      <div className="h-[calc(100vh-5rem)] md:h-screen">
+        <LoadingOverlay message="Loading livestock data…" />
       </div>
     );
   }

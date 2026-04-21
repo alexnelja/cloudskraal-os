@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Package, ArrowLeft, X, AlertTriangle, Plus } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
+import EmptyState from '../components/ui/EmptyState';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { getProducts, getProductById, getInventorySummary, getStock, getTransactions, recordTransaction, updateProduct } from '../api/inventory';
 import type { InputProduct, InventorySummary, InventoryTransaction } from '../types/phase3';
 import { INVENTORY_CATEGORY_COLORS } from '../types/phase3';
@@ -205,13 +207,13 @@ export default function InventoryPage() {
         {/* Table */}
         <div className="flex-1 overflow-auto bg-white">
           {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-stone-400 text-sm">Loading inventory...</p>
-            </div>
+            <LoadingOverlay message="Loading inventory…" />
           ) : products.length === 0 ? (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-stone-400 text-sm">No products found.</p>
-            </div>
+            <EmptyState
+              icon={<Package size={40} aria-hidden="true" />}
+              title="No products yet"
+              subtitle="Add an input product to start tracking stock."
+            />
           ) : (
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-[#f3f4f3] border-b border-[#f3f4f3]">

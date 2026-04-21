@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import MonthView from '../components/calendar/MonthView';
 import TaskList from '../components/calendar/TaskList';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 import TaskDetail from '../components/calendar/TaskDetail';
 import TaskEditor from '../components/calendar/TaskEditor';
 import EventEditor from '../components/calendar/EventEditor';
@@ -195,9 +196,7 @@ export default function CalendarPage() {
         {/* Month view */}
         <div className="flex-1 md:flex-[3] overflow-hidden flex flex-col bg-white">
           {loading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-stone-400 text-sm">Loading calendar...</p>
-            </div>
+            <LoadingOverlay message="Loading calendar…" />
           ) : (
             <MonthView
               year={currentYear}

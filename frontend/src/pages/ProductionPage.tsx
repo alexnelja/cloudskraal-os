@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Factory, X, ArrowLeft, CheckCircle2, Circle, Clock } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { getBatches, getBatch, getProductionDashboard, updateBatch } from '../api/production';
 import type { ProductionBatch, ProductionDashboard, QualityTest, Sale } from '../types/phase2';
 import { BATCH_STATUS_COLORS } from '../types/phase2';
@@ -123,9 +124,7 @@ export default function ProductionPage() {
         {/* Kanban board */}
         <div className="flex-1 overflow-x-auto overflow-y-auto bg-stone-50 p-4">
           {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-stone-400 text-sm">Loading production data...</p>
-            </div>
+            <LoadingOverlay message="Loading production data…" />
           ) : (
             <div className="flex gap-3 min-w-max md:min-w-0">
               {KANBAN_COLUMNS.map((status) => {

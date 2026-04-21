@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import FarmMap from '../components/map/FarmMap';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 import FieldPanel from '../components/map/FieldPanel';
 import FieldsSidebar from '../components/map/FieldsSidebar';
 import NewFieldModal from '../components/map/NewFieldModal';
@@ -234,8 +235,12 @@ export default function FarmMapPage() {
       {/* Map area — fills remaining space */}
       <div id="map-container" className="flex-1 relative min-h-0 overflow-hidden">
       {loading ? (
-        <div className="w-full h-full bg-stone-200 flex items-center justify-center" aria-live="polite" aria-busy="true">
-          <p className="text-stone-500 text-sm">Loading map...</p>
+        <div
+          className="w-full h-full flex items-center justify-center"
+          style={{ backgroundColor: 'var(--md-sys-color-surface-container)' }}
+          aria-busy="true"
+        >
+          <LoadingOverlay message="Loading map…" />
         </div>
       ) : (
         <div

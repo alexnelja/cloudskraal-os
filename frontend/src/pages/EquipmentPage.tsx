@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, AlertTriangle, Wrench, Plus, X } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
+import EmptyState from '../components/ui/EmptyState';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { getEquipment, getEquipmentById, getEquipmentSummary, getEquipmentAlerts, addMaintenanceLog, updateEquipment } from '../api/equipment';
 import { getFarms } from '../api/farms';
 import type { Equipment, EquipmentSummary } from '../types/phase2';
@@ -202,13 +204,13 @@ export default function EquipmentPage() {
         {/* Table */}
         <div className="flex-1 overflow-auto bg-white">
           {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-stone-400 text-sm">Loading equipment...</p>
-            </div>
+            <LoadingOverlay message="Loading equipment…" />
           ) : equipment.length === 0 ? (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-stone-400 text-sm">No equipment found.</p>
-            </div>
+            <EmptyState
+              icon={<Wrench size={40} aria-hidden="true" />}
+              title="No equipment yet"
+              subtitle="Register tractors, pumps, and implements to track hours + service."
+            />
           ) : (
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-[#f3f4f3] border-b border-[#f3f4f3]">

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Users, ChevronDown, ChevronUp, Plus, Phone } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
+import EmptyState from '../components/ui/EmptyState';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { getEmployees, getEmployeeSummary, getEmployeeById, addTimeEntry, updateEmployee } from '../api/employees';
 import { getEnterprises } from '../api/financials';
 import type { Employee, EmployeeSummary, Enterprise } from '../types/phase3';
@@ -152,13 +154,13 @@ export default function EmployeesPage() {
       {/* Main content */}
       <div className="flex-1 overflow-y-auto bg-white">
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <p className="text-stone-400 text-sm">Loading employees...</p>
-          </div>
+          <LoadingOverlay message="Loading employees…" />
         ) : employees.length === 0 ? (
-          <div className="flex items-center justify-center py-16">
-            <p className="text-stone-400 text-sm">No employees found.</p>
-          </div>
+          <EmptyState
+            icon={<Users size={40} aria-hidden="true" />}
+            title="No employees yet"
+            subtitle="Add an employee to start tracking time, salary, and certifications."
+          />
         ) : (
           <div className="max-w-6xl mx-auto p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

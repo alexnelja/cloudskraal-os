@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BarChart3, Search, Filter } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
+import EmptyState from '../components/ui/EmptyState';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getFinancialDashboard, getFinancialTransactions, getEnterprises } from '../api/financials';
 import type { FinancialDashboard, FinancialTransaction, Enterprise } from '../types/phase3';
@@ -96,8 +98,8 @@ export default function FinancialsPage() {
 
   if (loading) {
     return (
-      <div className="h-[calc(100vh-5rem)] md:h-screen flex items-center justify-center">
-        <p className="text-stone-400 text-sm">Loading financials...</p>
+      <div className="h-[calc(100vh-5rem)] md:h-screen">
+        <LoadingOverlay message="Loading financials…" />
       </div>
     );
   }
@@ -341,13 +343,9 @@ export default function FinancialsPage() {
             {/* Transactions table */}
             <div className="overflow-x-auto rounded-2xl">
               {txLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <p className="text-stone-400 text-sm">Loading transactions...</p>
-                </div>
+                <LoadingOverlay message="Loading transactions…" dense />
               ) : filteredTransactions.length === 0 ? (
-                <div className="flex items-center justify-center py-8">
-                  <p className="text-stone-400 text-sm">No transactions found.</p>
-                </div>
+                <EmptyState title="No transactions" subtitle="Adjust the filters above or record a new transaction." dense />
               ) : (
                 <table className="w-full text-sm">
                   <thead className="bg-[#f3f4f3] border-b border-[#f3f4f3]">
