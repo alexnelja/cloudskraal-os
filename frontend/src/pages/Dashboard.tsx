@@ -156,9 +156,13 @@ export default function Dashboard() {
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-[#005d42] to-[#047857] text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+          className="md-label-large md-shape-medium inline-flex items-center gap-2 px-4 py-2.5 md-duration-short3 md-ease-standard transition-opacity hover:opacity-90"
+          style={{
+            backgroundColor: 'var(--md-sys-color-primary)',
+            color: 'var(--md-sys-color-on-primary)',
+          }}
         >
-          <Plus size={18} />
+          <Plus size={18} aria-hidden="true" />
           New Project
         </button>
       </div>
@@ -613,7 +617,11 @@ export default function Dashboard() {
           <Link
             to={`/projects/${projectPopup.project.id}`}
             onClick={handleClosePopup}
-            className="block w-full text-center py-2 bg-gradient-to-br from-[#005d42] to-[#047857] text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+            className="md-label-large md-shape-medium block w-full text-center py-2 md-duration-short3 md-ease-standard transition-opacity hover:opacity-90"
+            style={{
+              backgroundColor: 'var(--md-sys-color-primary)',
+              color: 'var(--md-sys-color-on-primary)',
+            }}
           >
             View Details &rarr;
           </Link>

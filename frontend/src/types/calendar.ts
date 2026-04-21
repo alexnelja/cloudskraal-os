@@ -75,19 +75,25 @@ export interface CalendarSummary {
   tasks: Task[];
 }
 
+/**
+ * Token-driven palette — each entry points at a CSS custom property so the
+ * color themes automatically with the MD3 system tokens (incl. dark mode).
+ * If a consumer needs the raw value, fall back to `getComputedStyle` on the
+ * document root.
+ */
 export const PRIORITY_COLORS: Record<string, string> = {
-  urgent: '#dc2626',
-  high: '#d97706',
-  medium: '#2563eb',
-  low: '#9ca3af',
+  urgent: 'var(--md-sys-color-error)',
+  high: 'var(--md-sys-color-tertiary)',
+  medium: 'var(--md-sys-color-primary)',
+  low: 'var(--md-sys-color-outline)',
 };
 
 export const STATUS_COLORS: Record<string, string> = {
-  pending: '#9ca3af',
-  in_progress: '#2563eb',
-  completed: '#047857',
-  skipped: '#6b7280',
-  overdue: '#dc2626',
+  pending: 'var(--md-sys-color-outline)',
+  in_progress: 'var(--md-sys-color-primary)',
+  completed: 'var(--md-sys-color-primary)',
+  skipped: 'var(--md-sys-color-on-surface-variant)',
+  overdue: 'var(--md-sys-color-error)',
 };
 
 export const TASK_TYPE_LABELS: Record<string, string> = {
