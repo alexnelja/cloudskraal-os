@@ -21,6 +21,7 @@ const { migrateReclassifyLargeFields } = require('./migrate-reclassify-large-fie
 const { initTaskManagerSchema, seedDefaultTags, seedDefaultStatuses } = require('./schema-tasks');
 const { migrateTaskStatusId } = require('./migrate-task-status-id');
 const { migrateAddIndexes } = require('./migrate-add-indexes');
+const { migrateFieldsFarmCascade } = require('./migrate-fields-farm-cascade');
 
 const DB_PATH = process.env.CAPEX_DB_PATH ?? path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -61,6 +62,7 @@ function getDb() {
     runMigration(db, 'seed-default-statuses', seedDefaultStatuses);
     runMigration(db, 'migrate-task-status-id', migrateTaskStatusId);
     runMigration(db, 'add-indexes', migrateAddIndexes);
+    runMigration(db, 'migrate-fields-farm-cascade', migrateFieldsFarmCascade);
   }
   return db;
 }
