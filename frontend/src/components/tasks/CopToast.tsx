@@ -35,7 +35,9 @@ export default function CopToast({ costsLogged, taskTitle, onUndo, onDismiss }: 
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 80, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[100] max-w-sm w-[calc(100%-2rem)]"
+          role="status"
+          aria-live="polite"
+          className="md-inset-bottom-toast fixed left-1/2 -translate-x-1/2 z-[100] max-w-sm w-[calc(100%-2rem)]"
         >
           <div
             className="rounded-xl px-4 py-3 shadow-lg border border-amber-200/40 backdrop-blur-md"

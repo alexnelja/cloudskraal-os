@@ -139,9 +139,19 @@ export default function LivestockPage() {
                   key={group.id}
                   className="rounded-2xl overflow-hidden"
                 >
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={expandedGroup === group.id}
+                    aria-controls={`livestock-group-${group.id}`}
                     onClick={() => setExpandedGroup(expandedGroup === group.id ? null : group.id)}
-                    className="w-full text-left p-4 hover:bg-stone-50 transition-colors"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setExpandedGroup(expandedGroup === group.id ? null : group.id);
+                      }
+                    }}
+                    className="w-full text-left p-4 hover:bg-stone-50 transition-colors md-duration-short3 md-ease-standard cursor-pointer"
                   >
                     <div className="flex items-start justify-between">
                       <div onClick={(e) => e.stopPropagation()}>
@@ -189,9 +199,12 @@ export default function LivestockPage() {
                       <span className="flex-1" />
                       {expandedGroup === group.id ? <ChevronUp size={14} className="text-stone-400" /> : <ChevronDown size={14} className="text-stone-400" />}
                     </div>
-                  </button>
+                  </div>
                   {expandedGroup === group.id && (
-                    <div className="border-t border-[#f3f4f3] p-4 bg-stone-50">
+                    <div
+                      id={`livestock-group-${group.id}`}
+                      className="border-t border-[#f3f4f3] p-4 bg-stone-50"
+                    >
                       <div className="flex items-center gap-2 text-xs text-stone-500">
                         <span>Avg weight:</span>
                         <EditableCell

@@ -120,7 +120,7 @@ export default function QuickAddFAB() {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-50 flex flex-col items-end gap-2"
+      className="md-inset-bottom-nav fixed right-4 md:right-8 z-50 flex flex-col items-end gap-2"
     >
       {/* Toast notification */}
       <AnimatePresence>
@@ -129,7 +129,7 @@ export default function QuickAddFAB() {
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-stone-900 text-white px-4 py-2.5 rounded-full shadow-lg text-sm"
+            className="md-inset-bottom-toast fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-stone-900 text-white px-4 py-2.5 rounded-full shadow-lg text-sm"
           >
             <Check size={14} weight="bold" className="text-emerald-400" />
             {toast}
