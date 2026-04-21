@@ -507,6 +507,100 @@ body {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
+   Reduced-motion — WCAG 2.3.3
+   Honour the OS preference: collapse all MD3 durations to 1ms, neutralise
+   framer-motion (via <MotionConfig reducedMotion="user"> at App root), and
+   disable CSS view-transition animations.
+   ═════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --md-sys-motion-duration-short1: 1ms;
+    --md-sys-motion-duration-short2: 1ms;
+    --md-sys-motion-duration-short3: 1ms;
+    --md-sys-motion-duration-short4: 1ms;
+    --md-sys-motion-duration-medium1: 1ms;
+    --md-sys-motion-duration-medium2: 1ms;
+    --md-sys-motion-duration-medium3: 1ms;
+    --md-sys-motion-duration-medium4: 1ms;
+    --md-sys-motion-duration-long1: 1ms;
+    --md-sys-motion-duration-long2: 1ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-group(*),
+  ::view-transition-image-pair(*) {
+    animation: none !important;
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   MD3 token utility classes
+   Expose design tokens as single-purpose classes so components consume
+   them without inline `var(...)` boilerplate. Class names follow the MD3
+   role names so intent reads clearly in JSX.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* Typography — apply one MD3 typescale role per class */
+.md-display-large { font: var(--md-sys-typescale-display-large); }
+.md-display-medium { font: var(--md-sys-typescale-display-medium); }
+.md-display-small { font: var(--md-sys-typescale-display-small); }
+.md-headline-large { font: var(--md-sys-typescale-headline-large); }
+.md-headline-medium { font: var(--md-sys-typescale-headline-medium); }
+.md-headline-small { font: var(--md-sys-typescale-headline-small); }
+.md-title-large { font: var(--md-sys-typescale-title-large); }
+.md-title-medium { font: var(--md-sys-typescale-title-medium); }
+.md-title-small { font: var(--md-sys-typescale-title-small); }
+.md-body-large { font: var(--md-sys-typescale-body-large); }
+.md-body-medium { font: var(--md-sys-typescale-body-medium); }
+.md-body-small { font: var(--md-sys-typescale-body-small); }
+.md-label-large { font: var(--md-sys-typescale-label-large); letter-spacing: 0.1px; }
+.md-label-medium { font: var(--md-sys-typescale-label-medium); letter-spacing: 0.5px; }
+.md-label-small { font: var(--md-sys-typescale-label-small); letter-spacing: 0.5px; }
+
+/* Motion — easings */
+.md-ease-standard { transition-timing-function: var(--md-sys-motion-easing-standard); }
+.md-ease-emphasized { transition-timing-function: var(--md-sys-motion-easing-emphasized); }
+.md-ease-standard-accelerate { transition-timing-function: var(--md-sys-motion-easing-standard-accelerate); }
+.md-ease-standard-decelerate { transition-timing-function: var(--md-sys-motion-easing-standard-decelerate); }
+.md-ease-emphasized-accelerate { transition-timing-function: var(--md-sys-motion-easing-emphasized-accelerate); }
+.md-ease-emphasized-decelerate { transition-timing-function: var(--md-sys-motion-easing-emphasized-decelerate); }
+
+/* Motion — durations */
+.md-duration-short1 { transition-duration: var(--md-sys-motion-duration-short1); }
+.md-duration-short2 { transition-duration: var(--md-sys-motion-duration-short2); }
+.md-duration-short3 { transition-duration: var(--md-sys-motion-duration-short3); }
+.md-duration-short4 { transition-duration: var(--md-sys-motion-duration-short4); }
+.md-duration-medium1 { transition-duration: var(--md-sys-motion-duration-medium1); }
+.md-duration-medium2 { transition-duration: var(--md-sys-motion-duration-medium2); }
+.md-duration-medium3 { transition-duration: var(--md-sys-motion-duration-medium3); }
+.md-duration-medium4 { transition-duration: var(--md-sys-motion-duration-medium4); }
+.md-duration-long1 { transition-duration: var(--md-sys-motion-duration-long1); }
+.md-duration-long2 { transition-duration: var(--md-sys-motion-duration-long2); }
+
+/* Elevation */
+.md-elevation-0 { box-shadow: var(--md-sys-elevation-0); }
+.md-elevation-1 { box-shadow: var(--md-sys-elevation-1); }
+.md-elevation-2 { box-shadow: var(--md-sys-elevation-2); }
+.md-elevation-3 { box-shadow: var(--md-sys-elevation-3); }
+.md-elevation-4 { box-shadow: var(--md-sys-elevation-4); }
+.md-elevation-5 { box-shadow: var(--md-sys-elevation-5); }
+
+/* Shape */
+.md-shape-small { border-radius: var(--md-sys-shape-corner-small); }
+.md-shape-medium { border-radius: var(--md-sys-shape-corner-medium); }
+.md-shape-large { border-radius: var(--md-sys-shape-corner-large); }
+.md-shape-extra-large { border-radius: var(--md-sys-shape-corner-extra-large); }
+.md-shape-full { border-radius: var(--md-sys-shape-corner-full); }
+
+/* ═════════════════════════════════════════════════════════════════════════
    MD3 Shell — Phase 1
    Positioning + theming for @material/web nav components (Lit custom
    elements don't ship with fixed-positioning; we add it here so they drop

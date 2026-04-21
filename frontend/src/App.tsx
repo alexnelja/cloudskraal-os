@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { MotionConfig } from 'motion/react';
 import AppShell from './components/layout/AppShell';
 import Dashboard from './pages/Dashboard';
 import ProjectsList from './pages/ProjectsList';
@@ -22,8 +23,13 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppShell>
+    // `reducedMotion="user"` honours the OS prefers-reduced-motion setting:
+    // framer-motion skips to end-state instead of animating. Paired with
+    // the @media (prefers-reduced-motion: reduce) block in index.css that
+    // also neutralises CSS transitions / view-transitions.
+    <MotionConfig reducedMotion="user">
+      <BrowserRouter>
+        <AppShell>
         <Routes>
           <Route path="/" element={<PageWrapper><Dashboard /></PageWrapper>} />
           <Route path="/map" element={<FarmMapPage />} />
@@ -44,7 +50,8 @@ export default function App() {
           <Route path="/financials" element={<FinancialsPage />} />
           <Route path="/annotations" element={<PageWrapper><AnnotationsPage /></PageWrapper>} />
         </Routes>
-      </AppShell>
-    </BrowserRouter>
+        </AppShell>
+      </BrowserRouter>
+    </MotionConfig>
   );
 }
