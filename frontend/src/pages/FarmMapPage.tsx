@@ -23,6 +23,7 @@ import EnterpriseFilterBar from '../components/map/EnterpriseFilterBar';
 import MeasureToolbar from '../components/map/MeasureToolbar';
 import ExportMapButton from '../components/map/ExportMapButton';
 import SaveMeasurementModal from '../components/map/SaveMeasurementModal';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { WifiSlash } from '@phosphor-icons/react';
 import { ENTERPRISE_LABELS } from '../types/farm';
 import { useMapData } from '../hooks/useMapData';
@@ -66,6 +67,7 @@ export default function FarmMapPage() {
   const [editFieldId, setEditFieldId] = useState<string | null>(null);
   const [fieldsSidebarOpen, setFieldsSidebarOpen] = useState(false);
   const [fieldsSidebarCollapsed, setFieldsSidebarCollapsed] = useState(false);
+  const [pendingFieldDelete, setPendingFieldDelete] = useState<string | null>(null);
 
   // --- Data hook ---
   const {
@@ -209,7 +211,7 @@ export default function FarmMapPage() {
       onFarmSelect={handleFarmZoom}
       onFieldSelect={handleFieldSelect}
       onAddField={() => handleAddField()}
-      onDeleteField={handleDeleteField}
+      onDeleteField={setPendingFieldDelete}
       onEditField={setEditFieldId}
       onColorChange={setEnterpriseColor}
       collapsed={fieldsSidebarCollapsed}
@@ -680,6 +682,25 @@ export default function FarmMapPage() {
         }}
         farms={farms}
         enterprises={enterprises}
+      />
+
+      {/* Confirm delete field */}
+      <ConfirmDialog
+        open={!!pendingFieldDelete}
+        title={
+          pendingFieldDelete
+            ? `Delete "${fields.find((f) => f.id === pendingFieldDelete)?.name ?? 'this field'}"?`
+            : ''
+        }
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onCancel={() => setPendingFieldDelete(null)}
+        onConfirm={() => {
+          const id = pendingFieldDelete;
+          setPendingFieldDelete(null);
+          if (id) handleDeleteField(id);
+        }}
       />
 
       {/* Save measurement modal */}

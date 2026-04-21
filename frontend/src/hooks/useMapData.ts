@@ -138,11 +138,8 @@ export function useMapData() {
     });
   }, [enterprises]);
 
-  // Field CRUD
+  // Field CRUD — confirmation is the caller's responsibility (rendered via ConfirmDialog)
   const handleDeleteField = useCallback(async (fId: string) => {
-    const field = fields.find((f) => f.id === fId);
-    const label = field ? field.name : 'this field';
-    if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return;
     try {
       await deleteField(fId);
       if (selectedFieldId === fId) setSelectedFieldId(null);
@@ -150,7 +147,7 @@ export function useMapData() {
     } catch (err) {
       console.error('Failed to delete field', err);
     }
-  }, [fields, selectedFieldId]);
+  }, [selectedFieldId]);
 
   const retryLoad = useCallback(() => {
     setLoadErrors([]);

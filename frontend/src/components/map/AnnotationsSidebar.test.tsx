@@ -107,23 +107,23 @@ describe('AnnotationsSidebar', () => {
   it('delete button fires onDelete after confirmation', async () => {
     const user = userEvent.setup();
     const onDelete = vi.fn();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderSidebar({ onDelete });
     const row = screen.getByText('Gate').closest('[data-annotation-row]')!;
-    await user.click(within(row as HTMLElement).getByRole('button', { name: /delete/i }));
+    await user.click(within(row as HTMLElement).getByRole('button', { name: /delete annotation/i }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: /^delete$/i }));
     expect(onDelete).toHaveBeenCalledWith('a1');
-    confirmSpy.mockRestore();
   });
 
   it('delete does nothing if confirmation is dismissed', async () => {
     const user = userEvent.setup();
     const onDelete = vi.fn();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     renderSidebar({ onDelete });
     const row = screen.getByText('Gate').closest('[data-annotation-row]')!;
-    await user.click(within(row as HTMLElement).getByRole('button', { name: /delete/i }));
+    await user.click(within(row as HTMLElement).getByRole('button', { name: /delete annotation/i }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: /cancel/i }));
     expect(onDelete).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
   });
 
   it('renders nothing when open=false', () => {
@@ -188,15 +188,15 @@ describe('AnnotationsSidebar', () => {
   it('selecting items and clicking delete calls onBatchDelete', async () => {
     const user = userEvent.setup();
     const onBatchDelete = vi.fn();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderSidebar({ onBatchDelete });
     await user.click(screen.getByRole('button', { name: /multi-select/i }));
     const checkboxes = screen.getAllByRole('checkbox');
     await user.click(checkboxes[0]);
     await user.click(checkboxes[1]);
     await user.click(screen.getByRole('button', { name: /delete selected/i }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: /^delete$/i }));
     expect(onBatchDelete).toHaveBeenCalledWith(expect.arrayContaining(['a1', 'a2']));
-    confirmSpy.mockRestore();
   });
 
   it('select all toggles all checkboxes', async () => {
@@ -253,7 +253,6 @@ describe('AnnotationsSidebar — Measurements tab', () => {
   it('delete button removes measurement row', async () => {
     const user = userEvent.setup();
     vi.mocked(measurementsApi.listMeasurements).mockResolvedValue([makeMeasurement()]);
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(
       <AnnotationsSidebar
         open={true}
@@ -267,9 +266,10 @@ describe('AnnotationsSidebar — Measurements tab', () => {
     await user.click(screen.getByRole('button', { name: /measurements/i }));
     await waitFor(() => expect(screen.getByText('Fence line')).toBeInTheDocument());
     const row = screen.getByText('Fence line').closest('[data-measurement-row]')!;
-    await user.click(within(row as HTMLElement).getByRole('button', { name: /delete/i }));
+    await user.click(within(row as HTMLElement).getByRole('button', { name: /delete measurement/i }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: /^delete$/i }));
     expect(measurementsApi.deleteMeasurement).toHaveBeenCalledWith('m1');
-    confirmSpy.mockRestore();
   });
 
   it('copy button writes formatted to clipboard', async () => {
@@ -322,7 +322,6 @@ describe('AnnotationsSidebar — Measurements tab', () => {
     const user = userEvent.setup();
     const measurement = makeMeasurement();
     vi.mocked(measurementsApi.listMeasurements).mockResolvedValue([measurement]);
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const onMeasurementZoom = vi.fn();
     render(
       <AnnotationsSidebar
@@ -338,9 +337,8 @@ describe('AnnotationsSidebar — Measurements tab', () => {
     await user.click(screen.getByRole('button', { name: /measurements/i }));
     await waitFor(() => expect(screen.getByText('Fence line')).toBeInTheDocument());
     const row = screen.getByText('Fence line').closest('[data-measurement-row]')!;
-    await user.click(within(row as HTMLElement).getByRole('button', { name: /delete/i }));
+    await user.click(within(row as HTMLElement).getByRole('button', { name: /delete measurement/i }));
     expect(onMeasurementZoom).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
   });
 
   it('clicking Copy button does NOT fire onMeasurementZoom (Fix 2)', async () => {

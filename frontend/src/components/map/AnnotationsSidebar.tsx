@@ -7,6 +7,7 @@ import { listMeasurements, deleteMeasurement } from '../../api/measurements';
 import { formatDistance, formatArea } from './tools/metricFormat';
 import { getCategoryDef, CATEGORIES } from './annotationCategories';
 import FluidSheet from './FluidSheet';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 interface AnnotationsSidebarProps {
   open: boolean;
@@ -59,6 +60,11 @@ export default function AnnotationsSidebar({
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [multiSelect, setMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    description?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const toggleMultiSelect = useCallback(() => {
     setMultiSelect(v => {
@@ -310,7 +316,10 @@ export default function AnnotationsSidebar({
                             aria-label="Delete annotation"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (window.confirm(`Delete "${a.title}"?`)) onDelete(a.id);
+                              setConfirmState({
+                                title: `Delete "${a.title}"?`,
+                                onConfirm: () => onDelete(a.id),
+                              });
                             }}
                             className="text-stone-400 hover:text-red-600 text-[11px] transition-colors"
                           >
@@ -355,11 +364,14 @@ export default function AnnotationsSidebar({
                   disabled={selectedIds.size === 0}
                   onClick={() => {
                     const ids = Array.from(selectedIds);
-                    if (window.confirm(`Delete ${ids.length} annotation${ids.length === 1 ? '' : 's'}?`)) {
-                      onBatchDelete?.(ids);
-                      setSelectedIds(new Set());
-                      setMultiSelect(false);
-                    }
+                    setConfirmState({
+                      title: `Delete ${ids.length} annotation${ids.length === 1 ? '' : 's'}?`,
+                      onConfirm: () => {
+                        onBatchDelete?.(ids);
+                        setSelectedIds(new Set());
+                        setMultiSelect(false);
+                      },
+                    });
                   }}
                   className="px-3 py-1 text-[11px] font-medium rounded-lg transition-colors disabled:opacity-40 text-red-700 bg-red-50 hover:bg-red-100 disabled:hover:bg-red-50"
                 >
@@ -416,11 +428,14 @@ export default function AnnotationsSidebar({
                         aria-label="Delete measurement"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (window.confirm(`Delete "${m.name}"?`)) {
-                            deleteMeasurement(m.id)
-                              .then(() => setMeasurements((prev) => prev.filter((x) => x.id !== m.id)))
-                              .catch((err) => console.error('Delete measurement failed:', err));
-                          }
+                          setConfirmState({
+                            title: `Delete "${m.name}"?`,
+                            onConfirm: () => {
+                              deleteMeasurement(m.id)
+                                .then(() => setMeasurements((prev) => prev.filter((x) => x.id !== m.id)))
+                                .catch((err) => console.error('Delete measurement failed:', err));
+                            },
+                          });
                         }}
                         className="text-stone-400 hover:text-red-600 text-[11px] transition-colors"
                       >
@@ -437,6 +452,18 @@ export default function AnnotationsSidebar({
           )}
         </div>
       )}
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title ?? ''}
+        description={confirmState?.description}
+        confirmLabel="Delete"
+        destructive
+        onCancel={() => setConfirmState(null)}
+        onConfirm={() => {
+          confirmState?.onConfirm();
+          setConfirmState(null);
+        }}
+      />
     </FluidSheet>
   );
 }
