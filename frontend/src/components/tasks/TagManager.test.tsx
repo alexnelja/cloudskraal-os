@@ -159,11 +159,14 @@ describe('TagManager', () => {
     expect(screen.getByPlaceholderText('Status name')).toBeInTheDocument();
   });
 
-  it('delete button calls deleteTag with confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('delete button opens ConfirmDialog and calls deleteTag on confirm', async () => {
     renderOpen();
     const deleteButtons = screen.getAllByLabelText('Delete tag');
     fireEvent.click(deleteButtons[0]);
+
+    // ConfirmDialog should open with the destructive copy — click "Delete" to confirm.
+    const confirmButton = await screen.findByRole('button', { name: 'Delete' });
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(mockDeleteTag).toHaveBeenCalledWith('t1');

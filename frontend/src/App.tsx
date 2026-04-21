@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { MotionConfig } from 'motion/react';
 import AppShell from './components/layout/AppShell';
+import { ToasterProvider } from './components/ui/Toaster';
 import Dashboard from './pages/Dashboard';
 import ProjectsList from './pages/ProjectsList';
 import ProjectDetail from './pages/ProjectDetail';
@@ -28,8 +29,9 @@ export default function App() {
     // the @media (prefers-reduced-motion: reduce) block in index.css that
     // also neutralises CSS transitions / view-transitions.
     <MotionConfig reducedMotion="user">
-      <BrowserRouter>
-        <AppShell>
+      <ToasterProvider>
+        <BrowserRouter>
+          <AppShell>
         <Routes>
           <Route path="/" element={<PageWrapper><Dashboard /></PageWrapper>} />
           <Route path="/map" element={<FarmMapPage />} />
@@ -50,8 +52,9 @@ export default function App() {
           <Route path="/financials" element={<FinancialsPage />} />
           <Route path="/annotations" element={<PageWrapper><AnnotationsPage /></PageWrapper>} />
         </Routes>
-        </AppShell>
-      </BrowserRouter>
+          </AppShell>
+        </BrowserRouter>
+      </ToasterProvider>
     </MotionConfig>
   );
 }

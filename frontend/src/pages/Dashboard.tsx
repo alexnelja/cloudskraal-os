@@ -29,6 +29,7 @@ import MetricCard from '../components/MetricCard';
 import EnterprisePriceCurve from '../components/EnterprisePriceCurve';
 import WeatherForecastPanel from '../components/WeatherForecastPanel';
 import ProjectModal from '../components/ProjectModal';
+import { useToast } from '../components/ui/Toaster';
 import { StatusCycle } from '../components/EditableCell';
 import { getProjects, getDashboardStats, createProject, updateProject } from '../api/client';
 import type { ProjectSummary, DashboardStats, CreateProjectPayload } from '../types';
@@ -44,6 +45,7 @@ interface ProjectPopup {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +101,10 @@ export default function Dashboard() {
       navigate(`/projects/${project.id}`);
     } catch (err) {
       console.error('Failed to create project:', err);
-      alert('Failed to create project. Ensure the API is running.');
+      toast.show({
+        variant: 'error',
+        message: 'Failed to create project. Ensure the API is running.',
+      });
     }
   };
 

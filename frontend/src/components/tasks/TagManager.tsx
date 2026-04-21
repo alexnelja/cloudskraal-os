@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Trash, PencilSimple } from '@phosphor-icons/react';
 import FluidDialog from '../map/FluidDialog';
+import ConfirmDialog from '../ui/ConfirmDialog';
 import {
   createTag,
   updateTag,
@@ -11,6 +12,8 @@ import {
   deleteStatus,
 } from '../../api/taskManager';
 import type { Tag, TaskStatusConfig } from '../../types/taskManager';
+
+type PendingDelete = { kind: 'tag' | 'status'; id: string } | null;
 
 type ManagerTab = 'tags' | 'statuses';
 type TagGroup = 'all' | 'enterprise' | 'category' | 'custom';
@@ -58,6 +61,7 @@ export default function TagManager({
   const [editingTagName, setEditingTagName] = useState('');
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
   const [editingStatusName, setEditingStatusName] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
 
   const filteredTags =
     groupFilter === 'all'
@@ -77,11 +81,8 @@ export default function TagManager({
     onTagsChanged();
   };
 
-  const handleDeleteTag = async (id: string) => {
-    if (!window.confirm('Delete this tag? It will be removed from all tasks.'))
-      return;
-    await deleteTag(id);
-    onTagsChanged();
+  const handleDeleteTag = (id: string) => {
+    setPendingDelete({ kind: 'tag', id });
   };
 
   const handleUpdateTagName = async (id: string) => {
@@ -112,14 +113,16 @@ export default function TagManager({
     onTagsChanged();
   };
 
-  const handleDeleteStatus = async (id: string) => {
-    if (
-      !window.confirm(
-        'Delete this status? Tasks using it may lose their status.',
-      )
-    )
-      return;
-    await deleteStatus(id);
+  const handleDeleteStatus = (id: string) => {
+    setPendingDelete({ kind: 'status', id });
+  };
+
+  const confirmPendingDelete = async () => {
+    if (!pendingDelete) return;
+    const { kind, id } = pendingDelete;
+    setPendingDelete(null);
+    if (kind === 'tag') await deleteTag(id);
+    else await deleteStatus(id);
     onTagsChanged();
   };
 
@@ -449,6 +452,19 @@ export default function TagManager({
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={pendingDelete?.kind === 'tag' ? 'Delete this tag?' : 'Delete this status?'}
+        description={
+          pendingDelete?.kind === 'tag'
+            ? 'It will be removed from all tasks that use it.'
+            : 'Tasks using this status may lose their status.'
+        }
+        confirmLabel="Delete"
+        destructive
+        onConfirm={confirmPendingDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </FluidDialog>
   );
 }

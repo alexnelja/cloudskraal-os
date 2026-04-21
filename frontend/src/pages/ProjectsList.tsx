@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Filter, ArrowUpDown, FolderOpen } from 'lucide-react';
 import ProjectModal from '../components/ProjectModal';
 import PageHeader from '../components/layout/PageHeader';
+import { useToast } from '../components/ui/Toaster';
 import { getProjects, createProject } from '../api/client';
 import type { ProjectSummary, ProjectType, ProjectStatus, PriorityTier, CreateProjectPayload } from '../types';
 import { formatZAR, formatPercent, formatCompactZAR } from '../utils/format';
@@ -43,6 +44,7 @@ const PRIORITY_ORDER: Record<PriorityTier, number> = {
 
 export default function ProjectsList() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -76,7 +78,10 @@ export default function ProjectsList() {
       navigate(`/projects/${project.id}`);
     } catch (err) {
       console.error('Failed to create project:', err);
-      alert('Failed to create project. Ensure the API is running.');
+      toast.show({
+        variant: 'error',
+        message: 'Failed to create project. Ensure the API is running.',
+      });
     }
   };
 
