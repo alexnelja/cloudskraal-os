@@ -1,12 +1,10 @@
-import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   SunHorizon,
   Cloud,
   Funnel,
-  MapTrifold,
   Crosshair,
-  CaretDown,
 } from '@phosphor-icons/react';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -79,7 +77,6 @@ export default function TodayView({
   weatherTemp,
   weatherRain,
   onWeatherRefresh,
-  geojson,
   fields: fieldsList,
   selectedFieldId,
   onFieldSelect,

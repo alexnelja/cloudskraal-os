@@ -82,13 +82,6 @@ export default function InlineTaskAdd({ tags, fields, onSubmit, accentColor = '#
     });
   };
 
-  const priorities = [
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-    { value: 'urgent', label: 'Urgent' },
-  ];
-
   if (!editing) {
     return (
       <button

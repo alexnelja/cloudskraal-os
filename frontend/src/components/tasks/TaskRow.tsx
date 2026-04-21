@@ -42,7 +42,6 @@ function isDueOverdue(dueDate: string | null): boolean {
 
 export default function TaskRow({
   task,
-  statuses,
   onComplete,
   onSelect,
   selected = false,

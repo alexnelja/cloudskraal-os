@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, Trash } from '@phosphor-icons/react';
 import type { Task, TaskPriority } from '../../types/calendar';

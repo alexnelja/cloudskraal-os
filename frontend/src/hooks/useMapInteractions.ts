@@ -4,7 +4,7 @@ import maplibregl from 'maplibre-gl';
 import { ClipboardText, NotePencil, CheckSquare, MapPin } from '@phosphor-icons/react';
 import { useLongPress } from './useLongPress';
 import { createAnnotation } from '../api/annotations';
-import { createTask, type Task } from '../api/tasks';
+import { createTask } from '../api/tasks';
 import { loadBasemapPreference, saveBasemapPreference } from '../config/basemaps';
 import type { DrawMode } from '../components/map/tools/AnnotateTool';
 import type { MapContextMenuEvent } from '../components/map/FarmMap';
@@ -28,7 +28,6 @@ export function useMapInteractions({
   annotations,
   setAnnotations,
   dropMapNote,
-  handleAnnotationSelect,
   setSidebarOpen,
   setSelectedAnnotationId,
   refreshTasks,
