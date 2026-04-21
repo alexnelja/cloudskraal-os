@@ -151,26 +151,29 @@ router.post('/inventory/transactions', (req, res) => {
   const now = new Date().toISOString();
   const b = req.body;
 
-  db.prepare(`
-    INSERT INTO inventory_transactions (id, product_id, type, date, quantity,
-      unit_cost, total_cost, field_id, task_id, recorded_by, notes, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, b.product_id, b.type, b.date, b.quantity,
-    b.unit_cost || null, b.total_cost || null, b.field_id || null,
-    b.task_id || null, b.recorded_by || null, b.notes || null, now);
+  // INSERT + stock UPDATE are atomic: a failed stock update rolls back the INSERT.
+  db.transaction(() => {
+    db.prepare(`
+      INSERT INTO inventory_transactions (id, product_id, type, date, quantity,
+        unit_cost, total_cost, field_id, task_id, recorded_by, notes, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, b.product_id, b.type, b.date, b.quantity,
+      b.unit_cost || null, b.total_cost || null, b.field_id || null,
+      b.task_id || null, b.recorded_by || null, b.notes || null, now);
 
-  // Update stock levels
-  const stock = db.prepare(
-    'SELECT * FROM inventory_stock WHERE product_id = ? LIMIT 1'
-  ).get(b.product_id);
+    // Update stock levels
+    const stock = db.prepare(
+      'SELECT * FROM inventory_stock WHERE product_id = ? LIMIT 1'
+    ).get(b.product_id);
 
-  if (stock) {
-    const delta = (b.type === 'purchase' || b.type === 'adjustment') ? b.quantity :
-                  (b.type === 'usage' || b.type === 'disposal') ? -b.quantity : 0;
-    db.prepare(
-      'UPDATE inventory_stock SET quantity_on_hand = quantity_on_hand + ?, last_updated = ? WHERE id = ?'
-    ).run(delta, now, stock.id);
-  }
+    if (stock) {
+      const delta = (b.type === 'purchase' || b.type === 'adjustment') ? b.quantity :
+                    (b.type === 'usage' || b.type === 'disposal') ? -b.quantity : 0;
+      db.prepare(
+        'UPDATE inventory_stock SET quantity_on_hand = quantity_on_hand + ?, last_updated = ? WHERE id = ?'
+      ).run(delta, now, stock.id);
+    }
+  })();
 
   const tx = db.prepare('SELECT * FROM inventory_transactions WHERE id = ?').get(id);
   res.status(201).json(tx);
