@@ -121,18 +121,38 @@ export default function EventEditor({ event, open, onClose, onSave, defaultStart
     }
   }
 
+  // Close on Escape — must be declared before the early-return so the hook
+  // count stays stable across renders.
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="event-editor-title"
+    >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#f3f4f3]">
-          <h2 className="text-lg font-semibold text-stone-800">
+          <h2 id="event-editor-title" className="text-lg font-semibold text-stone-800">
             {isEdit ? 'Edit Event' : 'New Event'}
           </h2>
-          <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
-            <X size={20} />
+          <button
+            onClick={onClose}
+            aria-label="Close event editor"
+            className="text-stone-400 hover:text-stone-600 p-2 -m-2"
+          >
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
 

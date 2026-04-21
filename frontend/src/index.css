@@ -2,6 +2,10 @@
 @import "tailwindcss";
 @import "./wiki.css";
 
+/* Material Symbols Outlined — required by @material/web <md-icon> components.
+   Without this, icon ligatures render as literal text (e.g. "home" as the word). */
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block');
+
 /* ═════════════════════════════════════════════════════════════════════════
    Material Design 3 — System Tokens
    Spec: docs/specs/2026-04-20-material-3-migration.md

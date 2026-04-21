@@ -68,9 +68,17 @@ export default function BottomNav() {
       aria-label="Main navigation"
     >
       {tabs.map((tab, i) => (
-        <md-navigation-tab key={tab.to} label={tab.label} active={i === activeIndex}>
-          <md-icon slot="active-icon">{tab.icon}</md-icon>
-          <md-icon slot="inactive-icon">{tab.icon}</md-icon>
+        <md-navigation-tab
+          key={tab.to}
+          label={tab.label}
+          active={i === activeIndex}
+          // `label` is a Lit property (not reflected as a DOM attribute), so screen
+          // readers don't pick it up on the navigation button — add aria-label to
+          // guarantee the accessible name.
+          aria-label={tab.label}
+        >
+          <md-icon slot="active-icon" aria-hidden="true">{tab.icon}</md-icon>
+          <md-icon slot="inactive-icon" aria-hidden="true">{tab.icon}</md-icon>
         </md-navigation-tab>
       ))}
     </md-navigation-bar>
