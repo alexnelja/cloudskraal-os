@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, X } from 'lucide-react';
+import { ChevronDown, X, GitCompare } from 'lucide-react';
+import PageHeader from '../components/layout/PageHeader';
 import {
   BarChart,
   Bar,
@@ -130,13 +131,12 @@ export default function CompareProjects() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-stone-800">Compare Projects</h1>
-        <p className="text-sm text-stone-500">
-          Select 2-4 projects and scenarios to compare side by side
-        </p>
-      </div>
+      <PageHeader
+        icon={<GitCompare size={20} />}
+        title="Compare Projects"
+        subtitle="Select 2–4 projects and scenarios to compare side by side"
+      />
+      <div className="h-6" />
 
       {/* Selection area */}
       <div className="bg-white rounded-2xl p-5 mb-6">

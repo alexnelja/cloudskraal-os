@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Beef, ChevronDown, ChevronUp } from 'lucide-react';
+import PageHeader from '../components/layout/PageHeader';
 import { getLivestockGroups, getLivestockDashboard, getBreedingSeasons, getShearingRecords, updateLivestockGroup, updateBreedingSeason, updateShearingRecord } from '../api/livestock';
 import type { LivestockGroup, LivestockDashboard, BreedingSeason, ShearingRecord } from '../types/phase2';
 import EditableCell, { StepperCell } from '../components/EditableCell';
@@ -75,13 +76,7 @@ export default function LivestockPage() {
 
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
-        <div className="flex items-center gap-2">
-          <Beef size={20} className="text-emerald-700" />
-          <h1 className="text-lg font-bold text-stone-900">Livestock Tracker</h1>
-        </div>
-      </div>
+      <PageHeader icon={<Beef size={20} />} title="Livestock Tracker" />
 
       <div className="flex-1 overflow-y-auto bg-white">
         <div className="max-w-6xl mx-auto p-4 space-y-6">

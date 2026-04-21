@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BarChart3, Search, Filter } from 'lucide-react';
+import PageHeader from '../components/layout/PageHeader';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getFinancialDashboard, getFinancialTransactions, getEnterprises } from '../api/financials';
 import type { FinancialDashboard, FinancialTransaction, Enterprise } from '../types/phase3';
@@ -112,33 +113,41 @@ export default function FinancialsPage() {
 
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BarChart3 size={20} className="text-emerald-700" />
-            <h1 className="text-lg font-bold text-stone-900">Financials</h1>
-          </div>
-          <div className="flex bg-stone-100 rounded-lg p-0.5">
+      <PageHeader
+        icon={<BarChart3 size={20} />}
+        title="Financials"
+        segmented={
+          <div
+            className="flex p-0.5 md-shape-medium"
+            style={{ backgroundColor: 'var(--md-sys-color-surface-container)' }}
+          >
             <button
               onClick={() => setView('overview')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                view === 'overview' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'
-              }`}
+              aria-pressed={view === 'overview'}
+              className="md-label-large px-3 py-1 md-shape-small md-duration-short3 md-ease-standard transition-colors"
+              style={{
+                backgroundColor: view === 'overview' ? 'var(--md-sys-color-surface)' : 'transparent',
+                color: view === 'overview' ? 'var(--md-sys-color-on-surface)' : 'var(--md-sys-color-on-surface-variant)',
+                boxShadow: view === 'overview' ? 'var(--md-sys-elevation-1)' : undefined,
+              }}
             >
               Overview
             </button>
             <button
               onClick={() => setView('model')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                view === 'model' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'
-              }`}
+              aria-pressed={view === 'model'}
+              className="md-label-large px-3 py-1 md-shape-small md-duration-short3 md-ease-standard transition-colors"
+              style={{
+                backgroundColor: view === 'model' ? 'var(--md-sys-color-surface)' : 'transparent',
+                color: view === 'model' ? 'var(--md-sys-color-on-surface)' : 'var(--md-sys-color-on-surface-variant)',
+                boxShadow: view === 'model' ? 'var(--md-sys-elevation-1)' : undefined,
+              }}
             >
               Financial Model
             </button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto bg-white">
         <div className="max-w-6xl mx-auto p-4 space-y-6">
