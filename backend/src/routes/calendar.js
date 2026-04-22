@@ -157,8 +157,10 @@ router.post('/calendar/sync', async (req, res) => {
     const counts = await gcal.syncFromGoogle(db);
     res.json(counts);
   } catch (err) {
+    // Do not leak raw Google API error strings (tokens, refresh URLs,
+    // internal account ids) to the client. Log server-side, return generic.
     console.error('[gcal] Sync failed:', err);
-    res.status(500).json({ error: 'Sync failed', message: err.message });
+    res.status(500).json({ error: 'Google Calendar sync failed. Check server logs.' });
   }
 });
 
@@ -186,7 +188,7 @@ router.post('/calendar/link-google', async (req, res) => {
     res.json({ unlinked: unlinked.length, linked });
   } catch (err) {
     console.error('[gcal] Link failed:', err);
-    res.status(500).json({ error: 'Link failed', message: err.message });
+    res.status(500).json({ error: 'Google Calendar link-up failed. Check server logs.' });
   }
 });
 

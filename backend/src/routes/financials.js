@@ -97,9 +97,17 @@ router.get('/financials/transactions', (req, res) => {
 // POST /api/financials/transactions — create
 router.post('/financials/transactions', (req, res) => {
   const db = getDb();
+  const b = req.body;
+
+  if (!b.type || !['revenue', 'expense'].includes(b.type)) {
+    return res.status(400).json({ error: 'type is required' });
+  }
+  if (typeof b.amount !== 'number') {
+    return res.status(400).json({ error: 'amount is required' });
+  }
+
   const id = uuidv4();
   const now = new Date().toISOString();
-  const b = req.body;
 
   db.prepare(`
     INSERT INTO financial_transactions (id, date, description, type, amount,
@@ -192,6 +200,16 @@ router.post('/budgets', (req, res) => {
   const db = getDb();
   const b = req.body;
 
+  if (!b.enterprise_id) {
+    return res.status(400).json({ error: 'enterprise_id is required' });
+  }
+  if (b.year === undefined || b.year === null || b.year === '') {
+    return res.status(400).json({ error: 'year is required' });
+  }
+  if (!b.category) {
+    return res.status(400).json({ error: 'category is required' });
+  }
+
   // Check if exists
   const existing = db.prepare(
     'SELECT id FROM budgets WHERE enterprise_id = ? AND year = ? AND category = ?'
@@ -248,20 +266,35 @@ router.get('/financials/budget-vs-actual', (req, res) => {
     'SELECT * FROM budgets WHERE enterprise_id = ? AND year = ?'
   ).all(enterprise_id, Number(year));
 
-  // Get actual transactions by month
+  // Two GROUP BY queries replace the 24-query N+1 loop.
+  const actualRows = db.prepare(`
+    SELECT strftime('%m', date) as month_num,
+           type,
+           COALESCE(SUM(amount), 0) as total
+    FROM financial_transactions
+    WHERE enterprise_id = ? AND date >= ? AND date <= ?
+    GROUP BY month_num, type
+  `).all(enterprise_id, `${year}-01-01`, `${year}-12-31`);
+
+  // Index actual totals: actualByMonth['01']['revenue'] = n
+  const actualByMonth = {};
+  for (const row of actualRows) {
+    if (!actualByMonth[row.month_num]) {
+      actualByMonth[row.month_num] = { revenue: 0, expenses: 0 };
+    }
+    if (row.type === 'revenue') {
+      actualByMonth[row.month_num].revenue = row.total;
+    } else if (row.type === 'expense') {
+      actualByMonth[row.month_num].expenses = row.total;
+    }
+  }
+
+  // Build result — same shape as before
   const result = months.map((m, i) => {
-    const monthStart = `${year}-${monthNumbers[i]}-01`;
-    const monthEnd = `${year}-${monthNumbers[i]}-31`;
-
-    const actualRevenue = db.prepare(`
-      SELECT COALESCE(SUM(amount), 0) as total FROM financial_transactions
-      WHERE enterprise_id = ? AND type = 'revenue' AND date >= ? AND date <= ?
-    `).get(enterprise_id, monthStart, monthEnd).total;
-
-    const actualExpenses = db.prepare(`
-      SELECT COALESCE(SUM(amount), 0) as total FROM financial_transactions
-      WHERE enterprise_id = ? AND type = 'expense' AND date >= ? AND date <= ?
-    `).get(enterprise_id, monthStart, monthEnd).total;
+    const mn = monthNumbers[i];
+    const actual = actualByMonth[mn] || { revenue: 0, expenses: 0 };
+    const actualRevenue = actual.revenue;
+    const actualExpenses = actual.expenses;
 
     let budgetRevenue = 0;
     let budgetExpenses = 0;

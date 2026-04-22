@@ -1,10 +1,17 @@
+// Dangerous top-level keys that can pollute the prototype chain when a body
+// is spread into an object without a safeguard. Express+body-parser will pass
+// them through as own properties, so we reject at the request boundary.
+const PROTOTYPE_POLLUTION_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 function validateBody(schema) {
   return (req, res, next) => {
     if (!req.body || typeof req.body !== 'object') {
       return res.status(400).json({ error: 'Request body required', code: 'INVALID_BODY' });
     }
-    // Basic string length enforcement
     for (const [key, value] of Object.entries(req.body)) {
+      if (PROTOTYPE_POLLUTION_KEYS.has(key)) {
+        return res.status(400).json({ error: `Forbidden key: '${key}'`, code: 'FORBIDDEN_KEY' });
+      }
       if (typeof value === 'string' && value.length > 10000) {
         return res.status(400).json({ error: `Field '${key}' exceeds maximum length`, code: 'FIELD_TOO_LONG' });
       }

@@ -257,21 +257,27 @@ router.delete('/:id/scenarios/:scenarioId', (req, res) => {
   res.status(204).send();
 });
 
-// Helper: recompute all scenarios for a project (after cash flow or project changes)
+// Helper: recompute all scenarios for a project (after cash flow or project changes).
+// Wrapped in a single transaction so a failure mid-loop does not leave a subset
+// of scenarios stamped with new numbers and the rest stale — previously the
+// project's summary metrics could disagree across scenarios on partial failure.
 function recomputeScenarios(db, projectId) {
   const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
   if (!project) return;
 
   const cashFlows = db.prepare('SELECT * FROM cash_flows WHERE projectId = ? ORDER BY year').all(projectId);
   const scenarios = db.prepare('SELECT * FROM scenarios WHERE projectId = ?').all(projectId);
+  const update = db.prepare(`
+    UPDATE scenarios SET wacc = ?, npv = ?, irr = ?, paybackYears = ?, profitabilityIndex = ?, monthlyPayment = ?, totalInterest = ?
+    WHERE id = ?
+  `);
 
-  for (const s of scenarios) {
-    const computed = computeAll(s, project, cashFlows);
-    db.prepare(`
-      UPDATE scenarios SET wacc = ?, npv = ?, irr = ?, paybackYears = ?, profitabilityIndex = ?, monthlyPayment = ?, totalInterest = ?
-      WHERE id = ?
-    `).run(computed.wacc, computed.npv, computed.irr, computed.paybackYears, computed.profitabilityIndex, computed.monthlyPayment, computed.totalInterest, s.id);
-  }
+  db.transaction(() => {
+    for (const s of scenarios) {
+      const computed = computeAll(s, project, cashFlows);
+      update.run(computed.wacc, computed.npv, computed.irr, computed.paybackYears, computed.profitabilityIndex, computed.monthlyPayment, computed.totalInterest, s.id);
+    }
+  })();
 }
 
 module.exports = router;

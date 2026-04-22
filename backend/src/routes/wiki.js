@@ -448,14 +448,16 @@ router.delete('/wiki/:slug', (req, res) => {
   const existing = db.prepare('SELECT * FROM wiki_pages WHERE slug = ?').get(req.params.slug);
   if (!existing) return res.status(404).json({ error: 'Page not found' });
 
-  // Move to trash
-  db.prepare(`
-    INSERT INTO wiki_trash (id, slug, title, body, category, enterprise, tags, deleted_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(existing.id, existing.slug, existing.title, existing.body, existing.category, existing.enterprise, existing.tags, new Date().toISOString());
+  // trash INSERT + pages DELETE are atomic.
+  db.transaction(() => {
+    db.prepare(`
+      INSERT INTO wiki_trash (id, slug, title, body, category, enterprise, tags, deleted_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(existing.id, existing.slug, existing.title, existing.body, existing.category, existing.enterprise, existing.tags, new Date().toISOString());
 
-  // Delete from main table
-  db.prepare('DELETE FROM wiki_pages WHERE id = ?').run(existing.id);
+    db.prepare('DELETE FROM wiki_pages WHERE id = ?').run(existing.id);
+  })();
+
   invalidateTitleCache();
   auditLog(db, 'delete', existing.slug, existing.title);
   res.status(204).send();

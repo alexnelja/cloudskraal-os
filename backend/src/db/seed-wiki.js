@@ -1073,18 +1073,24 @@ See [[Fuel Storage Tank]] for the bulk storage capex project.`
 
   const insertedPages = [];
 
-  for (const page of pages) {
-    const id = uuidv4();
-    const slug = titleToSlug(page.title);
-    const tagsJson = JSON.stringify(page.tags);
-    insertPage.run(id, slug, page.title, page.body, page.category, page.enterprise, tagsJson, now, now);
-    insertedPages.push({ id, body: page.body });
-  }
+  // Wrap the full seed (pages + link graph) in a single transaction so a
+  // failure mid-way cannot leave the wiki half-populated. Without this, a
+  // crash after page 30/60 would leave 30 pages seeded but the count-gate
+  // at the top of the function would skip re-seeding on next boot, producing
+  // a permanently partial wiki.
+  db.transaction(() => {
+    for (const page of pages) {
+      const id = uuidv4();
+      const slug = titleToSlug(page.title);
+      const tagsJson = JSON.stringify(page.tags);
+      insertPage.run(id, slug, page.title, page.body, page.category, page.enterprise, tagsJson, now, now);
+      insertedPages.push({ id, body: page.body });
+    }
 
-  // Build link graph after all pages are inserted
-  for (const { id, body } of insertedPages) {
-    updatePageLinks(db, id, body);
-  }
+    for (const { id, body } of insertedPages) {
+      updatePageLinks(db, id, body);
+    }
+  })();
 
   console.log(`  Seeded ${pages.length} wiki pages with knowledge graph links`);
 }
