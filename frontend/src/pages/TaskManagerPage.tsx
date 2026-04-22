@@ -17,6 +17,7 @@ import ListView from '../components/tasks/ListView';
 import TagManager from '../components/tasks/TagManager';
 import CopToast from '../components/tasks/CopToast';
 import TaskDetailSheet from '../components/tasks/TaskDetailSheet';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 
 type ViewMode = 'home' | 'today' | 'upcoming' | 'all' | 'completed' | 'board' | 'list';
 
@@ -39,7 +40,7 @@ const SMART_LISTS: SmartListCard[] = [
         if (!t.due_date) return true; // no-date tasks show in today
         const diff = Math.round((new Date(t.due_date + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000);
         return diff <= 1; // today + tomorrow + overdue
-      });
+      }).length;
     },
   },
   {
@@ -272,9 +273,7 @@ export default function TaskManagerPage() {
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <span className="text-[15px] text-stone-400">Loading tasks...</span>
-          </div>
+          <LoadingOverlay message="Loading tasks…" />
         ) : viewMode === 'home' ? (
           /* ===== HOME: Smart List Cards ===== */
           <div className="h-full overflow-y-auto px-5 pb-6">

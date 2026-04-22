@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Users, ChevronDown, ChevronUp, Plus, Phone } from 'lucide-react';
+import PageHeader from '../components/layout/PageHeader';
+import EmptyState from '../components/ui/EmptyState';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { getEmployees, getEmployeeSummary, getEmployeeById, addTimeEntry, updateEmployee } from '../api/employees';
 import { getEnterprises } from '../api/financials';
 import type { Employee, EmployeeSummary, Enterprise } from '../types/phase3';
@@ -79,41 +82,49 @@ export default function EmployeesPage() {
 
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Users size={20} className="text-emerald-700" />
-            <h1 className="text-lg font-bold text-stone-900">Employees</h1>
-          </div>
-          <div className="flex-1" />
-          {summary && (
-            <div className="flex items-center gap-4 text-xs">
+      <PageHeader
+        icon={<Users size={20} />}
+        title="Employees"
+        actions={
+          summary && (
+            <div className="flex items-center gap-4">
               <div className="text-center">
-                <p className="text-stone-400">Total</p>
-                <p className="text-lg font-bold text-stone-800">{summary.total}</p>
+                <p className="md-label-small" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>
+                  Total
+                </p>
+                <p className="md-title-medium" style={{ color: 'var(--md-sys-color-on-surface)' }}>
+                  {summary.total}
+                </p>
               </div>
               <div className="text-center">
-                <p className="text-stone-400">Monthly Cost</p>
-                <p className="text-lg font-bold text-stone-800">{formatCurrency(summary.totalMonthlyCost)}</p>
+                <p className="md-label-small" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>
+                  Monthly Cost
+                </p>
+                <p className="md-title-medium" style={{ color: 'var(--md-sys-color-on-surface)' }}>
+                  {formatCurrency(summary.totalMonthlyCost)}
+                </p>
               </div>
               {typeKeys.map((t) => (
                 <div key={t} className="text-center hidden sm:block">
                   <span
-                    className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium text-white"
-                    style={{ backgroundColor: EMPLOYEE_TYPE_COLORS[t] ?? '#6b7280' }}
+                    className="md-label-small inline-block px-2 py-0.5 md-shape-full text-white"
+                    style={{ backgroundColor: EMPLOYEE_TYPE_COLORS[t] ?? 'var(--md-sys-color-outline)' }}
                   >
                     {t}: {summary.byType[t]}
                   </span>
                 </div>
               ))}
             </div>
-          )}
-        </div>
-
+          )
+        }
+      />
+      <div
+        className="flex-shrink-0 border-b px-4 py-2 bg-white"
+        style={{ borderColor: 'var(--md-sys-color-outline-variant)' }}
+      >
         {/* Type filter pills */}
         {typeKeys.length > 0 && (
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setTypeFilter(null)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
@@ -143,13 +154,13 @@ export default function EmployeesPage() {
       {/* Main content */}
       <div className="flex-1 overflow-y-auto bg-white">
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <p className="text-stone-400 text-sm">Loading employees...</p>
-          </div>
+          <LoadingOverlay message="Loading employees…" />
         ) : employees.length === 0 ? (
-          <div className="flex items-center justify-center py-16">
-            <p className="text-stone-400 text-sm">No employees found.</p>
-          </div>
+          <EmptyState
+            icon={<Users size={40} aria-hidden="true" />}
+            title="No employees yet"
+            subtitle="Add an employee to start tracking time, salary, and certifications."
+          />
         ) : (
           <div className="max-w-6xl mx-auto p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

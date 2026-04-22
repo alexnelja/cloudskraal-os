@@ -29,6 +29,7 @@ import MetricCard from '../components/MetricCard';
 import EnterprisePriceCurve from '../components/EnterprisePriceCurve';
 import WeatherForecastPanel from '../components/WeatherForecastPanel';
 import ProjectModal from '../components/ProjectModal';
+import { useToast } from '../components/ui/Toaster';
 import { StatusCycle } from '../components/EditableCell';
 import { getProjects, getDashboardStats, createProject, updateProject } from '../api/client';
 import type { ProjectSummary, DashboardStats, CreateProjectPayload } from '../types';
@@ -44,6 +45,7 @@ interface ProjectPopup {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +101,10 @@ export default function Dashboard() {
       navigate(`/projects/${project.id}`);
     } catch (err) {
       console.error('Failed to create project:', err);
-      alert('Failed to create project. Ensure the API is running.');
+      toast.show({
+        variant: 'error',
+        message: 'Failed to create project. Ensure the API is running.',
+      });
     }
   };
 
@@ -146,14 +151,18 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-[#1a1c1c]">Dashboard</h1>
-          <p className="text-sm text-[#6e7a73]">Capital expenditure overview for Cloudskraal Boerderye</p>
+          <h1 className="text-xl font-semibold text-[var(--md-sys-color-on-surface)]">Dashboard</h1>
+          <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">Capital expenditure overview for Cloudskraal Boerderye</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-[#005d42] to-[#047857] text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+          className="md-label-large md-shape-medium inline-flex items-center gap-2 px-4 py-2.5 md-duration-short3 md-ease-standard transition-opacity hover:opacity-90"
+          style={{
+            backgroundColor: 'var(--md-sys-color-primary)',
+            color: 'var(--md-sys-color-on-primary)',
+          }}
         >
-          <Plus size={18} />
+          <Plus size={18} aria-hidden="true" />
           New Project
         </button>
       </div>
@@ -216,7 +225,7 @@ export default function Dashboard() {
               .sort((a, b) => b.total - a.total);
             return (
               <div className="bg-white rounded-2xl p-5">
-                <h3 className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#6e7a73] mb-4">Budget by Type (R millions)</h3>
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.05em] text-[var(--md-sys-color-on-surface-variant)] mb-4">Budget by Type (R millions)</h3>
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={budgetByType} layout="vertical" margin={{ left: 20 }} onClick={handleBudgetBarClick}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#bdc9c1" strokeOpacity={0.3} />
@@ -235,6 +244,9 @@ export default function Dashboard() {
 
           {/* Top 10 NPV Ranking */}
           {(() => {
+            // TYPE_COLORS: intentional data-viz palette for category
+            // differentiation — same rationale as ENTERPRISE_COLORS in
+            // types/farm. Do not tokenise.
             const TYPE_COLORS: Record<string, string> = {
               equipment: '#047857',
               infrastructure: '#0369a1',
@@ -258,7 +270,7 @@ export default function Dashboard() {
             if (topNpv.length === 0) return null;
             return (
               <div className="bg-white rounded-2xl p-5">
-                <h3 className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#6e7a73] mb-4">Top 10 NPV Ranking (R thousands)</h3>
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.05em] text-[var(--md-sys-color-on-surface-variant)] mb-4">Top 10 NPV Ranking (R thousands)</h3>
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={topNpv} layout="vertical" margin={{ left: 20 }} onClick={handleNpvBarClick}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#bdc9c1" strokeOpacity={0.3} />
@@ -306,11 +318,11 @@ export default function Dashboard() {
                     <span className={`text-[11px] font-bold uppercase tracking-[0.05em] ${t.textColor}`}>{t.label}</span>
                     <TierIcon size={16} className={t.textColor} />
                   </div>
-                  <p className="text-lg font-bold text-[#1a1c1c]">{formatCompactZAR(t.totalBudget)}</p>
-                  <p className="text-[10px] text-[#6e7a73] mt-0.5">{t.count} projects &middot; NPV: {formatCompactZAR(t.totalNpv)}</p>
+                  <p className="text-lg font-bold text-[var(--md-sys-color-on-surface)]">{formatCompactZAR(t.totalBudget)}</p>
+                  <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5">{t.count} projects &middot; NPV: {formatCompactZAR(t.totalNpv)}</p>
                   <div className="mt-3 space-y-1">
                     {t.projects.slice(0, 4).map(p => (
-                      <div key={p.id} className="w-full flex items-center gap-1.5 text-xs hover:bg-[#f3f4f3] rounded px-1.5 py-1 transition-colors text-left">
+                      <div key={p.id} className="w-full flex items-center gap-1.5 text-xs hover:bg-[var(--md-sys-color-surface-container)] rounded px-1.5 py-1 transition-colors text-left">
                         <span onClick={(e) => { e.stopPropagation(); }}>
                           <StatusCycle
                             value={p.status}
@@ -323,13 +335,13 @@ export default function Dashboard() {
                           />
                         </span>
                         <button onClick={(e) => openProjectPopup(p, e)} className="flex-1 flex items-center justify-between min-w-0">
-                          <span className="text-[#1a1c1c] truncate mr-2">{p.name}</span>
-                          <span className="text-[#6e7a73] whitespace-nowrap">{formatCompactZAR(p.initialOutlay)}</span>
+                          <span className="text-[var(--md-sys-color-on-surface)] truncate mr-2">{p.name}</span>
+                          <span className="text-[var(--md-sys-color-on-surface-variant)] whitespace-nowrap">{formatCompactZAR(p.initialOutlay)}</span>
                         </button>
                       </div>
                     ))}
                     {t.projects.length > 4 && (
-                      <p className="text-[10px] text-[#6e7a73] pl-1.5">+{t.projects.length - 4} more</p>
+                      <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] pl-1.5">+{t.projects.length - 4} more</p>
                     )}
                   </div>
                 </div>
@@ -369,10 +381,10 @@ export default function Dashboard() {
         }
 
         const TASK_TYPE_ICONS: Record<string, React.ReactNode> = {
-          scheduled: <CalendarDays size={13} className="text-[#6e7a73]" />,
+          scheduled: <CalendarDays size={13} className="text-[var(--md-sys-color-on-surface-variant)]" />,
           triggered: <AlertTriangle size={13} className="text-amber-400" />,
           dependent: <Clock size={13} className="text-blue-400" />,
-          manual: <Clock size={13} className="text-[#6e7a73]" />,
+          manual: <Clock size={13} className="text-[var(--md-sys-color-on-surface-variant)]" />,
         };
 
         // Group upcoming tasks by day label (max 10 shown)
@@ -394,12 +406,12 @@ export default function Dashboard() {
             {/* Card header */}
             <div className="flex items-center justify-between px-5 py-4">
               <div className="flex items-center gap-2">
-                <CalendarDays size={16} className="text-[#005d42]" />
-                <h2 className="text-base font-semibold text-[#1a1c1c]">Upcoming Tasks</h2>
+                <CalendarDays size={16} className="text-[var(--md-sys-color-primary)]" />
+                <h2 className="text-base font-semibold text-[var(--md-sys-color-on-surface)]">Upcoming Tasks</h2>
               </div>
               <Link
                 to="/calendar/tasks"
-                className="inline-flex items-center gap-1 text-sm text-[#005d42] hover:text-[#004d37] font-medium"
+                className="inline-flex items-center gap-1 text-sm text-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-primary)] hover:opacity-80 font-medium"
               >
                 View all in Calendar <ArrowRight size={14} />
               </Link>
@@ -409,26 +421,26 @@ export default function Dashboard() {
             {overdueTasks.length > 0 && (
               <Link
                 to="/calendar/tasks"
-                className="flex items-center gap-3 px-5 py-3 bg-[#ba1a1a]/10 text-[#ba1a1a] rounded-2xl hover:bg-[#ba1a1a]/15 transition-colors mx-4 my-2"
+                className="flex items-center gap-3 px-5 py-3 bg-[var(--md-sys-color-error)]/10 text-[var(--md-sys-color-error)] rounded-2xl hover:bg-[var(--md-sys-color-error)]/15 transition-colors mx-4 my-2"
               >
-                <AlertTriangle size={16} className="text-[#ba1a1a] shrink-0" />
-                <span className="text-sm font-semibold text-[#ba1a1a]">
+                <AlertTriangle size={16} className="text-[var(--md-sys-color-error)] shrink-0" />
+                <span className="text-sm font-semibold text-[var(--md-sys-color-error)]">
                   {overdueTasks.length} overdue {overdueTasks.length === 1 ? 'task' : 'tasks'}
                 </span>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 ml-1">
                   {overdueTasks.slice(0, 4).map(t => (
-                    <span key={t.id} className="text-xs text-[#ba1a1a]">
+                    <span key={t.id} className="text-xs text-[var(--md-sys-color-error)]">
                       {t.title}
                       {t.due_date && (
-                        <span className="text-[#ba1a1a]/70 ml-1">&middot; {formatDueDate(t.due_date)}</span>
+                        <span className="text-[var(--md-sys-color-error)]/70 ml-1">&middot; {formatDueDate(t.due_date)}</span>
                       )}
                       {t.enterprise && (
-                        <span className="ml-1 px-1.5 py-0.5 rounded-full bg-[#ba1a1a]/10 text-[#ba1a1a] text-[10px] font-medium">{t.enterprise}</span>
+                        <span className="ml-1 px-1.5 py-0.5 rounded-full bg-[var(--md-sys-color-error)]/10 text-[var(--md-sys-color-error)] text-[10px] font-medium">{t.enterprise}</span>
                       )}
                     </span>
                   ))}
                   {overdueTasks.length > 4 && (
-                    <span className="text-xs text-[#ba1a1a]/70">+{overdueTasks.length - 4} more</span>
+                    <span className="text-xs text-[var(--md-sys-color-error)]/70">+{overdueTasks.length - 4} more</span>
                   )}
                 </div>
               </Link>
@@ -439,14 +451,14 @@ export default function Dashboard() {
               <div className="space-y-1 px-4 pb-4">
                 {groups.map(group => (
                   <div key={group.label}>
-                    <div className="px-1 py-2 bg-[#f3f4f3] rounded-lg mt-2">
-                      <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#6e7a73] px-2">{group.label}</span>
+                    <div className="px-1 py-2 bg-[var(--md-sys-color-surface-container)] rounded-lg mt-2">
+                      <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-[var(--md-sys-color-on-surface-variant)] px-2">{group.label}</span>
                     </div>
                     {group.tasks.map(task => (
                       <Link
                         key={task.id}
                         to="/calendar/tasks"
-                        className="flex items-center gap-3 px-3 py-3 hover:bg-[#f3f4f3] transition-colors rounded-xl"
+                        className="flex items-center gap-3 px-3 py-3 hover:bg-[var(--md-sys-color-surface-container)] transition-colors rounded-xl"
                       >
                         {/* Priority left border accent */}
                         <div
@@ -454,7 +466,7 @@ export default function Dashboard() {
                           style={{ backgroundColor: PRIORITY_COLORS[task.priority] ?? '#9ca3af' }}
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-[#1a1c1c] truncate">{task.title}</p>
+                          <p className="text-sm font-medium text-[var(--md-sys-color-on-surface)] truncate">{task.title}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             {task.enterprise && (
                               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700">{task.enterprise}</span>
@@ -473,7 +485,7 @@ export default function Dashboard() {
                         <div className="flex items-center gap-2 shrink-0">
                           {TASK_TYPE_ICONS[task.type]}
                           {task.due_date && (
-                            <span className="text-xs text-[#6e7a73]">{formatDueDate(task.due_date)}</span>
+                            <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{formatDueDate(task.due_date)}</span>
                           )}
                         </div>
                       </Link>
@@ -481,9 +493,9 @@ export default function Dashboard() {
                   </div>
                 ))}
                 {upcomingTasks.length > 10 && (
-                  <div className="px-5 py-3 text-xs text-[#6e7a73]">
+                  <div className="px-5 py-3 text-xs text-[var(--md-sys-color-on-surface-variant)]">
                     Showing 10 of {upcomingTasks.length} upcoming tasks.{' '}
-                    <Link to="/calendar/tasks" className="text-[#005d42] hover:text-[#004d37] font-medium">
+                    <Link to="/calendar/tasks" className="text-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-primary)] hover:opacity-80 font-medium">
                       View all in Calendar &rarr;
                     </Link>
                   </div>
@@ -491,7 +503,7 @@ export default function Dashboard() {
               </div>
             ) : (
               upcomingTasks.length === 0 && overdueTasks.length === 0 && (
-                <div className="px-5 py-6 text-sm text-[#6e7a73] text-center">No tasks in the next 7 days.</div>
+                <div className="px-5 py-6 text-sm text-[var(--md-sys-color-on-surface-variant)] text-center">No tasks in the next 7 days.</div>
               )
             )}
           </div>
@@ -501,10 +513,10 @@ export default function Dashboard() {
       {/* Recent projects */}
       <div className="bg-white rounded-2xl">
         <div className="flex items-center justify-between px-5 py-4">
-          <h2 className="text-base font-semibold text-[#1a1c1c]">Recent Projects</h2>
+          <h2 className="text-base font-semibold text-[var(--md-sys-color-on-surface)]">Recent Projects</h2>
           <Link
             to="/projects"
-            className="inline-flex items-center gap-1 text-sm text-[#005d42] hover:text-[#004d37] font-medium"
+            className="inline-flex items-center gap-1 text-sm text-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-primary)] hover:opacity-80 font-medium"
           >
             View All <ArrowRight size={14} />
           </Link>
@@ -518,10 +530,10 @@ export default function Dashboard() {
           </div>
         ) : recentProjects.length === 0 ? (
           <div className="p-8 text-center">
-            <p className="text-sm text-[#6e7a73] mb-3">No projects yet</p>
+            <p className="text-sm text-[var(--md-sys-color-on-surface-variant)] mb-3">No projects yet</p>
             <button
               onClick={() => setShowModal(true)}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#005d42] hover:text-[#004d37]"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-primary)] hover:opacity-80"
             >
               <Plus size={16} />
               Create your first project
@@ -533,11 +545,11 @@ export default function Dashboard() {
               <Link
                 key={project.id}
                 to={`/projects/${project.id}`}
-                className="flex items-center justify-between px-3 py-4 hover:bg-[#f3f4f3] rounded-xl transition-colors"
+                className="flex items-center justify-between px-3 py-4 hover:bg-[var(--md-sys-color-surface-container)] rounded-xl transition-colors"
               >
                 <div>
-                  <p className="text-sm font-bold text-[#1a1c1c]">{project.name}</p>
-                  <p className="text-xs text-[#6e7a73]">
+                  <p className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">{project.name}</p>
+                  <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
                     <span className={`inline-block mr-2 text-[11px] font-medium px-2 py-0.5 rounded-full ${
                       statusColors[project.status] || 'bg-stone-500/10 text-stone-600'
                     }`}>
@@ -547,9 +559,9 @@ export default function Dashboard() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-[#1a1c1c]">{formatZAR(project.initialOutlay)}</p>
+                  <p className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">{formatZAR(project.initialOutlay)}</p>
                   {project.bestNpv != null && (
-                    <p className="text-xs text-[#005d42] font-medium">
+                    <p className="text-xs text-[var(--md-sys-color-primary)] font-medium">
                       NPV: {formatCompactZAR(project.bestNpv)}
                     </p>
                   )}
@@ -577,7 +589,7 @@ export default function Dashboard() {
           }}
         >
           <div className="flex items-start justify-between mb-3">
-            <h3 className="text-sm font-bold text-[#1a1c1c] leading-tight pr-2">{projectPopup.project.name}</h3>
+            <h3 className="text-sm font-bold text-[var(--md-sys-color-on-surface)] leading-tight pr-2">{projectPopup.project.name}</h3>
             <button onClick={handleClosePopup} className="p-0.5 text-stone-400 hover:text-stone-600 flex-shrink-0">
               <X size={16} />
             </button>
@@ -588,27 +600,31 @@ export default function Dashboard() {
             <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-500/10 text-violet-700">{projectPopup.project.priority}</span>
           </div>
           <div className="grid grid-cols-2 gap-2 mb-4">
-            <div className="bg-[#f3f4f3] rounded-lg p-2.5 text-center">
-              <p className="text-[10px] text-[#6e7a73] mb-0.5">NPV</p>
-              <p className="text-sm font-bold text-[#1a1c1c]">{projectPopup.project.bestNpv != null ? formatCompactZAR(projectPopup.project.bestNpv) : '--'}</p>
+            <div className="bg-[var(--md-sys-color-surface-container)] rounded-lg p-2.5 text-center">
+              <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">NPV</p>
+              <p className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">{projectPopup.project.bestNpv != null ? formatCompactZAR(projectPopup.project.bestNpv) : '--'}</p>
             </div>
-            <div className="bg-[#f3f4f3] rounded-lg p-2.5 text-center">
-              <p className="text-[10px] text-[#6e7a73] mb-0.5">IRR</p>
-              <p className="text-sm font-bold text-[#1a1c1c]">{projectPopup.project.bestIrr != null ? formatPercent(projectPopup.project.bestIrr) : '--'}</p>
+            <div className="bg-[var(--md-sys-color-surface-container)] rounded-lg p-2.5 text-center">
+              <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">IRR</p>
+              <p className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">{projectPopup.project.bestIrr != null ? formatPercent(projectPopup.project.bestIrr) : '--'}</p>
             </div>
-            <div className="bg-[#f3f4f3] rounded-lg p-2.5 text-center">
-              <p className="text-[10px] text-[#6e7a73] mb-0.5">Initial Outlay</p>
-              <p className="text-sm font-bold text-[#1a1c1c]">{formatCompactZAR(projectPopup.project.initialOutlay)}</p>
+            <div className="bg-[var(--md-sys-color-surface-container)] rounded-lg p-2.5 text-center">
+              <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">Initial Outlay</p>
+              <p className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">{formatCompactZAR(projectPopup.project.initialOutlay)}</p>
             </div>
-            <div className="bg-[#f3f4f3] rounded-lg p-2.5 text-center">
-              <p className="text-[10px] text-[#6e7a73] mb-0.5">Priority</p>
-              <p className="text-sm font-bold text-[#1a1c1c] capitalize">{projectPopup.project.priority.replace('tier', 'Tier ')}</p>
+            <div className="bg-[var(--md-sys-color-surface-container)] rounded-lg p-2.5 text-center">
+              <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">Priority</p>
+              <p className="text-sm font-bold text-[var(--md-sys-color-on-surface)] capitalize">{projectPopup.project.priority.replace('tier', 'Tier ')}</p>
             </div>
           </div>
           <Link
             to={`/projects/${projectPopup.project.id}`}
             onClick={handleClosePopup}
-            className="block w-full text-center py-2 bg-gradient-to-br from-[#005d42] to-[#047857] text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+            className="md-label-large md-shape-medium block w-full text-center py-2 md-duration-short3 md-ease-standard transition-opacity hover:opacity-90"
+            style={{
+              backgroundColor: 'var(--md-sys-color-primary)',
+              color: 'var(--md-sys-color-on-primary)',
+            }}
           >
             View Details &rarr;
           </Link>

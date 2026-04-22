@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, AlertTriangle, Wrench, Plus, X } from 'lucide-react';
+import PageHeader from '../components/layout/PageHeader';
+import EmptyState from '../components/ui/EmptyState';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { getEquipment, getEquipmentById, getEquipmentSummary, getEquipmentAlerts, addMaintenanceLog, updateEquipment } from '../api/equipment';
 import { getFarms } from '../api/farms';
 import type { Equipment, EquipmentSummary } from '../types/phase2';
@@ -106,34 +109,58 @@ export default function EquipmentPage() {
 
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Wrench size={20} className="text-emerald-700" />
-            <h1 className="text-lg font-bold text-stone-900">Equipment Register</h1>
-          </div>
-          <div className="flex-1" />
-          {summary && (
-            <div className="flex items-center gap-4 text-xs">
+      <PageHeader
+        icon={<Wrench size={20} />}
+        title="Equipment Register"
+        actions={
+          summary && (
+            <div className="flex items-center gap-4">
               <div className="text-center">
-                <p className="text-stone-400">Total Items</p>
-                <p className="text-lg font-bold text-stone-800">{summary.total}</p>
+                <p
+                  className="md-label-small"
+                  style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                >
+                  Total Items
+                </p>
+                <p className="md-title-medium" style={{ color: 'var(--md-sys-color-on-surface)' }}>
+                  {summary.total}
+                </p>
               </div>
               <div className="text-center">
-                <p className="text-stone-400">Total Value</p>
-                <p className="text-lg font-bold text-stone-800">{formatCurrency(summary.totalValue)}</p>
+                <p
+                  className="md-label-small"
+                  style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                >
+                  Total Value
+                </p>
+                <p className="md-title-medium" style={{ color: 'var(--md-sys-color-on-surface)' }}>
+                  {formatCurrency(summary.totalValue)}
+                </p>
               </div>
               <div className="text-center">
-                <p className="text-stone-400">Overdue Service</p>
-                <p className={`text-lg font-bold ${summary.overdueService > 0 ? 'text-red-600' : 'text-stone-800'}`}>
+                <p
+                  className="md-label-small"
+                  style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                >
+                  Overdue Service
+                </p>
+                <p
+                  className="md-title-medium"
+                  style={{
+                    color:
+                      summary.overdueService > 0
+                        ? 'var(--md-sys-color-error)'
+                        : 'var(--md-sys-color-on-surface)',
+                  }}
+                >
                   {summary.overdueService}
                 </p>
               </div>
             </div>
-          )}
-        </div>
-
+          )
+        }
+      />
+      <div className="flex-shrink-0 border-b px-4 py-2 bg-white" style={{ borderColor: 'var(--md-sys-color-outline-variant)' }}>
         {/* Type filter pills */}
         {typeKeys.length > 0 && (
           <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -177,13 +204,13 @@ export default function EquipmentPage() {
         {/* Table */}
         <div className="flex-1 overflow-auto bg-white">
           {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-stone-400 text-sm">Loading equipment...</p>
-            </div>
+            <LoadingOverlay message="Loading equipment…" />
           ) : equipment.length === 0 ? (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-stone-400 text-sm">No equipment found.</p>
-            </div>
+            <EmptyState
+              icon={<Wrench size={40} aria-hidden="true" />}
+              title="No equipment yet"
+              subtitle="Register tractors, pumps, and implements to track hours + service."
+            />
           ) : (
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-[#f3f4f3] border-b border-[#f3f4f3]">

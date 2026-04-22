@@ -1,11 +1,8 @@
-import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   SquaresFour,
   FolderOpen,
   GitDiff,
-  CaretLeft,
-  CaretRight,
   MapTrifold,
   CalendarBlank,
   CheckSquare,
@@ -16,9 +13,22 @@ import {
   Users,
   Package,
   ChartBar,
+  Plant,
 } from '@phosphor-icons/react';
+import type { ComponentType } from 'react';
 
-const navGroups = [
+type NavItem = {
+  to: string;
+  icon: ComponentType<{ size?: number; weight?: 'regular' | 'duotone' | 'fill'; className?: string }>;
+  label: string;
+};
+
+type NavGroup = {
+  label?: string;
+  items: NavItem[];
+};
+
+const navGroups: NavGroup[] = [
   {
     items: [
       { to: '/', icon: SquaresFour, label: 'Dashboard' },
@@ -29,6 +39,7 @@ const navGroups = [
     ],
   },
   {
+    label: 'Operations',
     items: [
       { to: '/equipment', icon: Wrench, label: 'Equipment' },
       { to: '/livestock', icon: Cow, label: 'Livestock' },
@@ -36,6 +47,7 @@ const navGroups = [
     ],
   },
   {
+    label: 'Business',
     items: [
       { to: '/employees', icon: Users, label: 'Employees' },
       { to: '/inventory', icon: Package, label: 'Inventory' },
@@ -46,67 +58,76 @@ const navGroups = [
   },
 ];
 
+/**
+ * Desktop side navigation — MD3 `<md-navigation-drawer>` container with
+ * react-router `NavLink` items styled per the MD3 navigation-item spec
+ * (56px pill rows, secondary-container active indicator).
+ *
+ * We always render `opened` — `md-navigation-drawer` exposes a closing
+ * animation only when used modally. The drawer is hidden below md via the
+ * `.md3-side-nav` CSS block in index.css.
+ */
 export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
-
   return (
-    <aside
-      className={`fixed top-0 left-0 h-screen bg-emerald-800 text-white hidden md:flex flex-col transition-all duration-300 z-50 ${
-        collapsed ? 'w-16' : 'w-64'
-      }`}
-    >
-      {/* Logo area */}
-      <div className="flex items-center gap-3 px-5 py-6 border-b border-emerald-700">
-        <div className="flex-shrink-0 w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
-          <Wheat size={18} className="text-white" />
+    <md-navigation-drawer class="md3-side-nav" opened pivot="start" aria-label="Primary">
+      <div
+        className="flex items-center gap-3 px-5 py-6"
+        style={{
+          borderBottom: '1px solid var(--md-sys-color-outline-variant)',
+          color: 'var(--md-sys-color-on-surface)',
+        }}
+      >
+        <div
+          className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center"
+          style={{
+            background: 'var(--md-sys-color-primary-container)',
+            color: 'var(--md-sys-color-on-primary-container)',
+          }}
+        >
+          <Plant size={18} weight="fill" />
         </div>
-        {!collapsed && (
-          <div className="overflow-hidden">
-            <h1 className="text-sm font-bold leading-tight tracking-wide">Cloudskraal</h1>
-            <p className="text-[10px] text-emerald-300 leading-tight">Boerderye</p>
-          </div>
-        )}
+        <div className="overflow-hidden">
+          <h1
+            className="leading-tight tracking-wide"
+            style={{ font: 'var(--md-sys-typescale-title-medium)' }}
+          >
+            Cloudskraal
+          </h1>
+          <p
+            className="leading-tight"
+            style={{
+              font: 'var(--md-sys-typescale-label-small)',
+              color: 'var(--md-sys-color-on-surface-variant)',
+            }}
+          >
+            Boerderye
+          </p>
+        </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 py-4">
+      <nav className="py-2" aria-label="Primary navigation">
         {navGroups.map((group, groupIdx) => (
           <div key={groupIdx}>
-            {groupIdx > 0 && (
-              <div className="my-3" />
-            )}
-            {group.items.map((item) => (
-              <div key={item.to}>
+            {group.label && <div className="md3-nav-group-label">{group.label}</div>}
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              return (
                 <NavLink
+                  key={item.to}
                   to={item.to}
                   end={item.to === '/'}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-5 py-3 mx-2 rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-gradient-to-br from-[#005d42] to-[#047857] text-white font-medium'
-                        : 'text-emerald-200 hover:bg-emerald-700/50 hover:text-white'
-                    }`
+                    `md3-nav-item${isActive ? ' is-active' : ''}`
                   }
                 >
-                  <item.icon size={20} className="flex-shrink-0" />
-                  {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+                  <Icon size={24} weight="duotone" className="md3-nav-item__icon" />
+                  <span>{item.label}</span>
                 </NavLink>
-                {(item.to === '/wiki' || item.to === '/production') && (
-                  <div className="mt-2" />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         ))}
       </nav>
-
-      {/* Collapse toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center justify-center py-4 border-t border-emerald-700 text-emerald-300 hover:text-white transition-colors"
-      >
-        {collapsed ? <CaretRight size={18} /> : <CaretLeft size={18} />}
-      </button>
-    </aside>
+    </md-navigation-drawer>
   );
 }

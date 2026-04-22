@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Beef, ChevronDown, ChevronUp } from 'lucide-react';
+import PageHeader from '../components/layout/PageHeader';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { getLivestockGroups, getLivestockDashboard, getBreedingSeasons, getShearingRecords, updateLivestockGroup, updateBreedingSeason, updateShearingRecord } from '../api/livestock';
 import type { LivestockGroup, LivestockDashboard, BreedingSeason, ShearingRecord } from '../types/phase2';
 import EditableCell, { StepperCell } from '../components/EditableCell';
@@ -54,8 +56,8 @@ export default function LivestockPage() {
 
   if (loading) {
     return (
-      <div className="h-[calc(100vh-5rem)] md:h-screen flex items-center justify-center">
-        <p className="text-stone-400 text-sm">Loading livestock data...</p>
+      <div className="h-[calc(100vh-5rem)] md:h-screen">
+        <LoadingOverlay message="Loading livestock data…" />
       </div>
     );
   }
@@ -75,13 +77,7 @@ export default function LivestockPage() {
 
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
-        <div className="flex items-center gap-2">
-          <Beef size={20} className="text-emerald-700" />
-          <h1 className="text-lg font-bold text-stone-900">Livestock Tracker</h1>
-        </div>
-      </div>
+      <PageHeader icon={<Beef size={20} />} title="Livestock Tracker" />
 
       <div className="flex-1 overflow-y-auto bg-white">
         <div className="max-w-6xl mx-auto p-4 space-y-6">
@@ -143,9 +139,19 @@ export default function LivestockPage() {
                   key={group.id}
                   className="rounded-2xl overflow-hidden"
                 >
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={expandedGroup === group.id}
+                    aria-controls={`livestock-group-${group.id}`}
                     onClick={() => setExpandedGroup(expandedGroup === group.id ? null : group.id)}
-                    className="w-full text-left p-4 hover:bg-stone-50 transition-colors"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setExpandedGroup(expandedGroup === group.id ? null : group.id);
+                      }
+                    }}
+                    className="w-full text-left p-4 hover:bg-stone-50 transition-colors md-duration-short3 md-ease-standard cursor-pointer"
                   >
                     <div className="flex items-start justify-between">
                       <div onClick={(e) => e.stopPropagation()}>
@@ -193,9 +199,12 @@ export default function LivestockPage() {
                       <span className="flex-1" />
                       {expandedGroup === group.id ? <ChevronUp size={14} className="text-stone-400" /> : <ChevronDown size={14} className="text-stone-400" />}
                     </div>
-                  </button>
+                  </div>
                   {expandedGroup === group.id && (
-                    <div className="border-t border-[#f3f4f3] p-4 bg-stone-50">
+                    <div
+                      id={`livestock-group-${group.id}`}
+                      className="border-t border-[#f3f4f3] p-4 bg-stone-50"
+                    >
                       <div className="flex items-center gap-2 text-xs text-stone-500">
                         <span>Avg weight:</span>
                         <EditableCell

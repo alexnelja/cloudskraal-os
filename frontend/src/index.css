@@ -2,22 +2,168 @@
 @import "tailwindcss";
 @import "./wiki.css";
 
-/* Material Design 3 inspired tokens */
+/* Material Symbols Outlined — required by @material/web <md-icon> components.
+   Without this, icon ligatures render as literal text (e.g. "home" as the word). */
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block');
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Material Design 3 — System Tokens
+   Spec: docs/specs/2026-04-20-material-3-migration.md
+   Phase 0 — tokens + type scale
+   ═════════════════════════════════════════════════════════════════════════ */
 :root {
-  --primary: #005d42;
-  --primary-container: #047857;
-  --on-primary: #ffffff;
-  --secondary: #712ae2;
-  --secondary-container: #8a4cfc;
-  --tertiary: #7d4200;
-  --error: #ba1a1a;
-  --surface: #f9f9f8;
-  --surface-container: #eeeeed;
-  --surface-container-low: #f3f4f3;
-  --surface-container-lowest: #ffffff;
-  --on-surface: #1a1c1c;
-  --outline: #6e7a73;
-  --outline-variant: #bdc9c1;
+  /* Color — Light */
+  --md-sys-color-primary: #059669;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #a7f3d0;
+  --md-sys-color-on-primary-container: #00210f;
+  --md-sys-color-secondary: #78716c;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #e7e5e4;
+  --md-sys-color-on-secondary-container: #2c2825;
+  --md-sys-color-tertiary: #d97706;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #fde68a;
+  --md-sys-color-on-tertiary-container: #2e1500;
+  --md-sys-color-error: #dc2626;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #fecaca;
+  --md-sys-color-on-error-container: #410e0b;
+  --md-sys-color-surface: #fffbfe;
+  --md-sys-color-surface-dim: #ded8e1;
+  --md-sys-color-surface-bright: #fffbfe;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #f7f7fa;
+  --md-sys-color-surface-container: #f2f2f7;
+  --md-sys-color-surface-container-high: #ecedf0;
+  --md-sys-color-surface-container-highest: #e6e6ea;
+  --md-sys-color-on-surface: #1c1b1f;
+  --md-sys-color-on-surface-variant: #49454f;
+  --md-sys-color-outline: #79747e;
+  --md-sys-color-outline-variant: #cac4d0;
+  --md-sys-color-inverse-surface: #313033;
+  --md-sys-color-inverse-on-surface: #f4eff4;
+  --md-sys-color-inverse-primary: #6ee7b7;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-shadow: #000000;
+
+  /* Elevation */
+  --md-sys-elevation-0: none;
+  --md-sys-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --md-sys-elevation-4: 0 6px 10px 4px rgba(0, 0, 0, 0.15), 0 2px 3px rgba(0, 0, 0, 0.3);
+  --md-sys-elevation-5: 0 8px 12px 6px rgba(0, 0, 0, 0.15), 0 4px 4px rgba(0, 0, 0, 0.3);
+
+  /* Shape */
+  --md-sys-shape-corner-none: 0;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-full: 9999px;
+
+  /* Motion — easing */
+  --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --md-sys-motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  /* Motion — duration */
+  --md-sys-motion-duration-short1: 50ms;
+  --md-sys-motion-duration-short2: 100ms;
+  --md-sys-motion-duration-short3: 150ms;
+  --md-sys-motion-duration-short4: 200ms;
+  --md-sys-motion-duration-medium1: 250ms;
+  --md-sys-motion-duration-medium2: 300ms;
+  --md-sys-motion-duration-medium3: 350ms;
+  --md-sys-motion-duration-medium4: 400ms;
+  --md-sys-motion-duration-long1: 450ms;
+  --md-sys-motion-duration-long2: 500ms;
+
+  /* Typography — font family */
+  --md-sys-typescale-brand-font: system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, sans-serif;
+  --md-sys-typescale-plain-font: system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, sans-serif;
+
+  /* Typography — roles (size / line-height / weight / tracking) */
+  --md-sys-typescale-display-large: 400 57px/64px var(--md-sys-typescale-brand-font);
+  --md-sys-typescale-display-medium: 400 45px/52px var(--md-sys-typescale-brand-font);
+  --md-sys-typescale-display-small: 400 36px/44px var(--md-sys-typescale-brand-font);
+  --md-sys-typescale-headline-large: 700 32px/40px var(--md-sys-typescale-brand-font);
+  --md-sys-typescale-headline-medium: 600 28px/36px var(--md-sys-typescale-brand-font);
+  --md-sys-typescale-headline-small: 600 24px/32px var(--md-sys-typescale-brand-font);
+  --md-sys-typescale-title-large: 500 22px/28px var(--md-sys-typescale-brand-font);
+  --md-sys-typescale-title-medium: 500 16px/24px var(--md-sys-typescale-plain-font);
+  --md-sys-typescale-title-small: 500 14px/20px var(--md-sys-typescale-plain-font);
+  --md-sys-typescale-body-large: 400 16px/24px var(--md-sys-typescale-plain-font);
+  --md-sys-typescale-body-medium: 400 14px/20px var(--md-sys-typescale-plain-font);
+  --md-sys-typescale-body-small: 400 12px/16px var(--md-sys-typescale-plain-font);
+  --md-sys-typescale-label-large: 500 14px/20px var(--md-sys-typescale-plain-font);
+  --md-sys-typescale-label-medium: 500 12px/16px var(--md-sys-typescale-plain-font);
+  --md-sys-typescale-label-small: 500 11px/16px var(--md-sys-typescale-plain-font);
+
+  /* ────────────────────────────────────────────────────────────────────
+     Legacy aliases — mapped to MD3 tokens.
+     Kept so pre-MD3 consumers (.card, .btn-primary, glass-panel inputs,
+     label-xs) continue to work during phased migration. Remove after all
+     modules are on MD3 components.
+     ──────────────────────────────────────────────────────────────────── */
+  --primary: var(--md-sys-color-primary);
+  --primary-container: var(--md-sys-color-primary-container);
+  --on-primary: var(--md-sys-color-on-primary);
+  --secondary: var(--md-sys-color-secondary);
+  --secondary-container: var(--md-sys-color-secondary-container);
+  --tertiary: var(--md-sys-color-tertiary);
+  --error: var(--md-sys-color-error);
+  --surface: var(--md-sys-color-surface);
+  --surface-container: var(--md-sys-color-surface-container);
+  --surface-container-low: var(--md-sys-color-surface-container-low);
+  --surface-container-lowest: var(--md-sys-color-surface-container-lowest);
+  --on-surface: var(--md-sys-color-on-surface);
+  --outline: var(--md-sys-color-outline);
+  --outline-variant: var(--md-sys-color-outline-variant);
+}
+
+/* Dark mode — MD3 dark scheme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --md-sys-color-primary: #6ee7b7;
+    --md-sys-color-on-primary: #003822;
+    --md-sys-color-primary-container: #00513a;
+    --md-sys-color-on-primary-container: #a7f3d0;
+    --md-sys-color-secondary: #d7c2ad;
+    --md-sys-color-on-secondary: #3b2e22;
+    --md-sys-color-secondary-container: #544437;
+    --md-sys-color-on-secondary-container: #f5ded0;
+    --md-sys-color-tertiary: #f5bd6f;
+    --md-sys-color-on-tertiary: #462a00;
+    --md-sys-color-tertiary-container: #643f00;
+    --md-sys-color-on-tertiary-container: #ffddbb;
+    --md-sys-color-error: #ffb4ab;
+    --md-sys-color-on-error: #690005;
+    --md-sys-color-error-container: #93000a;
+    --md-sys-color-on-error-container: #ffdad6;
+    --md-sys-color-surface: #1c1b1f;
+    --md-sys-color-surface-dim: #1c1b1f;
+    --md-sys-color-surface-bright: #423f46;
+    --md-sys-color-surface-container-lowest: #171618;
+    --md-sys-color-surface-container-low: #1d1b1e;
+    --md-sys-color-surface-container: #211f26;
+    --md-sys-color-surface-container-high: #2b292f;
+    --md-sys-color-surface-container-highest: #36343a;
+    --md-sys-color-on-surface: #e6e1e5;
+    --md-sys-color-on-surface-variant: #cac4d0;
+    --md-sys-color-outline: #938f99;
+    --md-sys-color-outline-variant: #49454f;
+    --md-sys-color-inverse-surface: #e6e1e5;
+    --md-sys-color-inverse-on-surface: #313033;
+    --md-sys-color-inverse-primary: #059669;
+  }
 }
 
 /* Refined card styling */
@@ -90,19 +236,25 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* MD3 Design Tokens */
-:root {
-  --md-primary: #005d42;
-  --md-primary-container: #047857;
-  --md-secondary: #712ae2;
-  --md-tertiary: #7d4200;
-  --md-error: #ba1a1a;
-  --md-surface: #f9f9f8;
-  --md-surface-container: #eeeeed;
-  --md-surface-lowest: #ffffff;
-  --md-on-surface: #1a1c1c;
-  --md-outline: #6e7a73;
-  --md-outline-variant: #bdc9c1;
+/* Global focus-visible ring — MD3 secondary-container token as the ring
+   colour so it reads across light + dark modes. Applies to any focusable
+   element that doesn't set its own focus styling via `:focus-visible`. */
+:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+  border-radius: var(--md-sys-shape-corner-extra-small);
+}
+/* Screen-reader-only utility (for required-field hints, skip links, etc.) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ───────────────────────────────────────────────────────────────────────── */
@@ -373,4 +525,208 @@ body {
 @keyframes fade-out {
   from { opacity: 1; }
   to { opacity: 0; }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Reduced-motion — WCAG 2.3.3
+   Honour the OS preference: collapse all MD3 durations to 1ms, neutralise
+   framer-motion (via <MotionConfig reducedMotion="user"> at App root), and
+   disable CSS view-transition animations.
+   ═════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --md-sys-motion-duration-short1: 1ms;
+    --md-sys-motion-duration-short2: 1ms;
+    --md-sys-motion-duration-short3: 1ms;
+    --md-sys-motion-duration-short4: 1ms;
+    --md-sys-motion-duration-medium1: 1ms;
+    --md-sys-motion-duration-medium2: 1ms;
+    --md-sys-motion-duration-medium3: 1ms;
+    --md-sys-motion-duration-medium4: 1ms;
+    --md-sys-motion-duration-long1: 1ms;
+    --md-sys-motion-duration-long2: 1ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-group(*),
+  ::view-transition-image-pair(*) {
+    animation: none !important;
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   MD3 token utility classes
+   Expose design tokens as single-purpose classes so components consume
+   them without inline `var(...)` boilerplate. Class names follow the MD3
+   role names so intent reads clearly in JSX.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* Typography — apply one MD3 typescale role per class */
+.md-display-large { font: var(--md-sys-typescale-display-large); }
+.md-display-medium { font: var(--md-sys-typescale-display-medium); }
+.md-display-small { font: var(--md-sys-typescale-display-small); }
+.md-headline-large { font: var(--md-sys-typescale-headline-large); }
+.md-headline-medium { font: var(--md-sys-typescale-headline-medium); }
+.md-headline-small { font: var(--md-sys-typescale-headline-small); }
+.md-title-large { font: var(--md-sys-typescale-title-large); }
+.md-title-medium { font: var(--md-sys-typescale-title-medium); }
+.md-title-small { font: var(--md-sys-typescale-title-small); }
+.md-body-large { font: var(--md-sys-typescale-body-large); }
+.md-body-medium { font: var(--md-sys-typescale-body-medium); }
+.md-body-small { font: var(--md-sys-typescale-body-small); }
+.md-label-large { font: var(--md-sys-typescale-label-large); letter-spacing: 0.1px; }
+.md-label-medium { font: var(--md-sys-typescale-label-medium); letter-spacing: 0.5px; }
+.md-label-small { font: var(--md-sys-typescale-label-small); letter-spacing: 0.5px; }
+
+/* Motion — easings */
+.md-ease-standard { transition-timing-function: var(--md-sys-motion-easing-standard); }
+.md-ease-emphasized { transition-timing-function: var(--md-sys-motion-easing-emphasized); }
+.md-ease-standard-accelerate { transition-timing-function: var(--md-sys-motion-easing-standard-accelerate); }
+.md-ease-standard-decelerate { transition-timing-function: var(--md-sys-motion-easing-standard-decelerate); }
+.md-ease-emphasized-accelerate { transition-timing-function: var(--md-sys-motion-easing-emphasized-accelerate); }
+.md-ease-emphasized-decelerate { transition-timing-function: var(--md-sys-motion-easing-emphasized-decelerate); }
+
+/* Motion — durations */
+.md-duration-short1 { transition-duration: var(--md-sys-motion-duration-short1); }
+.md-duration-short2 { transition-duration: var(--md-sys-motion-duration-short2); }
+.md-duration-short3 { transition-duration: var(--md-sys-motion-duration-short3); }
+.md-duration-short4 { transition-duration: var(--md-sys-motion-duration-short4); }
+.md-duration-medium1 { transition-duration: var(--md-sys-motion-duration-medium1); }
+.md-duration-medium2 { transition-duration: var(--md-sys-motion-duration-medium2); }
+.md-duration-medium3 { transition-duration: var(--md-sys-motion-duration-medium3); }
+.md-duration-medium4 { transition-duration: var(--md-sys-motion-duration-medium4); }
+.md-duration-long1 { transition-duration: var(--md-sys-motion-duration-long1); }
+.md-duration-long2 { transition-duration: var(--md-sys-motion-duration-long2); }
+
+/* Elevation */
+.md-elevation-0 { box-shadow: var(--md-sys-elevation-0); }
+.md-elevation-1 { box-shadow: var(--md-sys-elevation-1); }
+.md-elevation-2 { box-shadow: var(--md-sys-elevation-2); }
+.md-elevation-3 { box-shadow: var(--md-sys-elevation-3); }
+.md-elevation-4 { box-shadow: var(--md-sys-elevation-4); }
+.md-elevation-5 { box-shadow: var(--md-sys-elevation-5); }
+
+/* Shape */
+.md-shape-small { border-radius: var(--md-sys-shape-corner-small); }
+.md-shape-medium { border-radius: var(--md-sys-shape-corner-medium); }
+.md-shape-large { border-radius: var(--md-sys-shape-corner-large); }
+.md-shape-extra-large { border-radius: var(--md-sys-shape-corner-extra-large); }
+.md-shape-full { border-radius: var(--md-sys-shape-corner-full); }
+
+/* Safe-area utilities — honour iPhone home-bar + iPad stage-manager insets.
+   `.md-inset-bottom-nav` = offset clears the 80px MD3 bottom-nav on mobile,
+   drops to 32px on md+ where the nav is a desktop drawer. */
+.md-inset-bottom-nav {
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px) + 16px);
+}
+@media (min-width: 768px) {
+  .md-inset-bottom-nav {
+    bottom: 32px;
+  }
+}
+.md-inset-bottom-toast {
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px) + 8px);
+}
+@media (min-width: 768px) {
+  .md-inset-bottom-toast {
+    bottom: 24px;
+  }
+}
+
+/* Loader spinner — consumed by <LoadingOverlay variant="spinner"> */
+.md-loader-spinner {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid;
+  border-radius: var(--md-sys-shape-corner-full);
+  animation: md-spin var(--md-sys-motion-duration-long2) linear infinite;
+}
+@keyframes md-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   MD3 Shell — Phase 1
+   Positioning + theming for @material/web nav components (Lit custom
+   elements don't ship with fixed-positioning; we add it here so they drop
+   into the existing AppShell layout without behavioral surprises).
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* Mobile bottom nav — md-navigation-bar */
+md-navigation-bar.md3-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-top-left-radius: var(--md-sys-shape-corner-large);
+  border-top-right-radius: var(--md-sys-shape-corner-large);
+  /* Theme the nav-bar via its documented component tokens */
+  --md-navigation-bar-container-color: var(--md-sys-color-surface-container);
+  --md-navigation-bar-active-indicator-color: var(--md-sys-color-primary-container);
+  --md-navigation-bar-active-icon-color: var(--md-sys-color-on-primary-container);
+  --md-navigation-bar-inactive-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-navigation-bar-active-label-text-color: var(--md-sys-color-on-surface);
+  --md-navigation-bar-inactive-label-text-color: var(--md-sys-color-on-surface-variant);
+}
+
+/* Desktop side nav — md-navigation-drawer */
+md-navigation-drawer.md3-side-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 50;
+  /* Drawer is hidden on mobile; AppShell's md:hidden on BottomNav complements this. */
+  --md-navigation-drawer-container-color: var(--md-sys-color-surface-container-low);
+  --md-navigation-drawer-container-shape: 0;
+}
+@media (max-width: 767px) {
+  md-navigation-drawer.md3-side-nav {
+    display: none;
+  }
+}
+
+/* Side-nav rail items — react-router NavLinks styled as MD3 navigation items */
+.md3-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  margin: 4px 12px;
+  padding: 0 16px;
+  border-radius: var(--md-sys-shape-corner-full);
+  color: var(--md-sys-color-on-surface-variant);
+  font: var(--md-sys-typescale-label-large);
+  letter-spacing: 0.1px;
+  text-decoration: none;
+  transition: background-color var(--md-sys-motion-duration-short3)
+    var(--md-sys-motion-easing-standard);
+}
+.md3-nav-item:hover {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+}
+.md3-nav-item.is-active {
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.md3-nav-item .md3-nav-item__icon {
+  font-size: 24px;
+  line-height: 1;
+}
+.md3-nav-group-label {
+  padding: 16px 28px 8px;
+  font: var(--md-sys-typescale-title-small);
+  color: var(--md-sys-color-on-surface-variant);
+  letter-spacing: 0.1px;
 }

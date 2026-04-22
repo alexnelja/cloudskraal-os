@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
 import { createCalendarEvent, updateCalendarEvent } from '../../api/calendar';
 import type { CalendarEvent } from '../../types/calendar';
+import Sheet from '../ui/Sheet';
 
 interface EventEditorProps {
   event?: CalendarEvent;
@@ -121,22 +121,9 @@ export default function EventEditor({ event, open, onClose, onSave, defaultStart
     }
   }
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#f3f4f3]">
-          <h2 className="text-lg font-semibold text-stone-800">
-            {isEdit ? 'Edit Event' : 'New Event'}
-          </h2>
-          <button onClick={onClose} className="text-stone-400 hover:text-stone-600">
-            <X size={20} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+    <Sheet open={open} onClose={onClose} title={isEdit ? 'Edit Event' : 'New Event'} id="event-editor">
+      <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-1">Title</label>
@@ -252,11 +239,10 @@ export default function EventEditor({ event, open, onClose, onSave, defaultStart
               disabled={saving}
               className="px-5 py-2 bg-emerald-700 text-white text-sm font-medium rounded-lg hover:bg-emerald-800 transition-colors disabled:opacity-50"
             >
-              {saving ? 'Saving...' : isEdit ? 'Update Event' : 'Create Event'}
+              {saving ? 'Saving…' : isEdit ? 'Update Event' : 'Create Event'}
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Sheet>
   );
 }

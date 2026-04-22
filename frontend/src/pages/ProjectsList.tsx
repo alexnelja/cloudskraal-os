@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Filter, ArrowUpDown, FolderOpen } from 'lucide-react';
 import ProjectModal from '../components/ProjectModal';
+import PageHeader from '../components/layout/PageHeader';
+import { useToast } from '../components/ui/Toaster';
 import { getProjects, createProject } from '../api/client';
 import type { ProjectSummary, ProjectType, ProjectStatus, PriorityTier, CreateProjectPayload } from '../types';
 import { formatZAR, formatPercent, formatCompactZAR } from '../utils/format';
@@ -42,6 +44,7 @@ const PRIORITY_ORDER: Record<PriorityTier, number> = {
 
 export default function ProjectsList() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -75,7 +78,10 @@ export default function ProjectsList() {
       navigate(`/projects/${project.id}`);
     } catch (err) {
       console.error('Failed to create project:', err);
-      alert('Failed to create project. Ensure the API is running.');
+      toast.show({
+        variant: 'error',
+        message: 'Failed to create project. Ensure the API is running.',
+      });
     }
   };
 
@@ -139,20 +145,25 @@ export default function ProjectsList() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-stone-800">Projects</h1>
-          <p className="text-sm text-stone-500">Manage your capital expenditure projects</p>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-700 text-white text-sm font-medium rounded-lg hover:bg-emerald-800 transition-colors"
-        >
-          <Plus size={18} />
-          New Project
-        </button>
-      </div>
+      <PageHeader
+        icon={<FolderOpen size={20} />}
+        title="Projects"
+        subtitle="Manage your capital expenditure projects"
+        actions={
+          <button
+            onClick={() => setShowModal(true)}
+            className="md-label-large md-shape-medium inline-flex items-center gap-2 px-4 py-2.5 md-duration-short3 md-ease-standard transition-colors"
+            style={{
+              backgroundColor: 'var(--md-sys-color-primary)',
+              color: 'var(--md-sys-color-on-primary)',
+            }}
+          >
+            <Plus size={18} aria-hidden="true" />
+            New Project
+          </button>
+        }
+      />
+      <div className="h-6" />
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-4">

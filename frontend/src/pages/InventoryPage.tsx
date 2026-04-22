@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Package, ArrowLeft, X, AlertTriangle, Plus } from 'lucide-react';
+import PageHeader from '../components/layout/PageHeader';
+import EmptyState from '../components/ui/EmptyState';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { getProducts, getProductById, getInventorySummary, getStock, getTransactions, recordTransaction, updateProduct } from '../api/inventory';
 import type { InputProduct, InventorySummary, InventoryTransaction } from '../types/phase3';
 import { INVENTORY_CATEGORY_COLORS } from '../types/phase3';
@@ -115,34 +118,49 @@ export default function InventoryPage() {
 
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-[#f3f4f3] px-4 py-3 bg-white">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Package size={20} className="text-emerald-700" />
-            <h1 className="text-lg font-bold text-stone-900">Inventory</h1>
-          </div>
-          <div className="flex-1" />
-          {summary && (
-            <div className="flex items-center gap-4 text-xs">
+      <PageHeader
+        icon={<Package size={20} />}
+        title="Inventory"
+        actions={
+          summary && (
+            <div className="flex items-center gap-4">
               <div className="text-center">
-                <p className="text-stone-400">Products</p>
-                <p className="text-lg font-bold text-stone-800">{summary.totalProducts}</p>
+                <p className="md-label-small" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>
+                  Products
+                </p>
+                <p className="md-title-medium" style={{ color: 'var(--md-sys-color-on-surface)' }}>
+                  {summary.totalProducts}
+                </p>
               </div>
               <div className="text-center">
-                <p className="text-stone-400">Stock Value</p>
-                <p className="text-lg font-bold text-stone-800">{formatCurrency(summary.totalValue)}</p>
+                <p className="md-label-small" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>
+                  Stock Value
+                </p>
+                <p className="md-title-medium" style={{ color: 'var(--md-sys-color-on-surface)' }}>
+                  {formatCurrency(summary.totalValue)}
+                </p>
               </div>
               <div className="text-center">
-                <p className="text-stone-400">Low Stock</p>
-                <p className={`text-lg font-bold ${summary.lowStockCount > 0 ? 'text-amber-600' : 'text-stone-800'}`}>
+                <p className="md-label-small" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>
+                  Low Stock
+                </p>
+                <p
+                  className="md-title-medium"
+                  style={{
+                    color:
+                      summary.lowStockCount > 0
+                        ? 'var(--md-sys-color-tertiary)'
+                        : 'var(--md-sys-color-on-surface)',
+                  }}
+                >
                   {summary.lowStockCount}
                 </p>
               </div>
             </div>
-          )}
-        </div>
-
+          )
+        }
+      />
+      <div className="flex-shrink-0 border-b px-4 py-2 bg-white" style={{ borderColor: 'var(--md-sys-color-outline-variant)' }}>
         {/* Category filter pills */}
         {categoryKeys.length > 0 && (
           <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -189,13 +207,13 @@ export default function InventoryPage() {
         {/* Table */}
         <div className="flex-1 overflow-auto bg-white">
           {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-stone-400 text-sm">Loading inventory...</p>
-            </div>
+            <LoadingOverlay message="Loading inventory…" />
           ) : products.length === 0 ? (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-stone-400 text-sm">No products found.</p>
-            </div>
+            <EmptyState
+              icon={<Package size={40} aria-hidden="true" />}
+              title="No products yet"
+              subtitle="Add an input product to start tracking stock."
+            />
           ) : (
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-[#f3f4f3] border-b border-[#f3f4f3]">

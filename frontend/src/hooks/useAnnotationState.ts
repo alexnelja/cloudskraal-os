@@ -12,6 +12,7 @@ import { formatDistance, formatArea } from '../components/map/tools/metricFormat
 import type { Annotation, CreateAnnotationInput } from '../types/annotation';
 import type { DrawFinishPayload } from '../components/map/tools/AnnotateTool';
 import type { Task } from '../api/tasks';
+import { useToast } from '../components/ui/Toaster';
 
 interface UseAnnotationStateArgs {
   mapRef: React.MutableRefObject<maplibregl.Map | null>;
@@ -28,6 +29,7 @@ export function useAnnotationState({
   tasks,
   geojson,
 }: UseAnnotationStateArgs) {
+  const toast = useToast();
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingDraw, setPendingDraw] = useState<DrawFinishPayload | null>(null);
@@ -228,8 +230,10 @@ export function useAnnotationState({
         if (geojson) {
           const match = findEnclosingField(geojson, finishedGeometry);
           if (match) {
-            // eslint-disable-next-line no-alert
-            window.alert(`Already inside "${match.fieldName}" — no new field created.`);
+            toast.show({
+              message: `Already inside "${match.fieldName}" — no new field created.`,
+              variant: 'info',
+            });
             clearFinished();
             return;
           }
@@ -274,7 +278,7 @@ export function useAnnotationState({
       }
       clearFinished();
     },
-    [finishedGeometry, measurementText, geojson, clearFinished],
+    [finishedGeometry, measurementText, geojson, clearFinished, toast],
   );
 
   const handleSaveAnnotation = useCallback(async (input: CreateAnnotationInput) => {

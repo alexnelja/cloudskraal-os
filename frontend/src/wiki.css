@@ -51,9 +51,36 @@
 .wiki-content .wiki-foldable-heading.is-folded > .wiki-fold-toggle { transform: rotate(0deg); color: #047857; }
 .wiki-content .wiki-foldable-heading:not(.is-folded) > .wiki-fold-toggle { transform: rotate(90deg); }
 
-/* --- Checkboxes (in WikiRenderer) --- */
+/* --- Checkboxes (in WikiRenderer) ---
+   Rendered as <span role="checkbox"> rather than <input> so that
+   DOMPurify can strip raw form controls from user markdown. */
 .wiki-content .wiki-task-item { list-style: none; margin-left: -1.25rem; }
-.wiki-content .wiki-checkbox { width: 15px; height: 15px; margin-right: 0.5rem; cursor: pointer; accent-color: #047857; vertical-align: middle; }
+.wiki-content .wiki-checkbox {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  margin-right: 0.5rem;
+  cursor: pointer;
+  vertical-align: middle;
+  border: 1.5px solid #047857;
+  border-radius: 3px;
+  background: #fff;
+  box-sizing: border-box;
+  position: relative;
+}
+.wiki-content .wiki-checkbox:focus-visible { outline: 2px solid #047857; outline-offset: 2px; }
+.wiki-content .wiki-checkbox-checked { background: #047857; }
+.wiki-content .wiki-checkbox-checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
 .wiki-content .wiki-task-done { color: #a8a29e; text-decoration: line-through; }
 
 /* --- Mermaid diagrams --- */

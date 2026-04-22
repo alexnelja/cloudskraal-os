@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
 import { downloadFactSheet } from '../api/client';
+import { useToast } from './ui/Toaster';
 
 interface FactSheetButtonProps {
   projectId: string;
@@ -10,6 +11,7 @@ interface FactSheetButtonProps {
 
 export default function FactSheetButton({ projectId, scenarioId, className = '' }: FactSheetButtonProps) {
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   const handleClick = async () => {
     setLoading(true);
@@ -17,7 +19,10 @@ export default function FactSheetButton({ projectId, scenarioId, className = '' 
       await downloadFactSheet(projectId, scenarioId);
     } catch (err) {
       console.error('Failed to download fact sheet:', err);
-      alert('Failed to generate fact sheet. Please ensure the API is running.');
+      toast.show({
+        variant: 'error',
+        message: 'Failed to generate fact sheet. Please ensure the API is running.',
+      });
     } finally {
       setLoading(false);
     }

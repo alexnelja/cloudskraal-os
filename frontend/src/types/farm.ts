@@ -64,6 +64,13 @@ export interface MapLayer {
 
 export type Enterprise = 'rooibos' | 'wine' | 'sheep' | 'buchu' | 'sceletium' | 'grazing' | 'fallow' | 'farm_boundary' | 'other' | 'unclassified';
 
+/**
+ * ENTERPRISE_COLORS are intentionally distinct brand-adjacent hues rather
+ * than MD3 system tokens — the point is to visually differentiate each
+ * crop/livestock enterprise on the map, calendar, and dashboards. Do not
+ * merge these into `--md-sys-color-*` or consumers lose the disambiguation.
+ * If a dark mode variant is needed, branch this into light/dark maps.
+ */
 export const ENTERPRISE_COLORS: Record<string, string> = {
   rooibos: '#047857',
   wine: '#7c3aed',

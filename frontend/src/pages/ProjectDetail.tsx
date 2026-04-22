@@ -23,6 +23,8 @@ import { formatZAR, formatPercent, formatYears, formatCompactZAR } from '../util
 import ZARInput from '../components/ZARInput';
 import CashFlowEditor from '../components/CashFlowEditor';
 import ScenarioEditor from '../components/ScenarioEditor';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { useToast } from '../components/ui/Toaster';
 
 type Tab = 'overview' | 'cashflows' | 'scenarios';
 
@@ -30,11 +32,13 @@ const STATUS_OPTIONS: ProjectStatus[] = ['draft', 'evaluating', 'approved', 'rej
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
+  const toast = useToast();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [editingInfo, setEditingInfo] = useState(false);
   const [savingCashFlows, setSavingCashFlows] = useState(false);
+  const [scenarioPendingDelete, setScenarioPendingDelete] = useState<string | null>(null);
 
   // Local cash flow state for editing
   const [localCashFlows, setLocalCashFlows] = useState<CashFlow[]>([]);
@@ -83,7 +87,7 @@ export default function ProjectDetail() {
       setEditingInfo(false);
     } catch (err) {
       console.error('Failed to update project:', err);
-      alert('Failed to save. Ensure the API is running.');
+      toast.show({ variant: 'error', message: 'Failed to save. Ensure the API is running.' });
     }
   };
 
@@ -104,7 +108,7 @@ export default function ProjectDetail() {
       await fetchProject();
     } catch (err) {
       console.error('Failed to save cash flows:', err);
-      alert('Failed to save cash flows. Ensure the API is running.');
+      toast.show({ variant: 'error', message: 'Failed to save cash flows. Ensure the API is running.' });
     } finally {
       setSavingCashFlows(false);
     }
@@ -130,13 +134,21 @@ export default function ProjectDetail() {
     }
   };
 
-  const handleDeleteScenario = async (scenarioId: string) => {
-    if (!id || !confirm('Delete this scenario?')) return;
+  const handleDeleteScenario = (scenarioId: string) => {
+    // Defers the actual deletion until the confirmation dialog resolves.
+    setScenarioPendingDelete(scenarioId);
+  };
+
+  const confirmDeleteScenario = async () => {
+    if (!id || !scenarioPendingDelete) return;
+    const scenarioId = scenarioPendingDelete;
+    setScenarioPendingDelete(null);
     try {
       await deleteScenario(id, scenarioId);
       await fetchProject();
     } catch (err) {
       console.error('Failed to delete scenario:', err);
+      toast.show({ variant: 'error', message: 'Failed to delete scenario.' });
     }
   };
 
@@ -474,6 +486,16 @@ export default function ProjectDetail() {
           onRefresh={fetchProject}
         />
       )}
+
+      <ConfirmDialog
+        open={scenarioPendingDelete !== null}
+        title="Delete scenario?"
+        description="This action cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={confirmDeleteScenario}
+        onCancel={() => setScenarioPendingDelete(null)}
+      />
     </div>
   );
 }
