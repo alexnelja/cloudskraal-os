@@ -172,6 +172,8 @@ function migrateFkCascades(db) {
 
     // ------------------------------------------------------------------
     // 4. inventory_transactions.product_id → CASCADE
+    // Note: cost_category is added by migrate-field-cop (runs before us);
+    // it must be preserved across the rebuild.
     // ------------------------------------------------------------------
     if (tableExists('inventory_transactions') && getOnDelete(db, 'inventory_transactions', 'product_id') !== 'CASCADE') {
       rebuildTable(db, {
@@ -188,12 +190,13 @@ function migrateFkCascades(db) {
           task_id TEXT REFERENCES tasks(id),
           recorded_by TEXT,
           notes TEXT,
+          cost_category TEXT NOT NULL DEFAULT 'direct_variable',
           created_at TEXT NOT NULL
         )`,
         columns: [
           'id', 'product_id', 'type', 'date', 'quantity', 'unit_cost',
           'total_cost', 'field_id', 'task_id', 'recorded_by', 'notes',
-          'created_at',
+          'cost_category', 'created_at',
         ],
         indexes: [
           'CREATE INDEX IF NOT EXISTS idx_inv_tx_product_date ON inventory_transactions(product_id, date DESC)',
@@ -261,6 +264,7 @@ function migrateFkCascades(db) {
 
     // ------------------------------------------------------------------
     // 7. time_entries.task_id → SET NULL
+    // Note: cost_category added by migrate-field-cop, preserved across rebuild.
     // ------------------------------------------------------------------
     if (tableExists('time_entries') && getOnDelete(db, 'time_entries', 'task_id') !== 'SET NULL') {
       rebuildTable(db, {
@@ -277,12 +281,13 @@ function migrateFkCascades(db) {
           field_id TEXT REFERENCES fields(id),
           task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
           notes TEXT,
+          cost_category TEXT NOT NULL DEFAULT 'direct_variable',
           created_at TEXT NOT NULL
         )`,
         columns: [
           'id', 'employee_id', 'date', 'clock_in', 'clock_out',
           'hours_worked', 'activity_type', 'enterprise', 'field_id',
-          'task_id', 'notes', 'created_at',
+          'task_id', 'notes', 'cost_category', 'created_at',
         ],
         indexes: [
           'CREATE INDEX IF NOT EXISTS idx_time_entries_emp_date ON time_entries(employee_id, date DESC)',
