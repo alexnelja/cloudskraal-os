@@ -1,23 +1,64 @@
 const fs = require('fs');
 const path = require('path');
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 const { v4: uuidv4 } = require('uuid');
 
 const XLSX_PATH = path.join(__dirname, '..', '..', '..', 'data', 'Cloudskraal_October 2025.xlsx');
 
-function excelDateToISO(serial) {
-  if (!serial || typeof serial !== 'number') return null;
-  const date = new Date((serial - 25569) * 86400 * 1000);
-  return date.toISOString().split('T')[0];
+function excelDateToISO(input) {
+  if (input == null) return null;
+  // ExcelJS parses date cells into JS Date objects automatically.
+  if (input instanceof Date) {
+    return input.toISOString().split('T')[0];
+  }
+  // Legacy serial number path (kept for safety — older sheets without cell formatting)
+  if (typeof input === 'number') {
+    const date = new Date((input - 25569) * 86400 * 1000);
+    return date.toISOString().split('T')[0];
+  }
+  return null;
 }
 
+// Convert an ExcelJS worksheet to an array of row objects keyed by header row (row 1).
+// Mimics the xlsx `sheet_to_json(ws, { defval: null })` shape used pre-migration.
 function readSheet(wb, name) {
-  const ws = wb.Sheets[name];
+  const ws = wb.getWorksheet(name);
   if (!ws) return [];
-  return XLSX.utils.sheet_to_json(ws, { defval: null });
+
+  const headerRow = ws.getRow(1);
+  const headers = [];
+  headerRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+    headers[colNumber] = cell.value;
+  });
+
+  const rows = [];
+  for (let r = 2; r <= ws.rowCount; r++) {
+    const row = ws.getRow(r);
+    const obj = {};
+    let hasAny = false;
+    for (let c = 1; c < headers.length; c++) {
+      const key = headers[c];
+      if (key == null || key === '') continue;
+      const raw = row.getCell(c).value;
+      // ExcelJS represents rich text, formulas, hyperlinks as objects. Normalize to plain values.
+      let v = raw;
+      if (v && typeof v === 'object') {
+        if ('result' in v) v = v.result;             // formula cells
+        else if ('text' in v) v = v.text;             // hyperlink cells
+        else if ('richText' in v && Array.isArray(v.richText)) {
+          v = v.richText.map(rt => rt.text).join(''); // rich text
+        }
+      }
+      if (v === undefined || v === '') v = null;
+      obj[key] = v;
+      if (v !== null) hasAny = true;
+    }
+    if (hasAny) rows.push(obj);
+  }
+  return rows;
 }
 
-function seedExcelImport(db) {
+async function seedExcelImport(db) {
   if (!fs.existsSync(XLSX_PATH)) {
     console.log('Excel file not found, skipping import.');
     return;
@@ -36,7 +77,8 @@ function seedExcelImport(db) {
   }
 
   console.log('Importing data from Cloudskraal_October 2025.xlsx...');
-  const wb = XLSX.readFile(XLSX_PATH);
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.readFile(XLSX_PATH);
   const now = new Date().toISOString();
 
   const seedAll = db.transaction(() => {
