@@ -336,6 +336,11 @@ const TIER_MAPS = {
     dried: 'dried_kg',
     netto_dry: 'sifted_netto_dry_kg',
   },
+  wine: {
+    grape: 'grape_kg',
+    wine_litres: 'wine_litres',
+    bottle: 'bottle_750ml',
+  },
 };
 
 function resolveDenominator(usage, denominator) {

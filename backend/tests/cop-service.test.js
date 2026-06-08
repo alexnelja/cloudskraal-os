@@ -414,7 +414,7 @@ describe('conversion_factors schema', () => {
     seedConversionFactors(db);
     seedConversionFactors(db);
     const n = db.prepare("SELECT COUNT(*) as c FROM conversion_factors").get().c;
-    expect(n).toBe(2);
+    expect(n).toBe(5); // 2 rooibos + 3 wine, per-context idempotent
     db.close();
   });
 });
