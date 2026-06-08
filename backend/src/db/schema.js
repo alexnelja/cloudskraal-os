@@ -23,6 +23,10 @@ const { migrateTaskStatusId } = require('./migrate-task-status-id');
 const { migrateAddIndexes } = require('./migrate-add-indexes');
 const { migrateFieldsFarmCascade } = require('./migrate-fields-farm-cascade');
 const { migrateFkCascades } = require('./migrate-fk-cascades');
+const { migrateEnterprisePriceBasis } = require('./migrate-enterprise-price-basis');
+const { initFlockCopInputsSchema } = require('./schema-flock-cop-inputs');
+const { initGrazingEventsSchema } = require('./schema-grazing-events');
+const { initFeedingEventsSchema } = require('./schema-feeding-events');
 
 const DB_PATH = process.env.CAPEX_DB_PATH ?? path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -65,6 +69,10 @@ function getDb() {
     runMigration(db, 'add-indexes', migrateAddIndexes);
     runMigration(db, 'migrate-fields-farm-cascade', migrateFieldsFarmCascade);
     runMigration(db, 'migrate-fk-cascades', migrateFkCascades);
+    runMigration(db, 'migrate-enterprise-price-basis', migrateEnterprisePriceBasis);
+    runMigration(db, 'init-flock-cop-inputs-schema', initFlockCopInputsSchema);
+    runMigration(db, 'init-grazing-events-schema', initGrazingEventsSchema);
+    runMigration(db, 'init-feeding-events-schema', initFeedingEventsSchema);
   }
   return db;
 }

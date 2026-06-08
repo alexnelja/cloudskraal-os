@@ -29,6 +29,7 @@ const usageRoutes = require('./routes/usage');
 const conversionFactorsRoutes = require('./routes/conversion-factors');
 const enterprisePricesRoutes = require('./routes/enterprise-prices');
 const { seedEnterprisePrices } = require('./db/seed-enterprise-prices');
+const { seedFlockCopInputs } = require('./db/seed-flock-cop-inputs');
 const annotationsRoutes = require('./routes/annotations');
 const measurementsRoutes = require('./routes/measurements');
 const taskManagerRoutes = require('./routes/tasks');
@@ -126,6 +127,7 @@ async function initializeAndSeed() {
   seedStandPercent(db);
   seedConversionFactors(db);
   seedEnterprisePrices(db);
+  seedFlockCopInputs(db);
 }
 
 // Expose the initialization promise so tests / embedders can await readiness.

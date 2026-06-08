@@ -154,6 +154,233 @@ router.get('/livestock/groups/:id/records', (req, res) => {
   res.json(records);
 });
 
+// ── COP INPUTS (Spec 2f.1) ──────────────────────────────────────────────────
+
+const COP_INPUT_NUMERIC = [
+  'ewes_mated', 'weaning_pct', 'greasy_fleece_kg_per_head', 'clean_yield_pct',
+  'liveweight_sold_kg_total', 'feed_cost', 'labour_cost', 'animal_health_cost',
+  'shearing_cost', 'other_direct_cost', 'wool_income', 'meat_income',
+];
+
+// Returns the name of the first non-numeric field present, or null if all valid.
+function badCopNumeric(b) {
+  for (const f of COP_INPUT_NUMERIC) {
+    if (b[f] !== undefined && b[f] !== null && typeof b[f] !== 'number') return f;
+  }
+  return null;
+}
+
+router.get('/livestock/cop-inputs', (req, res) => {
+  const db = getDb();
+  const { year, group_id } = req.query;
+  let sql = `SELECT fci.*, lg.name AS group_name
+               FROM flock_cop_inputs fci
+               JOIN livestock_groups lg ON lg.id = fci.group_id`;
+  const cond = [], params = [];
+  if (year) { cond.push('fci.year = ?'); params.push(Number(year)); }
+  if (group_id) { cond.push('fci.group_id = ?'); params.push(group_id); }
+  if (cond.length) sql += ' WHERE ' + cond.join(' AND ');
+  sql += ' ORDER BY lg.name, fci.year DESC';
+  res.json(db.prepare(sql).all(...params));
+});
+
+router.get('/livestock/groups/:id/cop-inputs', (req, res) => {
+  const db = getDb();
+  const group = db.prepare('SELECT id FROM livestock_groups WHERE id = ?').get(req.params.id);
+  if (!group) return res.status(404).json({ error: 'Group not found' });
+  const { year } = req.query;
+  let sql = 'SELECT * FROM flock_cop_inputs WHERE group_id = ?';
+  const params = [req.params.id];
+  if (year) { sql += ' AND year = ?'; params.push(Number(year)); }
+  sql += ' ORDER BY year DESC';
+  res.json(db.prepare(sql).all(...params));
+});
+
+router.post('/livestock/groups/:id/cop-inputs', (req, res) => {
+  const db = getDb();
+  const group = db.prepare('SELECT id FROM livestock_groups WHERE id = ?').get(req.params.id);
+  if (!group) return res.status(404).json({ error: 'Group not found' });
+
+  const b = req.body || {};
+  if (typeof b.year !== 'number') return res.status(400).json({ error: 'year_required' });
+  const bad = badCopNumeric(b);
+  if (bad) return res.status(400).json({ error: 'invalid_numeric', field: bad });
+
+  const dup = db.prepare('SELECT id FROM flock_cop_inputs WHERE group_id = ? AND year = ?')
+    .get(req.params.id, b.year);
+  if (dup) return res.status(409).json({ error: 'duplicate_year' });
+
+  const id = uuidv4();
+  const now = new Date().toISOString();
+  const v = (k) => (b[k] === undefined ? null : b[k]);
+  db.prepare(`INSERT INTO flock_cop_inputs (
+      id, group_id, year, ewes_mated, weaning_pct, greasy_fleece_kg_per_head,
+      clean_yield_pct, liveweight_sold_kg_total, feed_cost, labour_cost,
+      animal_health_cost, shearing_cost, other_direct_cost, wool_income,
+      meat_income, source, notes, created_at, updated_at
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+    id, req.params.id, b.year, v('ewes_mated'), v('weaning_pct'),
+    v('greasy_fleece_kg_per_head'), v('clean_yield_pct'), v('liveweight_sold_kg_total'),
+    v('feed_cost'), v('labour_cost'), v('animal_health_cost'), v('shearing_cost'),
+    v('other_direct_cost'), v('wool_income'), v('meat_income'),
+    b.source || 'actual', b.notes || null, now, now);
+
+  res.status(201).json(db.prepare('SELECT * FROM flock_cop_inputs WHERE id = ?').get(id));
+});
+
+router.patch('/livestock/cop-inputs/:id', (req, res) => {
+  const db = getDb();
+  const existing = db.prepare('SELECT * FROM flock_cop_inputs WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'COP input not found' });
+
+  const b = req.body || {};
+  const bad = badCopNumeric(b);
+  if (bad) return res.status(400).json({ error: 'invalid_numeric', field: bad });
+
+  const allowed = [...COP_INPUT_NUMERIC, 'source', 'notes'];
+  const updates = {};
+  for (const k of allowed) if (b[k] !== undefined) updates[k] = b[k];
+
+  if (Object.keys(updates).length > 0) {
+    const setClauses = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    const values = [...Object.values(updates), new Date().toISOString(), req.params.id];
+    db.prepare(`UPDATE flock_cop_inputs SET ${setClauses}, updated_at = ? WHERE id = ?`).run(...values);
+  }
+  res.json(db.prepare('SELECT * FROM flock_cop_inputs WHERE id = ?').get(req.params.id));
+});
+
+// ── FLOCK COP COMPUTE + TRANSFER EVENTS (Spec 2f.2) ─────────────────────────
+
+router.get('/livestock/groups/:id/cost-of-production', (req, res) => {
+  const db = getDb();
+  const yearStr = req.query.year;
+  if (!yearStr || isNaN(Number(yearStr))) return res.status(400).json({ error: 'year_required' });
+  const { computeFlockCop } = require('../services/livestock_cop');
+  const report = computeFlockCop(db, req.params.id, Number(yearStr));
+  if (!report) return res.status(404).json({ error: 'No COP inputs for this flock/year' });
+  res.json(report);
+});
+
+// grazing events ----------------------------------------------------------------
+router.get('/livestock/grazing-events', (req, res) => {
+  const db = getDb();
+  const { group_id, field_id } = req.query;
+  let sql = `SELECT ge.*, lg.name AS group_name, fi.name AS field_name
+               FROM grazing_events ge
+               JOIN livestock_groups lg ON lg.id = ge.group_id
+               LEFT JOIN fields fi ON fi.id = ge.field_id`;
+  const cond = [], params = [];
+  if (group_id) { cond.push('ge.group_id = ?'); params.push(group_id); }
+  if (field_id) { cond.push('ge.field_id = ?'); params.push(field_id); }
+  if (cond.length) sql += ' WHERE ' + cond.join(' AND ');
+  sql += ' ORDER BY ge.start_date DESC';
+  res.json(db.prepare(sql).all(...params));
+});
+
+router.post('/livestock/grazing-events', (req, res) => {
+  const db = getDb();
+  const b = req.body || {};
+  const group = db.prepare('SELECT id FROM livestock_groups WHERE id = ?').get(b.group_id);
+  if (!group) return res.status(404).json({ error: 'Group not found' });
+  if (!b.start_date) return res.status(400).json({ error: 'start_date_required' });
+  if (typeof b.allocation_fraction !== 'number' || b.allocation_fraction < 0 || b.allocation_fraction > 1) {
+    return res.status(400).json({ error: 'invalid_allocation_fraction' });
+  }
+  const id = uuidv4();
+  const now = new Date().toISOString();
+  db.prepare(`INSERT INTO grazing_events
+    (id,group_id,field_id,start_date,end_date,allocation_fraction,notes,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?)`).run(id, b.group_id, b.field_id || null, b.start_date,
+    b.end_date || null, b.allocation_fraction, b.notes || null, now, now);
+  res.status(201).json(db.prepare('SELECT * FROM grazing_events WHERE id = ?').get(id));
+});
+
+router.patch('/livestock/grazing-events/:id', (req, res) => {
+  const db = getDb();
+  const existing = db.prepare('SELECT * FROM grazing_events WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Grazing event not found' });
+  const b = req.body || {};
+  if (b.allocation_fraction !== undefined &&
+      (typeof b.allocation_fraction !== 'number' || b.allocation_fraction < 0 || b.allocation_fraction > 1)) {
+    return res.status(400).json({ error: 'invalid_allocation_fraction' });
+  }
+  const allowed = ['field_id', 'start_date', 'end_date', 'allocation_fraction', 'notes'];
+  const updates = {};
+  for (const k of allowed) if (b[k] !== undefined) updates[k] = b[k];
+  if (Object.keys(updates).length) {
+    const set = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    db.prepare(`UPDATE grazing_events SET ${set}, updated_at = ? WHERE id = ?`)
+      .run(...Object.values(updates), new Date().toISOString(), req.params.id);
+  }
+  res.json(db.prepare('SELECT * FROM grazing_events WHERE id = ?').get(req.params.id));
+});
+
+router.delete('/livestock/grazing-events/:id', (req, res) => {
+  const db = getDb();
+  const r = db.prepare('DELETE FROM grazing_events WHERE id = ?').run(req.params.id);
+  if (r.changes === 0) return res.status(404).json({ error: 'Grazing event not found' });
+  res.status(204).end();
+});
+
+// feeding events ----------------------------------------------------------------
+router.get('/livestock/feeding-events', (req, res) => {
+  const db = getDb();
+  const { group_id, source_field_id } = req.query;
+  let sql = `SELECT fe.*, lg.name AS group_name FROM feeding_events fe
+               JOIN livestock_groups lg ON lg.id = fe.group_id`;
+  const cond = [], params = [];
+  if (group_id) { cond.push('fe.group_id = ?'); params.push(group_id); }
+  if (source_field_id) { cond.push('fe.source_field_id = ?'); params.push(source_field_id); }
+  if (cond.length) sql += ' WHERE ' + cond.join(' AND ');
+  sql += ' ORDER BY fe.date DESC';
+  res.json(db.prepare(sql).all(...params));
+});
+
+router.post('/livestock/feeding-events', (req, res) => {
+  const db = getDb();
+  const b = req.body || {};
+  const group = db.prepare('SELECT id FROM livestock_groups WHERE id = ?').get(b.group_id);
+  if (!group) return res.status(404).json({ error: 'Group not found' });
+  if (!b.date) return res.status(400).json({ error: 'date_required' });
+  if (b.source_type !== 'purchased' && b.source_type !== 'internal') {
+    return res.status(400).json({ error: 'invalid_source_type' });
+  }
+  if (b.source_type === 'internal' && !b.source_field_id) {
+    return res.status(400).json({ error: 'source_field_required_for_internal' });
+  }
+  const id = uuidv4();
+  const now = new Date().toISOString();
+  db.prepare(`INSERT INTO feeding_events
+    (id,group_id,date,source_type,source_field_id,source_usage,product,quantity_kg,unit_cost_zar,notes,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, b.group_id, b.date, b.source_type,
+    b.source_field_id || null, b.source_usage || null, b.product || null,
+    b.quantity_kg ?? null, b.unit_cost_zar ?? null, b.notes || null, now, now);
+  res.status(201).json(db.prepare('SELECT * FROM feeding_events WHERE id = ?').get(id));
+});
+
+router.patch('/livestock/feeding-events/:id', (req, res) => {
+  const db = getDb();
+  const existing = db.prepare('SELECT * FROM feeding_events WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Feeding event not found' });
+  const b = req.body || {};
+  const allowed = ['date', 'source_type', 'source_field_id', 'source_usage', 'product', 'quantity_kg', 'unit_cost_zar', 'notes'];
+  const updates = {};
+  for (const k of allowed) if (b[k] !== undefined) updates[k] = b[k];
+  if (Object.keys(updates).length) {
+    const set = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    db.prepare(`UPDATE feeding_events SET ${set}, updated_at = ? WHERE id = ?`)
+      .run(...Object.values(updates), new Date().toISOString(), req.params.id);
+  }
+  res.json(db.prepare('SELECT * FROM feeding_events WHERE id = ?').get(req.params.id));
+});
+
+router.delete('/livestock/feeding-events/:id', (req, res) => {
+  const db = getDb();
+  const r = db.prepare('DELETE FROM feeding_events WHERE id = ?').run(req.params.id);
+  if (r.changes === 0) return res.status(404).json({ error: 'Feeding event not found' });
+  res.status(204).end();
+});
+
 // ── BREEDING SEASONS ──────────────────────────────────────────────────────────
 
 router.get('/livestock/breeding-seasons', (req, res) => {
