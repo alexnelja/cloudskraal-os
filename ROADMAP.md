@@ -25,7 +25,7 @@
 - **Spec 1b** — Wind rows & field orientation (unblocked once spec 5a + 5h ship)
 - **Specs 2c + 2d** — Long-horizon costs (amortization + overhead)
 - **Spec 2e** — Rooibos processing centre
-- ~~**Spec 2f** — Livestock COP~~ shipped: 2f.1 (inputs + benchmark seed) + 2f.2 (`computeFlockCop`, grazing/feed transfers, two-leg reconciliation) + 2f.3a (breeding/weaned metrics: `breeding` block from `breeding_seasons` — weaning %, lamb mortality % — plus `cost_per_weaned_lamb`, `cost_per_ewe_mated`). Still deferred (**2f.3b+**): per-kg-weaned (needs `avg_weaning_weight_kg` on `breeding_seasons`), at-market transfer pricing, stocking-density auto-allocation, cross-enterprise (sheep in vineyards)
+- ~~**Spec 2f** — Livestock COP~~ shipped: 2f.1 (inputs + benchmark seed) + 2f.2 (`computeFlockCop`, grazing/feed transfers, two-leg reconciliation) + 2f.3a (breeding/weaned metrics) + 2f.3b (per-kg-weaned via `avg_weaning_weight_kg`) + 2f.3c (at-market transfer pricing: `farm_config.transfer_pricing_mode` + per-event `market_value_zar`/`market_price_zar`, fallback to at-cost + warning) + 2f.3d (stocking-density auto-allocation: `grazing_events.head_count` + `fields.ssu_per_ha`, used when `allocation_fraction` is null) + 2f.3e (source `enterprise` tag on transfers). Remaining nice-to-haves (**future**): `flock_events` mortality stream (death/birth), concurrent-fraction-sum enforcement
 - **Spec 2g** — Wine COP
 - **Spec 2h** — Reporting UI
 - ~~**Spec 3** — Map → task trigger~~ shipped (tight); **3.2 task templates + cost estimates** queued

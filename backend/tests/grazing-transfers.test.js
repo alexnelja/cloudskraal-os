@@ -32,13 +32,15 @@ function makeDb() {
   return db;
 }
 
-function seedFieldWithCost(db, { fieldId = 'fld1', cost = 50000 } = {}) {
+function seedFieldWithCost(db, { fieldId = 'fld1', cost = 50000, ssu_per_ha = null, area_ha = 50 } = {}) {
   const now = new Date().toISOString();
-  db.prepare(`INSERT INTO farms (id,name,code,type,created_at,updated_at) VALUES (?,?,?,?,?,?)`)
-    .run('farm1', 'CK', 'CK', 'owned', now, now);
-  db.prepare(`INSERT INTO fields (id,farm_id,name,enterprise,area_ha,geometry,created_at,updated_at)
-              VALUES (?,?,?,?,?,?,?,?)`)
-    .run(fieldId, 'farm1', 'Lupines', 'lupines', 50, '{}', now, now);
+  if (!db.prepare("SELECT 1 FROM farms WHERE id='farm1'").get()) {
+    db.prepare(`INSERT INTO farms (id,name,code,type,created_at,updated_at) VALUES (?,?,?,?,?,?)`)
+      .run('farm1', 'CK', 'CK', 'owned', now, now);
+  }
+  db.prepare(`INSERT INTO fields (id,farm_id,name,enterprise,area_ha,ssu_per_ha,geometry,created_at,updated_at)
+              VALUES (?,?,?,?,?,?,?,?,?)`)
+    .run(fieldId, 'farm1', 'Lupines', 'lupines', area_ha, ssu_per_ha, '{}', now, now);
   db.prepare(`INSERT INTO field_usage_period
     (id,field_id,usage,start_date,end_date,source,created_at,updated_at)
     VALUES (?,?,?,?,?,?,?,?)`)
@@ -65,11 +67,11 @@ function seedFlockAndInputs(db, { groupId = 'g1' } = {}) {
 }
 
 function addGrazing(db, { id = 'ge1', groupId = 'g1', fieldId = 'fld1', fraction = 0.5,
-  start = '2025-01-01', end = '2025-12-31' } = {}) {
+  head_count = null, start = '2025-01-01', end = '2025-12-31' } = {}) {
   const now = new Date().toISOString();
   db.prepare(`INSERT INTO grazing_events
-    (id,group_id,field_id,start_date,end_date,allocation_fraction,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,?,?)`).run(id, groupId, fieldId, start, end, fraction, now, now);
+    (id,group_id,field_id,start_date,end_date,allocation_fraction,head_count,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?)`).run(id, groupId, fieldId, start, end, fraction, head_count, now, now);
 }
 
 describe('computeFieldCop transfers line (opt-in)', () => {
@@ -146,6 +148,59 @@ describe('computeFlockCop grazing-share (Slice B)', () => {
     const r = computeFlockCop(db, 'g1', 2025);
     expect(r.transfers_in[0].amount).toBe(0);
     expect(r.warnings).toContain('source_field_not_found');
+    db.close();
+  });
+
+  it('auto-allocates from stocking density when allocation_fraction is null (2f.3d)', () => {
+    const db = makeDb();
+    seedFieldWithCost(db, { cost: 50000, area_ha: 50, ssu_per_ha: 2 });   // capacity 100 SSU
+    seedFlockAndInputs(db);
+    // 50 head full year → animal-days 50×365; capacity-days 100×365 → fraction 0.5
+    addGrazing(db, { fraction: null, head_count: 50, start: '2025-01-01', end: '2025-12-31' });
+    const r = computeFlockCop(db, 'g1', 2025);
+    expect(r.transfers_in[0].amount).toBe(25000);   // 50000 × 0.5
+    db.close();
+  });
+
+  it('warns field_capacity_missing when auto-allocation lacks ssu_per_ha', () => {
+    const db = makeDb();
+    seedFieldWithCost(db, { cost: 50000, ssu_per_ha: null });
+    seedFlockAndInputs(db);
+    addGrazing(db, { fraction: null, head_count: 50 });
+    const r = computeFlockCop(db, 'g1', 2025);
+    expect(r.transfers_in[0].amount).toBe(0);
+    expect(r.warnings).toContain('field_capacity_missing');
+    db.close();
+  });
+
+  it('warns grazing_allocation_unspecified when neither fraction nor head_count given', () => {
+    const db = makeDb();
+    seedFieldWithCost(db, { cost: 50000, ssu_per_ha: 2 });
+    seedFlockAndInputs(db);
+    addGrazing(db, { fraction: null, head_count: null });
+    const r = computeFlockCop(db, 'g1', 2025);
+    expect(r.transfers_in[0].amount).toBe(0);
+    expect(r.warnings).toContain('grazing_allocation_unspecified');
+    db.close();
+  });
+
+  it('manual fraction still takes precedence over head_count', () => {
+    const db = makeDb();
+    seedFieldWithCost(db, { cost: 50000, ssu_per_ha: 2 });
+    seedFlockAndInputs(db);
+    addGrazing(db, { fraction: 0.4, head_count: 50 });   // fraction wins
+    const r = computeFlockCop(db, 'g1', 2025);
+    expect(r.transfers_in[0].amount).toBe(20000);   // 50000 × 0.4
+    db.close();
+  });
+
+  it('tags each transfer with the source field enterprise (2f.3e)', () => {
+    const db = makeDb();
+    seedFieldWithCost(db, { cost: 50000 });   // field enterprise = 'lupines'
+    seedFlockAndInputs(db);
+    addGrazing(db, { fraction: 0.5 });
+    const r = computeFlockCop(db, 'g1', 2025);
+    expect(r.transfers_in[0].source_enterprise).toBe('lupines');
     db.close();
   });
 

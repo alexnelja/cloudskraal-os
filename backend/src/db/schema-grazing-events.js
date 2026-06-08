@@ -9,7 +9,9 @@ function initGrazingEventsSchema(db) {
       field_id            TEXT REFERENCES fields(id),
       start_date          TEXT NOT NULL,
       end_date            TEXT,
-      allocation_fraction REAL NOT NULL,
+      allocation_fraction REAL,           -- null → auto from stocking density (2f.3d)
+      head_count          INTEGER,        -- for auto stocking-density allocation
+      market_value_zar    REAL,           -- 2f.3c: at-market grazing value (R for the event)
       notes               TEXT,
       created_at          TEXT NOT NULL,
       updated_at          TEXT NOT NULL

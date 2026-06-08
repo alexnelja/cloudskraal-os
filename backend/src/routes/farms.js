@@ -186,7 +186,7 @@ router.patch('/fields/:id', (req, res) => {
     return res.status(400).json({ error: 'read_only', field: 'enterprise', reason: 'enterprise is derived from usage periods' });
   }
 
-  const allowed = ['name', 'crop_type', 'area_ha', 'planted_year', 'status', 'soil_type', 'irrigation_type', 'notes'];
+  const allowed = ['name', 'crop_type', 'area_ha', 'ssu_per_ha', 'planted_year', 'status', 'soil_type', 'irrigation_type', 'notes'];
   const updates = {};
   for (const key of allowed) {
     if (req.body[key] !== undefined) updates[key] = req.body[key];

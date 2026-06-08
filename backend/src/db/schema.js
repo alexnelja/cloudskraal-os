@@ -28,6 +28,9 @@ const { initFlockCopInputsSchema } = require('./schema-flock-cop-inputs');
 const { initGrazingEventsSchema } = require('./schema-grazing-events');
 const { initFeedingEventsSchema } = require('./schema-feeding-events');
 const { migrateBreedingWeaningWeight } = require('./migrate-breeding-weaning-weight');
+const { migrateStockingDensity } = require('./migrate-stocking-density');
+const { initFarmConfigSchema } = require('./schema-farm-config');
+const { migrateTransferMarket } = require('./migrate-transfer-market');
 
 const DB_PATH = process.env.CAPEX_DB_PATH ?? path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -75,6 +78,9 @@ function getDb() {
     runMigration(db, 'init-grazing-events-schema', initGrazingEventsSchema);
     runMigration(db, 'init-feeding-events-schema', initFeedingEventsSchema);
     runMigration(db, 'migrate-breeding-weaning-weight', migrateBreedingWeaningWeight);
+    runMigration(db, 'migrate-stocking-density', migrateStockingDensity);
+    runMigration(db, 'init-farm-config-schema', initFarmConfigSchema);
+    runMigration(db, 'migrate-transfer-market', migrateTransferMarket);
   }
   return db;
 }

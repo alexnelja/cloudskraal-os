@@ -30,6 +30,16 @@ function yearOverlapFactor(startStr, endStr, year) {
   return overlap / total;
 }
 
+// Transfer pricing mode from farm_config (default at_cost; at_cost if table absent).
+function transferMode(db) {
+  try {
+    const row = db.prepare("SELECT value FROM farm_config WHERE key = 'transfer_pricing_mode'").get();
+    return row && row.value === 'at_market' ? 'at_market' : 'at_cost';
+  } catch {
+    return 'at_cost';
+  }
+}
+
 // Gross COP for a field, or null/error pushed as a warning code.
 function grossFieldCop(db, fieldId, year) {
   const { computeFieldCop } = require('./cop'); // lazy: break circular require
@@ -53,17 +63,48 @@ function grazingTransfers(db, { groupId, fieldId, year }) {
     return []; // table not present in this DB
   }
 
+  const mode = transferMode(db);
   const out = [];
   for (const e of events) {
     const factor = yearOverlapFactor(e.start_date, e.end_date, year);
     if (factor <= 0) continue; // event doesn't touch this year
+    const row = { source_field_id: e.field_id, flock_id: e.group_id, kind: 'grazing' };
     const res = grossFieldCop(db, e.field_id, year);
-    if (res.error) {
-      out.push({ source_field_id: e.field_id, flock_id: e.group_id, kind: 'grazing', amount: 0, warning: res.error });
+    if (res.error) { out.push({ ...row, amount: 0, warning: res.error }); continue; }
+    row.source_enterprise = res.cop.field?.enterprise ?? null;
+
+    // at-market: value the event directly (pro-rated by year overlap).
+    if (mode === 'at_market' && e.market_value_zar != null) {
+      out.push({ ...row, amount: round2(e.market_value_zar * factor) });
       continue;
     }
-    const amount = round2(res.cop.totals.total_cost * e.allocation_fraction * factor);
-    out.push({ source_field_id: e.field_id, flock_id: e.group_id, kind: 'grazing', amount });
+
+    // at-cost (also the at-market fallback): field gross COP × fraction.
+    const totalCost = res.cop.totals.total_cost;
+    let amount;
+    if (e.allocation_fraction != null) {
+      amount = round2(totalCost * e.allocation_fraction * factor);
+    } else if (e.head_count != null) {
+      // Auto: animal-days ÷ field capacity-days (ssu_per_ha × area_ha × 365).
+      const field = res.cop.field;
+      const capacitySsu = (field?.ssu_per_ha != null && field?.area_ha != null)
+        ? field.ssu_per_ha * field.area_ha : null;
+      if (!capacitySsu || capacitySsu <= 0) {
+        out.push({ ...row, amount: 0, warning: 'field_capacity_missing' });
+        continue;
+      }
+      const inYearDays = daysInclusive(
+        e.start_date > `${year}-01-01` ? e.start_date : `${year}-01-01`,
+        (e.end_date || `${year}-12-31`) < `${year}-12-31` ? (e.end_date || `${year}-12-31`) : `${year}-12-31`
+      );
+      amount = round2(totalCost * (e.head_count * inYearDays) / (capacitySsu * 365));
+    } else {
+      out.push({ ...row, amount: 0, warning: 'grazing_allocation_unspecified' });
+      continue;
+    }
+    // at-market but no market value recorded → fell back to at-cost, flag it.
+    const warning = mode === 'at_market' ? 'market_value_missing' : null;
+    out.push(warning ? { ...row, amount, warning } : { ...row, amount });
   }
   return out;
 }
@@ -83,13 +124,23 @@ function internalFeedTransfers(db, { groupId, fieldId, year }) {
     return [];
   }
 
+  const mode = transferMode(db);
   const out = [];
   for (const e of events) {
-    const base = { source_field_id: e.source_field_id, flock_id: e.group_id, kind: 'feed_internal' };
+    const base = { source_field_id: e.source_field_id, flock_id: e.group_id, kind: 'feed_internal', source_enterprise: null };
     const res = grossFieldCop(db, e.source_field_id, year);
     if (res.error) { out.push({ ...base, amount: 0, warning: res.error }); continue; }
 
     const cop = res.cop;
+    base.source_enterprise = cop.field?.enterprise ?? null;
+
+    // at-market: value at the recorded market R/kg.
+    if (mode === 'at_market' && e.market_price_zar != null) {
+      out.push({ ...base, amount: round2(e.market_price_zar * (e.quantity_kg || 0)) });
+      continue;
+    }
+
+    // at-cost (also the at-market fallback): source field line cost_per_kg.
     let costPerKg = null;
     let warning = null;
     const line = e.source_usage
@@ -98,18 +149,17 @@ function internalFeedTransfers(db, { groupId, fieldId, year }) {
     if (line) {
       costPerKg = line.cost_per_kg; // may be null (no yield)
     } else {
-      // Fallback: field-level cost per kg of yield.
       warning = 'feed_product_line_ambiguous';
       costPerKg = cop.totals.total_yield_kg > 0
         ? cop.totals.total_cost / cop.totals.total_yield_kg : null;
     }
 
     if (costPerKg == null) {
-      // line matched but no yield, or fallback had no field yield → can't cost
       out.push({ ...base, amount: 0, warning: 'internal_feed_uncosted' });
       continue;
     }
     const amount = round2(costPerKg * (e.quantity_kg || 0));
+    if (mode === 'at_market') warning = 'market_price_missing'; // fell back to at-cost
     out.push(warning ? { ...base, amount, warning } : { ...base, amount });
   }
   return out;

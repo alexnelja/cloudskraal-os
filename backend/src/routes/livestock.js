@@ -261,6 +261,25 @@ router.get('/livestock/groups/:id/cost-of-production', (req, res) => {
   res.json(report);
 });
 
+// transfer-pricing mode (farm_config) -------------------------------------------
+router.get('/livestock/transfer-pricing-mode', (req, res) => {
+  const db = getDb();
+  const row = db.prepare("SELECT value FROM farm_config WHERE key = 'transfer_pricing_mode'").get();
+  res.json({ mode: row && row.value === 'at_market' ? 'at_market' : 'at_cost' });
+});
+
+router.put('/livestock/transfer-pricing-mode', (req, res) => {
+  const db = getDb();
+  const mode = req.body && req.body.mode;
+  if (mode !== 'at_cost' && mode !== 'at_market') {
+    return res.status(400).json({ error: 'invalid_mode', allowed: ['at_cost', 'at_market'] });
+  }
+  db.prepare(`INSERT INTO farm_config (key,value,updated_at) VALUES ('transfer_pricing_mode',?,?)
+              ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`)
+    .run(mode, new Date().toISOString());
+  res.json({ mode });
+});
+
 // grazing events ----------------------------------------------------------------
 router.get('/livestock/grazing-events', (req, res) => {
   const db = getDb();
@@ -283,15 +302,21 @@ router.post('/livestock/grazing-events', (req, res) => {
   const group = db.prepare('SELECT id FROM livestock_groups WHERE id = ?').get(b.group_id);
   if (!group) return res.status(404).json({ error: 'Group not found' });
   if (!b.start_date) return res.status(400).json({ error: 'start_date_required' });
-  if (typeof b.allocation_fraction !== 'number' || b.allocation_fraction < 0 || b.allocation_fraction > 1) {
+  // allocation_fraction optional: null → auto-allocate from head_count + stocking density.
+  if (b.allocation_fraction != null &&
+      (typeof b.allocation_fraction !== 'number' || b.allocation_fraction < 0 || b.allocation_fraction > 1)) {
     return res.status(400).json({ error: 'invalid_allocation_fraction' });
+  }
+  if (b.allocation_fraction == null && b.head_count == null) {
+    return res.status(400).json({ error: 'allocation_fraction_or_head_count_required' });
   }
   const id = uuidv4();
   const now = new Date().toISOString();
   db.prepare(`INSERT INTO grazing_events
-    (id,group_id,field_id,start_date,end_date,allocation_fraction,notes,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?)`).run(id, b.group_id, b.field_id || null, b.start_date,
-    b.end_date || null, b.allocation_fraction, b.notes || null, now, now);
+    (id,group_id,field_id,start_date,end_date,allocation_fraction,head_count,market_value_zar,notes,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(id, b.group_id, b.field_id || null, b.start_date,
+    b.end_date || null, b.allocation_fraction ?? null, b.head_count ?? null, b.market_value_zar ?? null,
+    b.notes || null, now, now);
   res.status(201).json(db.prepare('SELECT * FROM grazing_events WHERE id = ?').get(id));
 });
 
@@ -304,7 +329,7 @@ router.patch('/livestock/grazing-events/:id', (req, res) => {
       (typeof b.allocation_fraction !== 'number' || b.allocation_fraction < 0 || b.allocation_fraction > 1)) {
     return res.status(400).json({ error: 'invalid_allocation_fraction' });
   }
-  const allowed = ['field_id', 'start_date', 'end_date', 'allocation_fraction', 'notes'];
+  const allowed = ['field_id', 'start_date', 'end_date', 'allocation_fraction', 'head_count', 'market_value_zar', 'notes'];
   const updates = {};
   for (const k of allowed) if (b[k] !== undefined) updates[k] = b[k];
   if (Object.keys(updates).length) {
@@ -351,10 +376,10 @@ router.post('/livestock/feeding-events', (req, res) => {
   const id = uuidv4();
   const now = new Date().toISOString();
   db.prepare(`INSERT INTO feeding_events
-    (id,group_id,date,source_type,source_field_id,source_usage,product,quantity_kg,unit_cost_zar,notes,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, b.group_id, b.date, b.source_type,
+    (id,group_id,date,source_type,source_field_id,source_usage,product,quantity_kg,unit_cost_zar,market_price_zar,notes,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, b.group_id, b.date, b.source_type,
     b.source_field_id || null, b.source_usage || null, b.product || null,
-    b.quantity_kg ?? null, b.unit_cost_zar ?? null, b.notes || null, now, now);
+    b.quantity_kg ?? null, b.unit_cost_zar ?? null, b.market_price_zar ?? null, b.notes || null, now, now);
   res.status(201).json(db.prepare('SELECT * FROM feeding_events WHERE id = ?').get(id));
 });
 
@@ -363,7 +388,7 @@ router.patch('/livestock/feeding-events/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM feeding_events WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Feeding event not found' });
   const b = req.body || {};
-  const allowed = ['date', 'source_type', 'source_field_id', 'source_usage', 'product', 'quantity_kg', 'unit_cost_zar', 'notes'];
+  const allowed = ['date', 'source_type', 'source_field_id', 'source_usage', 'product', 'quantity_kg', 'unit_cost_zar', 'market_price_zar', 'notes'];
   const updates = {};
   for (const k of allowed) if (b[k] !== undefined) updates[k] = b[k];
   if (Object.keys(updates).length) {

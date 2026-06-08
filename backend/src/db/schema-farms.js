@@ -23,6 +23,7 @@ function initFarmSchema(db) {
       enterprise TEXT NOT NULL DEFAULT 'unclassified',
       crop_type TEXT,
       area_ha REAL,
+      ssu_per_ha REAL,
       planted_year TEXT,
       status TEXT DEFAULT 'active',
       geometry TEXT,

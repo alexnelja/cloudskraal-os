@@ -13,6 +13,7 @@ function initFeedingEventsSchema(db) {
       product         TEXT,
       quantity_kg     REAL,
       unit_cost_zar   REAL,                   -- purchased: R/kg paid
+      market_price_zar REAL,                  -- 2f.3c: at-market internal feed R/kg
       notes           TEXT,
       created_at      TEXT NOT NULL,
       updated_at      TEXT NOT NULL
