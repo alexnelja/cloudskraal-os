@@ -25,7 +25,7 @@
 - **Spec 1b** — Wind rows & field orientation (unblocked once spec 5a + 5h ship)
 - **Specs 2c + 2d** — Long-horizon costs (amortization + overhead)
 - **Spec 2e** — Rooibos processing centre
-- ~~**Spec 2f** — Livestock COP~~ shipped: 2f.1 (inputs + benchmark seed) + 2f.2 (`computeFlockCop`, grazing/feed transfers, two-leg reconciliation). Deferred to **2f.3**: mortality/weaned-kg denominator, at-market transfer pricing, stocking-density auto-allocation, cross-enterprise (sheep in vineyards)
+- ~~**Spec 2f** — Livestock COP~~ shipped: 2f.1 (inputs + benchmark seed) + 2f.2 (`computeFlockCop`, grazing/feed transfers, two-leg reconciliation) + 2f.3a (breeding/weaned metrics: `breeding` block from `breeding_seasons` — weaning %, lamb mortality % — plus `cost_per_weaned_lamb`, `cost_per_ewe_mated`). Still deferred (**2f.3b+**): per-kg-weaned (needs `avg_weaning_weight_kg` on `breeding_seasons`), at-market transfer pricing, stocking-density auto-allocation, cross-enterprise (sheep in vineyards)
 - **Spec 2g** — Wine COP
 - **Spec 2h** — Reporting UI
 - ~~**Spec 3** — Map → task trigger~~ shipped (tight); **3.2 task templates + cost estimates** queued

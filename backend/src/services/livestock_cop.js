@@ -95,6 +95,34 @@ function computeFlockCop(db, groupId, year) {
   const grossMarginPerEwe = inputs.ewes_mated
     ? round2(grossMargin / inputs.ewes_mated) : null;
 
+  // Breeding / weaned metrics (Spec 2f.3). Sum across all seasons in the year.
+  // Absent for non-breeding flocks (rams, trading lambs) → breeding: null, no warning.
+  const seasons = db.prepare(
+    'SELECT ewes_joined, born_count, survived_count, weaned_count FROM breeding_seasons WHERE group_id = ? AND year = ?'
+  ).all(groupId, year);
+  let breeding = null;
+  let costPerWeanedLamb = null;
+  if (seasons.length > 0) {
+    const sum = (k) => seasons.reduce((s, r) => s + n(r[k]), 0);
+    const ewesJoined = sum('ewes_joined');
+    const born = sum('born_count');
+    const survived = sum('survived_count');
+    const weaned = sum('weaned_count');
+    breeding = {
+      ewes_joined: ewesJoined,
+      born,
+      survived,
+      weaned,
+      weaning_pct: ewesJoined > 0 ? round2((weaned / ewesJoined) * 100) : null,
+      lamb_mortality_pct: born > 0 ? round2(((born - weaned) / born) * 100) : null,
+    };
+    if (meatAllocated != null && weaned > 0) {
+      costPerWeanedLamb = round2(meatAllocated / weaned);
+    }
+  }
+  const costPerEweMated = inputs.ewes_mated
+    ? round2(totalCost / inputs.ewes_mated) : null;
+
   return {
     group_id: groupId,
     year,
@@ -121,6 +149,9 @@ function computeFlockCop(db, groupId, year) {
     cost_per_kg_wool: costPerKgWool,
     cost_per_kg_liveweight: costPerKgLiveweight,
     transfers_in: transfersIn,
+    breeding,
+    cost_per_weaned_lamb: costPerWeanedLamb,
+    cost_per_ewe_mated: costPerEweMated,
     gross_margin: grossMargin,
     gross_margin_per_ewe: grossMarginPerEwe,
     warnings,

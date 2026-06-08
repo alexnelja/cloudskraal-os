@@ -143,3 +143,64 @@ describe('computeFlockCop — Slice A', () => {
     db.close();
   });
 });
+
+function seedBreeding(db, args) {
+  const now = new Date().toISOString();
+  db.prepare(`INSERT INTO breeding_seasons
+    (id,group_id,year,ewes_joined,born_count,survived_count,weaned_count,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?)`).run(
+    args.id, args.group_id ?? 'g1', args.year ?? 2025, args.ewes_joined ?? null,
+    args.born_count ?? null, args.survived_count ?? null, args.weaned_count ?? null, now, now);
+}
+
+describe('computeFlockCop — breeding / weaned metrics (Slice 2f.3)', () => {
+  it('adds a breeding block and weaned-based cost metrics', () => {
+    const db = makeDb();
+    seedFlock(db, { head_count: 100 });
+    seedInputs(db);                       // meat_allocated 80000, total 220000, ewes_mated 100
+    seedBreeding(db, { id: 'b1', ewes_joined: 100, born_count: 120, survived_count: 115, weaned_count: 110 });
+
+    const r = computeFlockCop(db, 'g1', 2025);
+    expect(r.breeding).toMatchObject({
+      ewes_joined: 100, born: 120, survived: 115, weaned: 110,
+      weaning_pct: 110,            // 110 / 100 × 100
+      lamb_mortality_pct: 8.33,    // (120 − 110) / 120 × 100
+    });
+    expect(r.cost_per_weaned_lamb).toBe(727.27);   // 80000 / 110
+    expect(r.cost_per_ewe_mated).toBe(2200);        // 220000 / 100
+    db.close();
+  });
+
+  it('leaves breeding null (no warning) for a flock with no breeding season', () => {
+    const db = makeDb();
+    seedFlock(db);
+    seedInputs(db);
+    const r = computeFlockCop(db, 'g1', 2025);
+    expect(r.breeding).toBeNull();
+    expect(r.cost_per_weaned_lamb).toBeNull();
+    expect(r.warnings).not.toContain('no_breeding_data');
+    db.close();
+  });
+
+  it('sums multiple breeding seasons in the same year', () => {
+    const db = makeDb();
+    seedFlock(db);
+    seedInputs(db);
+    seedBreeding(db, { id: 'b1', ewes_joined: 60, born_count: 70, survived_count: 68, weaned_count: 66 });
+    seedBreeding(db, { id: 'b2', ewes_joined: 40, born_count: 50, survived_count: 48, weaned_count: 44 });
+    const r = computeFlockCop(db, 'g1', 2025);
+    expect(r.breeding.ewes_joined).toBe(100);
+    expect(r.breeding.weaned).toBe(110);          // 66 + 44
+    db.close();
+  });
+
+  it('nulls cost_per_weaned_lamb when nothing was weaned', () => {
+    const db = makeDb();
+    seedFlock(db);
+    seedInputs(db);
+    seedBreeding(db, { id: 'b1', ewes_joined: 100, born_count: 0, weaned_count: 0 });
+    const r = computeFlockCop(db, 'g1', 2025);
+    expect(r.cost_per_weaned_lamb).toBeNull();
+    db.close();
+  });
+});
