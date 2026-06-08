@@ -208,6 +208,27 @@ function computeFieldCop(db, fieldId, year, opts = {}) {
     }
     if (line.usage === UNCAT && line.total_cost === 0
         && line.estimated_yield_kg === 0 && line.actual_yield_kg === 0) continue;
+
+    // Margin: only meaningful for productive enterprise usages. Non-productive
+    // and uncategorized lines never have a sale price, so margin is null
+    // silently (no warning noise).
+    if (NON_PRODUCTIVE.has(line.usage) || line.usage === UNCAT) {
+      line.margin = null;
+    } else {
+      const m = computeLineMargin(db, {
+        enterprise: line.usage,
+        year,
+        totalCost: line.total_cost,
+        actualYieldKg: line.actual_yield_kg,
+        areaHa: area_ha,
+        asOf,
+      });
+      line.margin = m.margin;
+      for (const w of m.warnings) {
+        if (!line.warnings.includes(w)) line.warnings.push(w);
+      }
+    }
+
     lines.push(line);
   }
 
@@ -238,7 +259,21 @@ function computeFieldCop(db, fieldId, year, opts = {}) {
     coverage.denominator = targets.size === 1 ? [...targets][0] : 'mixed';
   }
 
-  return { field_id: fieldId, year, field, lines, totals, rotation, coverage };
+  const report = { field_id: fieldId, year, field, lines, totals, rotation, coverage };
+
+  // Opt-in internal-transfer credit line (Spec 2f.2). Default off → existing
+  // callers and numbers unchanged. transfersForField prices against this field's
+  // GROSS COP (withTransfers:false), so there is no recursion back into here.
+  if (opts.withTransfers) {
+    const { transfersForField } = require('./internal_transfers'); // lazy: break circular require
+    const items = transfersForField(db, fieldId, year)
+      .map(t => ({ flock_id: t.flock_id, kind: t.kind, amount: t.amount }));
+    const creditTotal = round2(items.reduce((s, t) => s + t.amount, 0));
+    report.internal_transfers = { credit_total: creditTotal, items };
+    report.totals.net_cost_after_transfers = round2(totals.total_cost - creditTotal);
+  }
+
+  return report;
 }
 
 function computeFieldRotation(db, field) {
@@ -371,3 +406,76 @@ function factorChain(db, fromUom, toUom, context, asOf) {
 }
 
 module.exports.factorChain = factorChain;
+
+// COP yields (field_production.actual_yield_kg) are recorded as harvest-wet kg —
+// the same base the denominator logic converts from.
+const YIELD_BASE_UOM = 'harvest_wet_kg';
+
+// Compute per-line margin by aligning COP cost (harvest-wet basis) to the basis
+// the sale price is quoted on. Returns { margin, warnings }:
+//   - no price row for (enterprise, year) → { margin: null, warnings: ['no_price_for_year'] }
+//   - price row without a basis           → { margin: null, warnings: ['price_basis_missing'] }
+//   - basis unreachable in the factor graph → margin object with null metrics +
+//     ['margin_basis_unconvertible: <from> → <to>']
+//   - zero yield → per-kg metrics null, totals reflect the cost as a loss + ['no_yield']
+function computeLineMargin(db, { enterprise, year, totalCost, actualYieldKg, areaHa, asOf }) {
+  let price;
+  try {
+    price = db.prepare(`
+      SELECT price_per_kg, price_basis
+        FROM enterprise_prices
+       WHERE enterprise = ? AND year = ?
+    `).get(enterprise, year);
+  } catch {
+    // Prices not set up in this DB — margin is simply unavailable, not an error.
+    return { margin: null, warnings: [] };
+  }
+
+  if (!price) return { margin: null, warnings: ['no_price_for_year'] };
+  if (!price.price_basis) return { margin: null, warnings: ['price_basis_missing'] };
+
+  const margin = {
+    enterprise,
+    year,
+    price_per_kg: price.price_per_kg,
+    price_basis: price.price_basis,
+    yield_at_price_basis_kg: null,
+    cost_per_kg_at_price_basis: null,
+    margin_per_kg: null,
+    gross_revenue: null,
+    margin_total: null,
+    margin_per_ha: null,
+    margin_pct: null,
+  };
+
+  const chain = factorChain(db, YIELD_BASE_UOM, price.price_basis, enterprise, asOf);
+  if (chain.error) {
+    return {
+      margin,
+      warnings: [`margin_basis_unconvertible: ${YIELD_BASE_UOM} → ${price.price_basis}`],
+    };
+  }
+
+  const yieldAtBasis = actualYieldKg * chain.factor;
+  const area = areaHa || 1;
+  const warnings = [];
+
+  margin.yield_at_price_basis_kg = round2(yieldAtBasis);
+  margin.gross_revenue = round2(price.price_per_kg * yieldAtBasis);
+  margin.margin_total = round2(margin.gross_revenue - totalCost);
+  margin.margin_per_ha = round2(margin.margin_total / area);
+
+  if (yieldAtBasis > 0) {
+    margin.cost_per_kg_at_price_basis = round2(totalCost / yieldAtBasis);
+    margin.margin_per_kg = round2(price.price_per_kg - totalCost / yieldAtBasis);
+    margin.margin_pct = margin.gross_revenue > 0
+      ? round2((margin.margin_total / margin.gross_revenue) * 100)
+      : null;
+  } else {
+    warnings.push('no_yield');
+  }
+
+  return { margin, warnings };
+}
+
+module.exports.computeLineMargin = computeLineMargin;
