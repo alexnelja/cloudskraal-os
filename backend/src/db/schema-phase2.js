@@ -93,6 +93,7 @@ function initPhase2Schema(db) {
       born_count INTEGER,
       survived_count INTEGER,
       weaned_count INTEGER,
+      avg_weaning_weight_kg REAL,
       weaning_date TEXT,
       weaning_percentage REAL,
       notes TEXT,

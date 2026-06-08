@@ -147,10 +147,11 @@ describe('computeFlockCop — Slice A', () => {
 function seedBreeding(db, args) {
   const now = new Date().toISOString();
   db.prepare(`INSERT INTO breeding_seasons
-    (id,group_id,year,ewes_joined,born_count,survived_count,weaned_count,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?)`).run(
+    (id,group_id,year,ewes_joined,born_count,survived_count,weaned_count,avg_weaning_weight_kg,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?)`).run(
     args.id, args.group_id ?? 'g1', args.year ?? 2025, args.ewes_joined ?? null,
-    args.born_count ?? null, args.survived_count ?? null, args.weaned_count ?? null, now, now);
+    args.born_count ?? null, args.survived_count ?? null, args.weaned_count ?? null,
+    args.avg_weaning_weight_kg ?? null, now, now);
 }
 
 describe('computeFlockCop — breeding / weaned metrics (Slice 2f.3)', () => {
@@ -201,6 +202,40 @@ describe('computeFlockCop — breeding / weaned metrics (Slice 2f.3)', () => {
     seedBreeding(db, { id: 'b1', ewes_joined: 100, born_count: 0, weaned_count: 0 });
     const r = computeFlockCop(db, 'g1', 2025);
     expect(r.cost_per_weaned_lamb).toBeNull();
+    db.close();
+  });
+
+  it('computes cost_per_kg_weaned from weaning weight (2f.3b)', () => {
+    const db = makeDb();
+    seedFlock(db);
+    seedInputs(db);                       // meat_allocated 80000
+    seedBreeding(db, { id: 'b1', ewes_joined: 100, born_count: 120, weaned_count: 110, avg_weaning_weight_kg: 30 });
+    const r = computeFlockCop(db, 'g1', 2025);
+    expect(r.breeding.weaned_kg).toBe(3300);          // 110 × 30
+    expect(r.cost_per_kg_weaned).toBe(24.24);          // 80000 / 3300
+    db.close();
+  });
+
+  it('nulls cost_per_kg_weaned with a warning when weaning weight is missing', () => {
+    const db = makeDb();
+    seedFlock(db);
+    seedInputs(db);
+    seedBreeding(db, { id: 'b1', ewes_joined: 100, born_count: 120, weaned_count: 110 }); // no weight
+    const r = computeFlockCop(db, 'g1', 2025);
+    expect(r.breeding.weaned_kg).toBeNull();
+    expect(r.cost_per_kg_weaned).toBeNull();
+    expect(r.warnings).toContain('weaning_weight_missing');
+    db.close();
+  });
+
+  it('sums weaned_kg across seasons with mixed weaning weights', () => {
+    const db = makeDb();
+    seedFlock(db);
+    seedInputs(db);
+    seedBreeding(db, { id: 'b1', weaned_count: 60, avg_weaning_weight_kg: 30 }); // 1800
+    seedBreeding(db, { id: 'b2', weaned_count: 40, avg_weaning_weight_kg: 25 }); // 1000
+    const r = computeFlockCop(db, 'g1', 2025);
+    expect(r.breeding.weaned_kg).toBe(2800);
     db.close();
   });
 });

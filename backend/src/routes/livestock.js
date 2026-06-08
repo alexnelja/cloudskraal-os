@@ -405,15 +405,15 @@ router.post('/livestock/breeding-seasons', (req, res) => {
     INSERT INTO breeding_seasons (id, group_id, year, joining_start, joining_end, rams_used,
       ewes_joined, scanning_date, pregnant_count, dry_count, singles_count, twins_count,
       triplets_count, lambing_start, lambing_end, born_count, survived_count, weaned_count,
-      weaning_date, weaning_percentage, notes, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      avg_weaning_weight_kg, weaning_date, weaning_percentage, notes, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(id, b.group_id, b.year, b.joining_start || null, b.joining_end || null,
     b.rams_used || null, b.ewes_joined || null, b.scanning_date || null,
     b.pregnant_count || null, b.dry_count || null, b.singles_count || null,
     b.twins_count || null, b.triplets_count || null, b.lambing_start || null,
     b.lambing_end || null, b.born_count || null, b.survived_count || null,
-    b.weaned_count || null, b.weaning_date || null, b.weaning_percentage || null,
-    b.notes || null, now, now);
+    b.weaned_count || null, b.avg_weaning_weight_kg ?? null, b.weaning_date || null,
+    b.weaning_percentage || null, b.notes || null, now, now);
 
   const season = db.prepare('SELECT * FROM breeding_seasons WHERE id = ?').get(id);
   res.status(201).json(season);
@@ -427,7 +427,7 @@ router.patch('/livestock/breeding-seasons/:id', (req, res) => {
   const allowed = ['joining_start', 'joining_end', 'rams_used', 'ewes_joined',
     'scanning_date', 'pregnant_count', 'dry_count', 'singles_count', 'twins_count',
     'triplets_count', 'lambing_start', 'lambing_end', 'born_count', 'survived_count',
-    'weaned_count', 'weaning_date', 'weaning_percentage', 'notes'];
+    'weaned_count', 'avg_weaning_weight_kg', 'weaning_date', 'weaning_percentage', 'notes'];
 
   const updates = {};
   for (const key of allowed) {
