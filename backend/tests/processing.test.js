@@ -10,6 +10,7 @@ import { initPhase3Schema } from '../src/db/schema-phase3.js';
 import { migrateFieldCop } from '../src/db/migrate-field-cop.js';
 import { initUsagePeriodsSchema } from '../src/db/schema-usage-periods.js';
 import { initProcessingSchema } from '../src/db/schema-processing.js';
+import { initFarmConfigSchema } from '../src/db/schema-farm-config.js';
 import { batchYield, fieldProcessingShare } from '../src/services/processing.js';
 import { computeFieldCop } from '../src/services/cop.js';
 
@@ -18,7 +19,13 @@ function makeDb() {
   db.pragma('foreign_keys = ON');
   initFarmSchema(db);
   initProcessingSchema(db);
+  initFarmConfigSchema(db);
   return db;
+}
+
+function setAttributionMode(db, mode) {
+  db.prepare(`INSERT INTO farm_config (key,value,updated_at) VALUES ('attribution_mode',?,?)
+              ON CONFLICT(key) DO UPDATE SET value=excluded.value`).run(mode, new Date().toISOString());
 }
 
 function seedFields(db) {
@@ -198,6 +205,45 @@ describe('graded fine fractions + byproduct revenue (2e.3)', () => {
     const f1 = fieldProcessingShare(db, 'f1', 2026); // net 3000, share 0.6
     expect(f1.processing_cost).toBe(1800);           // 0.6 × (10000 − 7000)
     expect(f1.sifted_netto_kg).toBe(2340);           // 0.6 × 3900
+    db.close();
+  });
+});
+
+describe('trace-back attribution (one-hop, toggle-gated)', () => {
+  // Batch S (source): f1 fed 1000 wet, sifted 400. Batch B: f2 fed 1000 fresh +
+  // 100 recirculated stokke from S, sifted 440. Cost 0 to isolate netto.
+  function setup(db) {
+    seedFields(db);
+    seedBatch(db, { id: 'S', end_date: '2026-02-01', wet_in_kg: 1000, sifted_netto_kg: 400, processing_cost_zar: 0 });
+    seedSource(db, { id: 'sS', batch_id: 'S', field_id: 'f1', wet_contributed_kg: 1000 });
+    seedBatch(db, { id: 'B', end_date: '2026-03-01', wet_in_kg: 1100, sifted_netto_kg: 440, processing_cost_zar: 0 });
+    seedSource(db, { id: 'sB', batch_id: 'B', field_id: 'f2', wet_contributed_kg: 1000 });
+    seedRecirc(db, { id: 'rcB', batch_id: 'B', source_batch_id: 'S', stokke_reintroduced_kg: 100 });
+  }
+
+  it('fresh mode (default) credits the recirc boost to the fresh fields', () => {
+    const db = makeDb(); setup(db);
+    expect(fieldProcessingShare(db, 'f1', 2026).sifted_netto_kg).toBe(400); // only from S
+    expect(fieldProcessingShare(db, 'f2', 2026).sifted_netto_kg).toBe(440); // all of B
+    db.close();
+  });
+
+  it('traceback mode credits B recirc-yield back to f1 (the stokke originator)', () => {
+    const db = makeDb(); setup(db);
+    setAttributionMode(db, 'traceback');
+    // f1: fresh from S (1000/1000 × 400 = 400) + traceback from B (440 × 100/1100 × 1 = 40) = 440
+    expect(fieldProcessingShare(db, 'f1', 2026).sifted_netto_kg).toBe(440);
+    // f2: fresh from B only = 1000/1100 × 440 = 400 (recirc 40 traced away to f1)
+    expect(fieldProcessingShare(db, 'f2', 2026).sifted_netto_kg).toBe(400);
+    db.close();
+  });
+
+  it('traceback conserves total netto across fields', () => {
+    const db = makeDb(); setup(db);
+    setAttributionMode(db, 'traceback');
+    const f1 = fieldProcessingShare(db, 'f1', 2026).sifted_netto_kg;
+    const f2 = fieldProcessingShare(db, 'f2', 2026).sifted_netto_kg;
+    expect(f1 + f2).toBe(840); // S 400 + B 440
     db.close();
   });
 });

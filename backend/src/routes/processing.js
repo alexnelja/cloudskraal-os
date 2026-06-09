@@ -91,6 +91,25 @@ router.post('/processing-batches/:id/sources', (req, res) => {
   res.status(201).json(db.prepare('SELECT * FROM processing_batch_sources WHERE id = ?').get(id));
 });
 
+// attribution mode (trace-back toggle) ------------------------------------------
+router.get('/processing/attribution-mode', (req, res) => {
+  const db = getDb();
+  const row = db.prepare("SELECT value FROM farm_config WHERE key = 'attribution_mode'").get();
+  res.json({ mode: row && row.value === 'traceback' ? 'traceback' : 'fresh' });
+});
+
+router.put('/processing/attribution-mode', (req, res) => {
+  const db = getDb();
+  const mode = req.body && req.body.mode;
+  if (mode !== 'fresh' && mode !== 'traceback') {
+    return res.status(400).json({ error: 'invalid_mode', allowed: ['fresh', 'traceback'] });
+  }
+  db.prepare(`INSERT INTO farm_config (key,value,updated_at) VALUES ('attribution_mode',?,?)
+              ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`)
+    .run(mode, new Date().toISOString());
+  res.json({ mode });
+});
+
 // graded fractions (2e.3) -------------------------------------------------------
 const GRADES = ['stokke', 'netto', 'superfine', 'ultrafine'];
 router.get('/processing-batches/:id/fractions', (req, res) => {

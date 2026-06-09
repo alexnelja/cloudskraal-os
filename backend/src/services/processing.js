@@ -71,11 +71,26 @@ function batchYield(db, batchId) {
   };
 }
 
-// A field's share of actual sifted-netto + NET processing cost across batches it
-// fed (end_date in `year`). Share is by FRESH field wet (sum of sources) so
-// recirculated stokke is never double-counted; sifted-netto (already boosted by
-// recirculation) distributes across this batch's fresh contributors.
+// Attribution mode from farm_config: 'fresh' (default) credits a batch's full
+// netto to its fresh fields; 'traceback' splits the recirc portion back to the
+// fields that fed the source batch (one hop).
+function attributionMode(db) {
+  try {
+    const r = db.prepare("SELECT value FROM farm_config WHERE key = 'attribution_mode'").get();
+    return r && r.value === 'traceback' ? 'traceback' : 'fresh';
+  } catch { return 'fresh'; }
+}
+
 function fieldProcessingShare(db, fieldId, year) {
+  return attributionMode(db) === 'traceback'
+    ? fieldProcessingShareTraceback(db, fieldId, year)
+    : fieldProcessingShareFresh(db, fieldId, year);
+}
+
+// FRESH: a field's share of actual sifted-netto + NET processing cost across
+// batches it fed. Share is by FRESH field wet (sum of sources); the batch's full
+// netto (incl. recirc boost) distributes across its fresh contributors.
+function fieldProcessingShareFresh(db, fieldId, year) {
   const batches = db.prepare(`
     SELECT b.id, b.sifted_netto_kg, b.processing_cost_zar, b.stof_kg, b.stof_price_zar_per_kg,
            s.wet_contributed_kg
@@ -105,6 +120,62 @@ function fieldProcessingShare(db, fieldId, year) {
     });
   }
   return { sifted_netto_kg: round2(siftedNetto), processing_cost: round2(processingCost), batches: out };
+}
+
+// TRACEBACK (one hop): a field gets (A) the FRESH portion of batches it fed
+// (by wet over total wet_in, so the recirc portion is excluded), plus (B) the
+// recirc-yield of any batch that reprocessed material from a source batch the
+// field fed. Recirculations with no source_batch_id are not traced (their netto
+// is simply not credited to a field in this mode).
+function fieldProcessingShareTraceback(db, fieldId, year) {
+  const inYear = [`${year}-01-01`, `${year}-12-31`];
+  let sifted = 0;
+  let cost = 0;
+  const out = [];
+
+  // (A) fresh portion of batches this field fed
+  const fed = db.prepare(`
+    SELECT b.id, b.sifted_netto_kg, b.processing_cost_zar, b.wet_in_kg, b.stof_kg, b.stof_price_zar_per_kg,
+           s.wet_contributed_kg
+      FROM processing_batch_sources s
+      JOIN processing_batches b ON b.id = s.batch_id
+     WHERE s.field_id = ? AND b.end_date >= ? AND b.end_date <= ?
+  `).all(fieldId, ...inYear);
+  for (const b of fed) {
+    const pFresh = b.wet_in_kg > 0 ? b.wet_contributed_kg / b.wet_in_kg : 0;
+    const netCost = (b.processing_cost_zar || 0) - byproductRevenue(db, b);
+    const sft = round2((b.sifted_netto_kg || 0) * pFresh);
+    const cst = round2(netCost * pFresh);
+    sifted += sft; cost += cst;
+    out.push({ batch_id: b.id, kind: 'fresh', share: round4(pFresh), sifted_netto_kg: sft, processing_cost: cst });
+  }
+
+  // (B) recirc-yield traced back to this field via batches that reprocessed
+  // material from a source batch the field fed
+  const recircs = db.prepare(`
+    SELECT r.stokke_reintroduced_kg, r.source_batch_id,
+           b.id, b.sifted_netto_kg, b.processing_cost_zar, b.wet_in_kg, b.stof_kg, b.stof_price_zar_per_kg
+      FROM processing_batch_recirculations r
+      JOIN processing_batches b ON b.id = r.batch_id
+     WHERE r.source_batch_id IS NOT NULL AND b.end_date >= ? AND b.end_date <= ?
+  `).all(...inYear);
+  for (const r of recircs) {
+    const srcRow = db.prepare(
+      'SELECT wet_contributed_kg FROM processing_batch_sources WHERE batch_id = ? AND field_id = ?'
+    ).get(r.source_batch_id, fieldId);
+    if (!srcRow) continue; // field didn't feed the source batch
+    const srcFresh = freshWet(db, r.source_batch_id);
+    const fieldShareOfSrc = srcFresh > 0 ? srcRow.wet_contributed_kg / srcFresh : 0;
+    const pRecirc = r.wet_in_kg > 0 ? (r.stokke_reintroduced_kg || 0) / r.wet_in_kg : 0;
+    const netCost = (r.processing_cost_zar || 0) - byproductRevenue(db, r);
+    const sft = round2((r.sifted_netto_kg || 0) * pRecirc * fieldShareOfSrc);
+    const cst = round2(netCost * pRecirc * fieldShareOfSrc);
+    sifted += sft; cost += cst;
+    out.push({ batch_id: r.id, kind: 'traceback', source_batch_id: r.source_batch_id,
+      sifted_netto_kg: sft, processing_cost: cst });
+  }
+
+  return { sifted_netto_kg: round2(sifted), processing_cost: round2(cost), batches: out };
 }
 
 module.exports = { batchYield, fieldProcessingShare };
