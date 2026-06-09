@@ -37,6 +37,9 @@ shared_inputs(
   total_cost_zar REAL,   -- for total_split_ha
   usage TEXT,            -- optional: route to a specific usage line on mixed-usage fields
   is_establishment INTEGER DEFAULT 0,  -- 1 → accrue to field_establishment (2c), not in-year
+  entry_basis TEXT DEFAULT 'estimate', -- 'estimate' | 'actual' (estimates now, real later)
+  external_source TEXT,  -- null | 'xero' | 'quickbooks' — provenance for imported actuals
+  external_id TEXT,      -- external system GUID; UNIQUE(external_source, external_id) for idempotent import
   notes, created_at, updated_at )
 shared_input_fields( id, shared_input_id → shared_inputs ON DELETE CASCADE, field_id → fields )
 ```
@@ -80,7 +83,9 @@ The entity that ties machine + attachment + operator + inputs to field(s) per ac
 field_activities(
   id, date, year, activity_type, enterprise,
   equipment_id → equipment, attachment_id → equipment, operator_employee_id → employees,
-  hours, ha_covered, notes, is_establishment INTEGER DEFAULT 0, created_at, updated_at )
+  hours, ha_covered, notes, is_establishment INTEGER DEFAULT 0,
+  entry_basis TEXT DEFAULT 'estimate', external_source TEXT, external_id TEXT,
+  created_at, updated_at )
 field_activity_fields( id, activity_id → field_activities ON DELETE CASCADE, field_id → fields, ha )
 ```
 **Cost** (`services/activities.js → activityCost`): per activity =
@@ -185,6 +190,30 @@ categories + a few field-level nodes, not 20 tables. Material additions, by prio
   are price-regime dependent; Cloudskraal's R39–55/kg forecast straddles break-even).
 - Caution: harvest labour ~70% of CoP; on-farm drying labour must not be double-counted with
   the processing cost centre.
+
+## Future: accounting integration (Xero / QuickBooks)
+
+Not built in 2i, but the model is designed so imported accounting actuals slot in and
+**trace back to our cost records** without schema rework:
+
+- **Provenance convention (baked into 2i tables now; retrofit existing tables when built):**
+  every cost-bearing row carries `entry_basis` ('estimate' | 'actual'), `external_source`
+  (null | 'xero' | 'quickbooks'), `external_id` (the external GUID). A unique index on
+  `(external_source, external_id)` makes import **idempotent**; the GUID gives two-way
+  traceability (Xero line ↔ our cost ↔ which field/enterprise/cost-centre it landed on).
+- **Dimension mapping:** our `cost_category` ↔ Xero **chart of accounts**; `field_id` +
+  `enterprise` ↔ Xero **tracking categories**; field/production vs processing **cost
+  centre** ↔ a tracking option / department. A small mapping/config table (Xero account →
+  cost_category, Xero tracking option → field/enterprise) is the only new structure needed.
+- **Constraint to design around:** Xero supports **only 2 active tracking categories** —
+  pick 2 (likely Enterprise + Field, or Cost-Centre + Field); other dimensions stay internal.
+- **Why our model complements Xero:** Xero only *tags* a cost; it can't split one bill
+  across fields. Our overhead/shared-input allocation (per-ha / per-enterprise /
+  revenue-share) does that — so Xero supplies tagged actuals, our engine does the field-level
+  split and the cost/kg roll-up. The estimate→actual flag lets imported actuals replace
+  estimates in place.
+- **Direction:** pull (Bills/Expenses + P&L-by-tracking) → land as our cost records (actuals);
+  push is out of scope. A future "Spec 2j — accounting integration" owns OAuth + sync.
 
 ## Visualization (2h) — cost build-up node map
 
