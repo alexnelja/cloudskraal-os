@@ -259,6 +259,27 @@ function computeFieldCop(db, fieldId, year, opts = {}) {
     coverage.denominator = targets.size === 1 ? [...targets][0] : 'mixed';
   }
 
+  // Opt-in extensions (Spec 2e/2c/2d): include ∈ {processing, capital, overhead}.
+  const include = Array.isArray(opts.include)
+    ? opts.include
+    : (opts.include ? String(opts.include).split(',').map(s => s.trim()) : []);
+
+  if (include.includes('processing')) {
+    const { fieldProcessingShare } = require('./processing'); // lazy require
+    const share = fieldProcessingShare(db, fieldId, year);
+    if (share.batches.length) {
+      const line = lines.find(l => l.usage === field.enterprise);
+      if (line) {
+        line.processing = share;
+        line.cost_per_netto_kg_actual = share.sifted_netto_kg > 0
+          ? round2((line.total_cost + share.processing_cost) / share.sifted_netto_kg)
+          : null;
+      }
+      coverage.batch_actuals_used = share.batches;
+      coverage.excludes = coverage.excludes.filter(e => e !== 'processing' && e !== 'wet_to_dry_shrinkage');
+    }
+  }
+
   const report = { field_id: fieldId, year, field, lines, totals, rotation, coverage };
 
   // Opt-in internal-transfer credit line (Spec 2f.2). Default off → existing
