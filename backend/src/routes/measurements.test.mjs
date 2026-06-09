@@ -20,13 +20,23 @@ function loadModules() {
   request = require('supertest');
 }
 
-beforeEach(() => {
+// Let the app's async boot-seed settle before closing the DB, otherwise an
+// in-flight seed query hits a closed connection ("database connection is not
+// open") and surfaces as an unhandled rejection under full-suite timing.
+async function settleReady() {
+  if (appModule && appModule.ready) { try { await appModule.ready; } catch (_) { /* ignore */ } }
+}
+
+beforeEach(async () => {
+  await settleReady();
   if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
   if (schema) schema._resetForTest();
   loadModules();
+  await settleReady();
 });
 
-afterAll(() => {
+afterAll(async () => {
+  await settleReady();
   if (schema) schema._resetForTest();
   if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
 });
