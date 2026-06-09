@@ -22,6 +22,10 @@ function initPhase2Schema(db) {
       odometer_km REAL,
       next_service_date TEXT,
       next_service_hours REAL,
+      fuel_l_per_hour REAL,
+      annual_use_hours REAL,
+      maintenance_zar_per_year REAL,
+      kind TEXT DEFAULT 'machine',
       notes TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL

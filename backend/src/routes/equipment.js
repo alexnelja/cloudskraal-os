@@ -1,8 +1,14 @@
 const { Router } = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/schema');
+const { equipmentRate } = require('../services/equipment_rates');
 
 const router = Router();
+
+// GET /api/equipment/:id/rate — operating cost/hour (Spec 2i.2)
+router.get('/equipment/:id/rate', (req, res) => {
+  res.json(equipmentRate(getDb(), req.params.id));
+});
 
 // GET /api/equipment/alerts — equipment needing service soon
 router.get('/equipment/alerts', (req, res) => {
@@ -91,14 +97,16 @@ router.post('/equipment', (req, res) => {
     INSERT INTO equipment (id, name, code, type, make, model, year, farm_id, department,
       purchase_date, purchase_price, current_value, depreciation_method, useful_life_years,
       salvage_value, status, hours_meter, odometer_km, next_service_date, next_service_hours,
+      fuel_l_per_hour, annual_use_hours, maintenance_zar_per_year, kind,
       notes, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(id, b.name, b.code || null, b.type, b.make || null, b.model || null, b.year || null,
     b.farm_id || null, b.department || null, b.purchase_date || null,
     b.purchase_price || null, b.current_value || null, b.depreciation_method || 'straight_line',
     b.useful_life_years || null, b.salvage_value || null, b.status || 'active',
     b.hours_meter || null, b.odometer_km || null, b.next_service_date || null,
-    b.next_service_hours || null, b.notes || null, now, now);
+    b.next_service_hours || null, b.fuel_l_per_hour ?? null, b.annual_use_hours ?? null,
+    b.maintenance_zar_per_year ?? null, b.kind || 'machine', b.notes || null, now, now);
 
   const equipment = db.prepare('SELECT * FROM equipment WHERE id = ?').get(id);
   res.status(201).json(equipment);
@@ -112,7 +120,8 @@ router.patch('/equipment/:id', (req, res) => {
 
   const allowed = ['name', 'code', 'type', 'make', 'model', 'year', 'farm_id', 'department',
     'purchase_date', 'purchase_price', 'current_value', 'depreciation_method', 'useful_life_years',
-    'salvage_value', 'status', 'hours_meter', 'odometer_km', 'next_service_date', 'next_service_hours', 'notes'];
+    'salvage_value', 'status', 'hours_meter', 'odometer_km', 'next_service_date', 'next_service_hours',
+    'fuel_l_per_hour', 'annual_use_hours', 'maintenance_zar_per_year', 'kind', 'notes'];
 
   const updates = {};
   for (const key of allowed) {

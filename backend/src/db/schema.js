@@ -36,6 +36,7 @@ const { initLongHorizonSchema } = require('./schema-long-horizon');
 const { migrateProcessingRecirculation } = require('./migrate-processing-recirculation');
 const { migrateProcessingFractions } = require('./migrate-processing-fractions');
 const { initSharedInputsSchema } = require('./schema-shared-inputs');
+const { migrateEquipmentRates } = require('./migrate-equipment-rates');
 
 const DB_PATH = process.env.CAPEX_DB_PATH ?? path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -91,6 +92,7 @@ function getDb() {
     runMigration(db, 'migrate-processing-recirculation', migrateProcessingRecirculation);
     runMigration(db, 'migrate-processing-fractions', migrateProcessingFractions);
     runMigration(db, 'init-shared-inputs-schema', initSharedInputsSchema);
+    runMigration(db, 'migrate-equipment-rates', migrateEquipmentRates);
   }
   return db;
 }
