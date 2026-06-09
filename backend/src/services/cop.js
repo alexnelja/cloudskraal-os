@@ -264,6 +264,7 @@ function computeFieldCop(db, fieldId, year, opts = {}) {
     ? opts.include
     : (opts.include ? String(opts.include).split(',').map(s => s.trim()) : []);
   let report_overhead;
+  let report_shared;
 
   if (include.includes('processing')) {
     const { fieldProcessingShare } = require('./processing'); // lazy require
@@ -310,8 +311,31 @@ function computeFieldCop(db, fieldId, year, opts = {}) {
     coverage.excludes = coverage.excludes.filter(e => e !== 'overhead');
   }
 
+  // Shared inputs (Spec 2i.1): direct-variable cost from multi-field inputs. Attach
+  // to the field.enterprise line, else the single productive line, else warn + skip.
+  if (include.includes('shared')) {
+    const { fieldSharedInputCost } = require('./shared_inputs'); // lazy require
+    const r = fieldSharedInputCost(db, fieldId, year);
+    const warnings = [...r.warnings];
+    if (r.total > 0) {
+      const productive = lines.filter(l => !NON_PRODUCTIVE.has(l.usage) && l.usage !== UNCAT);
+      const line = lines.find(l => l.usage === field.enterprise)
+        || (productive.length === 1 ? productive[0] : null);
+      if (line) line.shared_input_cost = r.total;
+      else warnings.push('shared_input_line_not_found');
+    }
+    report_shared = { ...r, warnings };
+    coverage.excludes = coverage.excludes.filter(e => e !== 'shared_inputs');
+  } else {
+    const { hasSharedInputs } = require('./shared_inputs');
+    if (hasSharedInputs(db, fieldId, year)) {
+      coverage.excluded_layers = [...(coverage.excluded_layers || []), 'shared'];
+    }
+  }
+
   const report = { field_id: fieldId, year, field, lines, totals, rotation, coverage };
   if (typeof report_overhead !== 'undefined') report.overhead = report_overhead;
+  if (typeof report_shared !== 'undefined') report.shared_inputs = report_shared;
 
   // Opt-in internal-transfer credit line (Spec 2f.2). Default off → existing
   // callers and numbers unchanged. transfersForField prices against this field's
