@@ -28,6 +28,7 @@ afterAll(() => {
   const db = new Database(DB_PATH);
   for (const b of db.prepare('SELECT id FROM processing_batches WHERE notes = ?').all(SENTINEL)) {
     db.prepare('DELETE FROM processing_batch_sources WHERE batch_id = ?').run(b.id);
+    db.prepare('DELETE FROM processing_batch_fractions WHERE batch_id = ?').run(b.id);
     db.prepare('DELETE FROM processing_batches WHERE id = ?').run(b.id);
   }
   db.close();
@@ -62,6 +63,23 @@ describe('processing-batches API', () => {
   it('field processing-share requires a year', async () => {
     const { status } = await api('/fields/'+fieldId+'/processing-share');
     expect(status).toBe(400);
+  });
+
+  it('POST a graded fraction + reject bad grade; byproduct shows in yield', async () => {
+    // own batch to avoid polluting the share test's batch
+    const b2 = (await api('/processing-batches', {
+      method: 'POST', body: JSON.stringify({ enterprise: 'rooibos', end_date: '2026-04-01', wet_in_kg: 5000, sifted_netto_kg: 2000, processing_cost_zar: 1000, notes: SENTINEL }),
+    })).data.id;
+    const good = await api(`/processing-batches/${b2}/fractions`, {
+      method: 'POST', body: JSON.stringify({ grade: 'superfine', kg: 200, sold_kg: 150, price_zar_per_kg: 30 }),
+    });
+    expect(good.status).toBe(201);
+    const bad = await api(`/processing-batches/${b2}/fractions`, {
+      method: 'POST', body: JSON.stringify({ grade: 'nonsense', kg: 1 }),
+    });
+    expect(bad.status).toBe(400);
+    const { data } = await api(`/processing-batches/${b2}`);
+    expect(data.yield.byproduct_revenue).toBe(4500);  // 150 × 30
   });
 
   it('field processing-share rolls up the batch', async () => {

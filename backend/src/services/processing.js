@@ -17,8 +17,21 @@ function recirculatedIn(db, batchId) {
   } catch { return 0; } // table absent (pre-2e.2 DB)
 }
 
-function stofRevenue(b) {
-  return round2((b.stof_kg || 0) * (b.stof_price_zar_per_kg || 0));
+// Graded fine fractions for a batch (2e.3), or [] if none / table absent.
+function batchFractions(db, batchId) {
+  try {
+    return db.prepare('SELECT * FROM processing_batch_fractions WHERE batch_id = ?').all(batchId);
+  } catch { return []; }
+}
+
+// Byproduct revenue = Σ (non-netto grade) sold_kg × price. Falls back to the
+// legacy 2e.2 stof_kg × stof_price when no fraction rows exist.
+function byproductRevenue(db, b) {
+  const frs = batchFractions(db, b.id).filter(f => f.grade !== 'netto');
+  if (frs.length) {
+    return round2(frs.reduce((s, f) => s + (f.sold_kg || 0) * (f.price_zar_per_kg || 0), 0));
+  }
+  return round2((b.stof_kg || 0) * (b.stof_price_zar_per_kg || 0)); // legacy
 }
 
 // Weights, actual shrinkage, byproduct + recirculation accounting for one batch.
@@ -27,11 +40,19 @@ function batchYield(db, batchId) {
   if (!b) return null;
   const fresh = freshWet(db, batchId);
   const recirc = recirculatedIn(db, batchId);
-  const stof_rev = stofRevenue(b);
+  const byproduct = byproductRevenue(db, b);
   const expectedWet = fresh + recirc;
   const mass_balance_ok = b.wet_in_kg > 0 && expectedWet > 0
     ? Math.abs(b.wet_in_kg - expectedWet) / b.wet_in_kg <= MASS_BALANCE_TOLERANCE
     : (b.wet_in_kg || 0) === expectedWet;
+  const fractions = batchFractions(db, batchId).map(f => ({
+    grade: f.grade,
+    kg: f.kg,
+    sold_kg: f.sold_kg,
+    recirculated_kg: round2((f.kg || 0) - (f.sold_kg || 0)),
+    price_zar_per_kg: f.price_zar_per_kg,
+    revenue: round2((f.sold_kg || 0) * (f.price_zar_per_kg || 0)),
+  }));
   return {
     wet_in: b.wet_in_kg,
     fresh_wet: round2(fresh),
@@ -40,9 +61,11 @@ function batchYield(db, batchId) {
     sifted_netto: b.sifted_netto_kg,
     stokke: b.stokke_kg,
     stof: b.stof_kg,
-    stof_revenue: stof_rev,
+    fractions,
+    byproduct_revenue: byproduct,
+    stof_revenue: byproduct, // legacy alias (2e.2)
     processing_cost: b.processing_cost_zar,
-    net_processing_cost: round2((b.processing_cost_zar || 0) - stof_rev),
+    net_processing_cost: round2((b.processing_cost_zar || 0) - byproduct),
     shrinkage_actual: b.wet_in_kg > 0 ? round4(b.sifted_netto_kg / b.wet_in_kg) : null,
     mass_balance_ok,
   };
@@ -68,7 +91,7 @@ function fieldProcessingShare(db, fieldId, year) {
   for (const b of batches) {
     const fresh = freshWet(db, b.id);
     const share = fresh > 0 ? b.wet_contributed_kg / fresh : 0;
-    const netCost = (b.processing_cost_zar || 0) - stofRevenue(b);
+    const netCost = (b.processing_cost_zar || 0) - byproductRevenue(db, b);
     const sifted = round2((b.sifted_netto_kg || 0) * share);
     const cost = round2(netCost * share);
     siftedNetto += sifted;

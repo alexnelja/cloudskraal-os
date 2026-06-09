@@ -91,6 +91,41 @@ router.post('/processing-batches/:id/sources', (req, res) => {
   res.status(201).json(db.prepare('SELECT * FROM processing_batch_sources WHERE id = ?').get(id));
 });
 
+// graded fractions (2e.3) -------------------------------------------------------
+const GRADES = ['stokke', 'netto', 'superfine', 'ultrafine'];
+router.get('/processing-batches/:id/fractions', (req, res) => {
+  const db = getDb();
+  res.json(db.prepare('SELECT * FROM processing_batch_fractions WHERE batch_id = ?').all(req.params.id));
+});
+
+router.post('/processing-batches/:id/fractions', (req, res) => {
+  const db = getDb();
+  const batch = db.prepare('SELECT id FROM processing_batches WHERE id = ?').get(req.params.id);
+  if (!batch) return res.status(404).json({ error: 'Batch not found' });
+  const b = req.body || {};
+  if (!GRADES.includes(b.grade)) return res.status(400).json({ error: 'invalid_grade', allowed: GRADES });
+  const id = uuidv4();
+  const ts = new Date().toISOString();
+  db.prepare(`INSERT INTO processing_batch_fractions (id,batch_id,grade,kg,sold_kg,price_zar_per_kg,created_at,updated_at)
+              VALUES (?,?,?,?,?,?,?,?)`).run(id, req.params.id, b.grade, b.kg ?? null, b.sold_kg ?? 0, b.price_zar_per_kg ?? null, ts, ts);
+  res.status(201).json(db.prepare('SELECT * FROM processing_batch_fractions WHERE id = ?').get(id));
+});
+
+router.patch('/processing-fractions/:id', (req, res) => {
+  const db = getDb();
+  const existing = db.prepare('SELECT id FROM processing_batch_fractions WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Not found' });
+  const allowed = ['grade', 'kg', 'sold_kg', 'price_zar_per_kg'];
+  const updates = {};
+  for (const k of allowed) if (req.body[k] !== undefined) updates[k] = req.body[k];
+  if (Object.keys(updates).length) {
+    const set = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    db.prepare(`UPDATE processing_batch_fractions SET ${set}, updated_at = ? WHERE id = ?`)
+      .run(...Object.values(updates), new Date().toISOString(), req.params.id);
+  }
+  res.json(db.prepare('SELECT * FROM processing_batch_fractions WHERE id = ?').get(req.params.id));
+});
+
 // recirculation (stokke feedback, 2e.2) -----------------------------------------
 router.post('/processing-batches/:id/recirculate', (req, res) => {
   const db = getDb();

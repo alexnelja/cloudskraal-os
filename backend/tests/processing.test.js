@@ -47,6 +47,12 @@ function seedRecirc(db, r) {
               VALUES (?,?,?,?,?)`).run(r.id, r.batch_id, r.source_batch_id ?? null, r.stokke_reintroduced_kg, new Date().toISOString());
 }
 
+function seedFraction(db, f) {
+  const now = new Date().toISOString();
+  db.prepare(`INSERT INTO processing_batch_fractions (id,batch_id,grade,kg,sold_kg,price_zar_per_kg,created_at,updated_at)
+              VALUES (?,?,?,?,?,?,?,?)`).run(f.id, f.batch_id, f.grade, f.kg, f.sold_kg ?? 0, f.price_zar_per_kg ?? null, now, now);
+}
+
 function seedSource(db, s) {
   db.prepare(`INSERT INTO processing_batch_sources (id,batch_id,field_id,period_id,wet_contributed_kg)
               VALUES (?,?,?,?,?)`).run(s.id, s.batch_id, s.field_id, s.period_id ?? null, s.wet_contributed_kg);
@@ -153,6 +159,45 @@ describe('stokke recirculation + stof revenue (2e.2)', () => {
     seedSource(db, { id: 's1', batch_id: 'b1', field_id: 'f1', wet_contributed_kg: 10000 });
     // wet_in 20000 but fresh 10000 + 0 recirc → big gap
     expect(batchYield(db, 'b1').mass_balance_ok).toBe(false);
+    db.close();
+  });
+});
+
+describe('graded fine fractions + byproduct revenue (2e.3)', () => {
+  it('computes byproduct revenue from sold graded fractions and nets processing cost', () => {
+    const db = makeDb(); seedFields(db);
+    seedBatch(db, { id: 'b1', end_date: '2026-03-01', wet_in_kg: 10000, sifted_netto_kg: 3900, processing_cost_zar: 10000 });
+    seedFraction(db, { id: 'fr1', batch_id: 'b1', grade: 'superfine', kg: 200, sold_kg: 150, price_zar_per_kg: 30 }); // 4500
+    seedFraction(db, { id: 'fr2', batch_id: 'b1', grade: 'ultrafine', kg: 50, sold_kg: 50, price_zar_per_kg: 50 });  // 2500
+
+    const y = batchYield(db, 'b1');
+    expect(y.byproduct_revenue).toBe(7000);          // 4500 + 2500
+    expect(y.net_processing_cost).toBe(3000);        // 10000 − 7000
+    const sf = y.fractions.find(f => f.grade === 'superfine');
+    expect(sf.recirculated_kg).toBe(50);             // 200 − 150
+    expect(sf.revenue).toBe(4500);
+    db.close();
+  });
+
+  it('falls back to legacy stof revenue when no fraction rows exist (2e.2 compatible)', () => {
+    const db = makeDb(); seedFields(db);
+    seedBatch(db, { id: 'b1', end_date: '2026-03-01', wet_in_kg: 10000, sifted_netto_kg: 3900, stof_kg: 150, stof_price_zar_per_kg: 2, processing_cost_zar: 5000 });
+    const y = batchYield(db, 'b1');
+    expect(y.byproduct_revenue).toBe(300);           // legacy stof path
+    expect(y.net_processing_cost).toBe(4700);
+    db.close();
+  });
+
+  it('fieldProcessingShare nets graded byproduct revenue before distributing', () => {
+    const db = makeDb(); seedFields(db);
+    seedBatch(db, { id: 'b1', end_date: '2026-03-01', wet_in_kg: 10000, sifted_netto_kg: 3900, processing_cost_zar: 10000 });
+    seedSource(db, { id: 's1', batch_id: 'b1', field_id: 'f1', wet_contributed_kg: 6000 });
+    seedSource(db, { id: 's2', batch_id: 'b1', field_id: 'f2', wet_contributed_kg: 4000 });
+    seedFraction(db, { id: 'fr1', batch_id: 'b1', grade: 'superfine', kg: 200, sold_kg: 150, price_zar_per_kg: 30 });
+    seedFraction(db, { id: 'fr2', batch_id: 'b1', grade: 'ultrafine', kg: 50, sold_kg: 50, price_zar_per_kg: 50 });
+    const f1 = fieldProcessingShare(db, 'f1', 2026); // net 3000, share 0.6
+    expect(f1.processing_cost).toBe(1800);           // 0.6 × (10000 − 7000)
+    expect(f1.sifted_netto_kg).toBe(2340);           // 0.6 × 3900
     db.close();
   });
 });
