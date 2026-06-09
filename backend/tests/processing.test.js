@@ -35,11 +35,16 @@ function seedBatch(db, b) {
   const now = new Date().toISOString();
   db.prepare(`INSERT INTO processing_batches
     (id,enterprise,start_date,end_date,wet_in_kg,dried_bruto_kg,sifted_netto_kg,stokke_kg,stof_kg,
-     processing_cost_zar,status,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+     stof_price_zar_per_kg,processing_cost_zar,status,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
     b.id, b.enterprise ?? 'rooibos', b.start_date ?? '2026-02-01', b.end_date,
     b.wet_in_kg, b.dried_bruto_kg ?? null, b.sifted_netto_kg, b.stokke_kg ?? null, b.stof_kg ?? null,
-    b.processing_cost_zar ?? 0, b.status ?? 'done', now, now);
+    b.stof_price_zar_per_kg ?? null, b.processing_cost_zar ?? 0, b.status ?? 'done', now, now);
+}
+
+function seedRecirc(db, r) {
+  db.prepare(`INSERT INTO processing_batch_recirculations (id,batch_id,source_batch_id,stokke_reintroduced_kg,created_at)
+              VALUES (?,?,?,?,?)`).run(r.id, r.batch_id, r.source_batch_id ?? null, r.stokke_reintroduced_kg, new Date().toISOString());
 }
 
 function seedSource(db, s) {
@@ -109,6 +114,49 @@ describe('fieldProcessingShare', () => {
   });
 });
 
+describe('stokke recirculation + stof revenue (2e.2)', () => {
+  it('batchYield reports fresh wet, recirculated-in, stof revenue, net cost, mass balance', () => {
+    const db = makeDb(); seedFields(db);
+    seedBatch(db, { id: 'b1', end_date: '2026-03-01', wet_in_kg: 11000, sifted_netto_kg: 4290,
+      stof_kg: 150, stof_price_zar_per_kg: 2, processing_cost_zar: 5000 });
+    seedSource(db, { id: 's1', batch_id: 'b1', field_id: 'f1', wet_contributed_kg: 6000 });
+    seedSource(db, { id: 's2', batch_id: 'b1', field_id: 'f2', wet_contributed_kg: 4000 });
+    seedRecirc(db, { id: 'rc1', batch_id: 'b1', source_batch_id: null, stokke_reintroduced_kg: 1000 });
+
+    const y = batchYield(db, 'b1');
+    expect(y.fresh_wet).toBe(10000);            // sum of sources
+    expect(y.recirculated_in_kg).toBe(1000);
+    expect(y.stof_revenue).toBe(300);           // 150 × 2
+    expect(y.net_processing_cost).toBe(4700);   // 5000 − 300
+    expect(y.mass_balance_ok).toBe(true);       // 11000 ≈ 10000 + 1000
+    db.close();
+  });
+
+  it('shares by FRESH wet (recirculated wet not double-counted) and distributes net cost', () => {
+    const db = makeDb(); seedFields(db);
+    seedBatch(db, { id: 'b1', end_date: '2026-03-01', wet_in_kg: 11000, sifted_netto_kg: 4290,
+      stof_kg: 150, stof_price_zar_per_kg: 2, processing_cost_zar: 5000 });
+    seedSource(db, { id: 's1', batch_id: 'b1', field_id: 'f1', wet_contributed_kg: 6000 });
+    seedSource(db, { id: 's2', batch_id: 'b1', field_id: 'f2', wet_contributed_kg: 4000 });
+    seedRecirc(db, { id: 'rc1', batch_id: 'b1', stokke_reintroduced_kg: 1000 });
+
+    const f1 = fieldProcessingShare(db, 'f1', 2026);   // share 6000/10000 = 0.6
+    expect(f1.batches[0].share).toBe(0.6);
+    expect(f1.sifted_netto_kg).toBe(2574);             // 0.6 × 4290
+    expect(f1.processing_cost).toBe(2820);             // 0.6 × (5000 − 300 stof)
+    db.close();
+  });
+
+  it('flags a mass-balance mismatch beyond tolerance', () => {
+    const db = makeDb(); seedFields(db);
+    seedBatch(db, { id: 'b1', end_date: '2026-03-01', wet_in_kg: 20000, sifted_netto_kg: 4000, processing_cost_zar: 0 });
+    seedSource(db, { id: 's1', batch_id: 'b1', field_id: 'f1', wet_contributed_kg: 10000 });
+    // wet_in 20000 but fresh 10000 + 0 recirc → big gap
+    expect(batchYield(db, 'b1').mass_balance_ok).toBe(false);
+    db.close();
+  });
+});
+
 describe('computeFieldCop processing integration (opt-in)', () => {
   function copDb() {
     const db = new Database(':memory:');
@@ -123,6 +171,8 @@ describe('computeFieldCop processing integration (opt-in)', () => {
       .run('farm1', 'CK', 'CK', 'owned', now, now);
     db.prepare(`INSERT INTO fields (id,farm_id,name,enterprise,area_ha,geometry,created_at,updated_at)
                 VALUES (?,?,?,?,?,?,?,?)`).run('f1', 'farm1', 'B12', 'rooibos', 21, '{}', now, now);
+    db.prepare(`INSERT INTO fields (id,farm_id,name,enterprise,area_ha,geometry,created_at,updated_at)
+                VALUES (?,?,?,?,?,?,?,?)`).run('f2', 'farm1', 'B13', 'rooibos', 14, '{}', now, now);
     db.prepare(`INSERT INTO field_usage_period (id,field_id,usage,start_date,end_date,source,created_at,updated_at)
                 VALUES (?,?,?,?,?,?,?,?)`).run('p1', 'f1', 'rooibos', '2026-01-01', '2026-12-31', 'seed', now, now);
     db.prepare(`INSERT INTO input_products (id,name,category,unit_of_measure,cost_per_unit,created_at,updated_at)
@@ -137,7 +187,9 @@ describe('computeFieldCop processing integration (opt-in)', () => {
       (id,enterprise,start_date,end_date,wet_in_kg,sifted_netto_kg,processing_cost_zar,status,created_at,updated_at)
       VALUES (?,?,?,?,?,?,?,?,?,?)`).run('b1', 'rooibos', '2026-02-01', '2026-03-01', 10000, 3900, 5000, 'done', now, now);
     db.prepare(`INSERT INTO processing_batch_sources (id,batch_id,field_id,wet_contributed_kg)
-                VALUES (?,?,?,?)`).run('s1', 'b1', 'f1', 6000); // share 0.6 → sifted 2340, cost 3000
+                VALUES (?,?,?,?)`).run('s1', 'b1', 'f1', 6000); // f1 6000 of 10000 fresh → share 0.6
+    db.prepare(`INSERT INTO processing_batch_sources (id,batch_id,field_id,wet_contributed_kg)
+                VALUES (?,?,?,?)`).run('s2', 'b1', 'f2', 4000);
   }
 
   it('does not attach processing by default (no regression)', () => {

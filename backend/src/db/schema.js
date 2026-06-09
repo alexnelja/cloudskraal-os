@@ -33,6 +33,7 @@ const { initFarmConfigSchema } = require('./schema-farm-config');
 const { migrateTransferMarket } = require('./migrate-transfer-market');
 const { initProcessingSchema } = require('./schema-processing');
 const { initLongHorizonSchema } = require('./schema-long-horizon');
+const { migrateProcessingRecirculation } = require('./migrate-processing-recirculation');
 
 const DB_PATH = process.env.CAPEX_DB_PATH ?? path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -85,6 +86,7 @@ function getDb() {
     runMigration(db, 'migrate-transfer-market', migrateTransferMarket);
     runMigration(db, 'init-processing-schema', initProcessingSchema);
     runMigration(db, 'init-long-horizon-schema', initLongHorizonSchema);
+    runMigration(db, 'migrate-processing-recirculation', migrateProcessingRecirculation);
   }
   return db;
 }

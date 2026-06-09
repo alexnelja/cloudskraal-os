@@ -23,11 +23,12 @@ router.get('/processing-batches/:id', (req, res) => {
   const batch = db.prepare('SELECT * FROM processing_batches WHERE id = ?').get(req.params.id);
   if (!batch) return res.status(404).json({ error: 'Batch not found' });
   const sources = db.prepare('SELECT * FROM processing_batch_sources WHERE batch_id = ?').all(req.params.id);
-  res.json({ ...batch, sources, yield: batchYield(db, req.params.id) });
+  const recirculations = db.prepare('SELECT * FROM processing_batch_recirculations WHERE batch_id = ?').all(req.params.id);
+  res.json({ ...batch, sources, recirculations, yield: batchYield(db, req.params.id) });
 });
 
 const BATCH_FIELDS = ['enterprise', 'start_date', 'end_date', 'wet_in_kg', 'dried_bruto_kg',
-  'sifted_netto_kg', 'stokke_kg', 'stof_kg', 'processing_cost_zar', 'status', 'notes'];
+  'sifted_netto_kg', 'stokke_kg', 'stof_kg', 'stof_price_zar_per_kg', 'processing_cost_zar', 'status', 'notes'];
 
 router.post('/processing-batches', (req, res) => {
   const db = getDb();
@@ -39,10 +40,11 @@ router.post('/processing-batches', (req, res) => {
   const now = new Date().toISOString();
   db.prepare(`INSERT INTO processing_batches
     (id,enterprise,start_date,end_date,wet_in_kg,dried_bruto_kg,sifted_netto_kg,stokke_kg,stof_kg,
-     processing_cost_zar,status,notes,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, b.enterprise || 'rooibos', b.start_date || null,
+     stof_price_zar_per_kg,processing_cost_zar,status,notes,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, b.enterprise || 'rooibos', b.start_date || null,
     b.end_date || null, b.wet_in_kg ?? null, b.dried_bruto_kg ?? null, b.sifted_netto_kg ?? null,
-    b.stokke_kg ?? null, b.stof_kg ?? null, b.processing_cost_zar ?? 0, b.status || 'done', b.notes || null, now, now);
+    b.stokke_kg ?? null, b.stof_kg ?? null, b.stof_price_zar_per_kg ?? null, b.processing_cost_zar ?? 0,
+    b.status || 'done', b.notes || null, now, now);
   res.status(201).json(db.prepare('SELECT * FROM processing_batches WHERE id = ?').get(id));
 });
 
@@ -87,6 +89,21 @@ router.post('/processing-batches/:id/sources', (req, res) => {
   db.prepare(`INSERT INTO processing_batch_sources (id,batch_id,field_id,period_id,wet_contributed_kg)
               VALUES (?,?,?,?,?)`).run(id, req.params.id, b.field_id, b.period_id || null, b.wet_contributed_kg ?? null);
   res.status(201).json(db.prepare('SELECT * FROM processing_batch_sources WHERE id = ?').get(id));
+});
+
+// recirculation (stokke feedback, 2e.2) -----------------------------------------
+router.post('/processing-batches/:id/recirculate', (req, res) => {
+  const db = getDb();
+  const batch = db.prepare('SELECT id FROM processing_batches WHERE id = ?').get(req.params.id);
+  if (!batch) return res.status(404).json({ error: 'Batch not found' });
+  const b = req.body || {};
+  if (typeof b.stokke_reintroduced_kg !== 'number') {
+    return res.status(400).json({ error: 'stokke_reintroduced_kg_required' });
+  }
+  const id = uuidv4();
+  db.prepare(`INSERT INTO processing_batch_recirculations (id,batch_id,source_batch_id,stokke_reintroduced_kg,created_at)
+              VALUES (?,?,?,?,?)`).run(id, req.params.id, b.source_batch_id || null, b.stokke_reintroduced_kg, new Date().toISOString());
+  res.status(201).json(db.prepare('SELECT * FROM processing_batch_recirculations WHERE id = ?').get(id));
 });
 
 // field processing share rollup -------------------------------------------------

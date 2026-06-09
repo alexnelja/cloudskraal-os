@@ -67,7 +67,8 @@ describe('processing-batches API', () => {
   it('field processing-share rolls up the batch', async () => {
     const { status, data } = await api('/fields/'+fieldId+'/processing-share?year=2026');
     expect(status).toBe(200);
-    expect(data.sifted_netto_kg).toBe(2340);  // 0.6 × 3900
-    expect(data.processing_cost).toBe(3000);  // 0.6 × 5000
+    // single source of 6000 is the only fresh wet → 100% share (fresh-wet denominator)
+    expect(data.sifted_netto_kg).toBe(3900);
+    expect(data.processing_cost).toBe(5000);
   });
 });
