@@ -2,6 +2,7 @@ const { Router } = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/schema');
 const { allocatedOverhead } = require('../services/overhead');
+const { applyEstablishmentAccrual } = require('../services/establishment');
 
 const router = Router();
 const now = () => new Date().toISOString();
@@ -51,6 +52,16 @@ router.delete('/field-establishment/:id', (req, res) => {
   const r = db.prepare('DELETE FROM field_establishment WHERE id = ?').run(req.params.id);
   if (!r.changes) return res.status(404).json({ error: 'Not found' });
   res.status(204).end();
+});
+
+// Spec 2i.4 — recompute total_cost_zar from establishment-flagged shared
+// inputs + activities at the cohort's planted year.
+router.post('/field-establishment/:id/accrue', (req, res) => {
+  const db = getDb();
+  const r = applyEstablishmentAccrual(db, req.params.id);
+  if (r.error === 'establishment_not_found') return res.status(404).json({ error: 'Not found' });
+  if (r.error) return res.status(400).json(r);
+  res.json(r);
 });
 
 // ── OVERHEAD ENTRIES (Spec 2d) ──────────────────────────────────────────────

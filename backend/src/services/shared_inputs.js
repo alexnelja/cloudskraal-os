@@ -2,7 +2,9 @@
 // Establishment-flagged rows are excluded (they accrue to field_establishment, 2c).
 function round2(n) { return Math.round(n * 100) / 100; }
 
-function fieldSharedInputCost(db, fieldId, year) {
+// opts.establishment: true → ONLY establishment-flagged rows (2i.4 accrual);
+// default → only in-year rows (establishment accrues to field_establishment, 2c).
+function fieldSharedInputCost(db, fieldId, year, opts = {}) {
   const field = db.prepare('SELECT COALESCE(area_ha,0) AS area_ha FROM fields WHERE id = ?').get(fieldId);
   const fieldArea = field ? field.area_ha : 0;
 
@@ -11,8 +13,8 @@ function fieldSharedInputCost(db, fieldId, year) {
     rows = db.prepare(`
       SELECT si.* FROM shared_inputs si
         JOIN shared_input_fields f ON f.shared_input_id = si.id
-       WHERE f.field_id = ? AND si.year = ? AND COALESCE(si.is_establishment,0) = 0
-    `).all(fieldId, year);
+       WHERE f.field_id = ? AND si.year = ? AND COALESCE(si.is_establishment,0) = ?
+    `).all(fieldId, year, opts.establishment ? 1 : 0);
   } catch { return { total: 0, items: [], warnings: [] }; }
 
   const warnings = [];

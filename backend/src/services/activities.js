@@ -41,16 +41,17 @@ function activityCost(db, activityId) {
   return { activity_id: a.id, machine_cost, operator_cost, total: round2(machine_cost + operator_cost), warnings };
 }
 
-// A field's share of all non-establishment activities for a year.
+// A field's share of activities for a year. Default: non-establishment only;
+// opts.establishment: true → ONLY establishment-flagged rows (2i.4 accrual).
 // Split by link-ha (fallback: field area_ha); Σ ha = 0 → warn and skip.
-function fieldActivityCost(db, fieldId, year) {
+function fieldActivityCost(db, fieldId, year, opts = {}) {
   let rows;
   try {
     rows = db.prepare(`
       SELECT a.* FROM field_activities a
         JOIN field_activity_fields f ON f.activity_id = a.id
-       WHERE f.field_id = ? AND a.year = ? AND COALESCE(a.is_establishment,0) = 0
-    `).all(fieldId, year);
+       WHERE f.field_id = ? AND a.year = ? AND COALESCE(a.is_establishment,0) = ?
+    `).all(fieldId, year, opts.establishment ? 1 : 0);
   } catch { return { total: 0, items: [], warnings: [] }; }
 
   const warnings = [];
