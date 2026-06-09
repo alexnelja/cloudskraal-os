@@ -263,6 +263,7 @@ function computeFieldCop(db, fieldId, year, opts = {}) {
   const include = Array.isArray(opts.include)
     ? opts.include
     : (opts.include ? String(opts.include).split(',').map(s => s.trim()) : []);
+  let report_overhead;
 
   if (include.includes('processing')) {
     const { fieldProcessingShare } = require('./processing'); // lazy require
@@ -280,7 +281,37 @@ function computeFieldCop(db, fieldId, year, opts = {}) {
     }
   }
 
+  // Capital amortization (Spec 2c): establishment cost ÷ productive years, within window.
+  if (include.includes('capital')) {
+    const ests = db.prepare('SELECT * FROM field_establishment WHERE field_id = ?').all(fieldId);
+    for (const est of ests) {
+      if (!est.expected_productive_years || est.expected_productive_years <= 0) continue;
+      const plantedYear = parseInt(String(est.planted_date).slice(0, 4), 10);
+      const windowEnd = plantedYear + est.expected_productive_years - 1;
+      if (year < plantedYear || year > windowEnd) continue;
+      const line = lines.find(l => l.usage === est.usage) || lines.find(l => l.usage === field.enterprise);
+      if (line) {
+        line.capital_amortized_cost = round2((line.capital_amortized_cost || 0)
+          + est.total_cost_zar / est.expected_productive_years);
+      }
+    }
+    coverage.excludes = coverage.excludes.filter(e => e !== 'capital_amortization');
+  }
+
+  // Overhead allocation (Spec 2d): allocate this field-year's overhead slice.
+  if (include.includes('overhead')) {
+    const { allocatedOverhead } = require('./overhead'); // lazy require
+    const oh = allocatedOverhead(db, fieldId, year);
+    report_overhead = oh;
+    if (oh.total > 0) {
+      const line = lines.find(l => l.usage === field.enterprise) || lines[0];
+      if (line) line.allocated_overhead_cost = oh.total;
+    }
+    coverage.excludes = coverage.excludes.filter(e => e !== 'overhead');
+  }
+
   const report = { field_id: fieldId, year, field, lines, totals, rotation, coverage };
+  if (typeof report_overhead !== 'undefined') report.overhead = report_overhead;
 
   // Opt-in internal-transfer credit line (Spec 2f.2). Default off → existing
   // callers and numbers unchanged. transfersForField prices against this field's
