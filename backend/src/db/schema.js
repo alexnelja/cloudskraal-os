@@ -37,6 +37,7 @@ const { migrateProcessingRecirculation } = require('./migrate-processing-recircu
 const { migrateProcessingFractions } = require('./migrate-processing-fractions');
 const { initSharedInputsSchema } = require('./schema-shared-inputs');
 const { migrateEquipmentRates } = require('./migrate-equipment-rates');
+const { initActivitiesSchema } = require('./schema-activities');
 
 const DB_PATH = process.env.CAPEX_DB_PATH ?? path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -93,6 +94,7 @@ function getDb() {
     runMigration(db, 'migrate-processing-fractions', migrateProcessingFractions);
     runMigration(db, 'init-shared-inputs-schema', initSharedInputsSchema);
     runMigration(db, 'migrate-equipment-rates', migrateEquipmentRates);
+    runMigration(db, 'init-activities-schema', initActivitiesSchema);
   }
   return db;
 }

@@ -333,9 +333,33 @@ function computeFieldCop(db, fieldId, year, opts = {}) {
     }
   }
 
+  // Activities (Spec 2i.3): machine+attachment+operator cost per operation.
+  // Same line attribution as shared: enterprise line, else single productive, else warn.
+  let report_activities;
+  if (include.includes('activities')) {
+    const { fieldActivityCost } = require('./activities'); // lazy require
+    const r = fieldActivityCost(db, fieldId, year);
+    const actWarnings = [...r.warnings];
+    if (r.total > 0) {
+      const productive = lines.filter(l => !NON_PRODUCTIVE.has(l.usage) && l.usage !== UNCAT);
+      const line = lines.find(l => l.usage === field.enterprise)
+        || (productive.length === 1 ? productive[0] : null);
+      if (line) line.activity_cost = r.total;
+      else actWarnings.push('activity_line_not_found');
+    }
+    report_activities = { ...r, warnings: actWarnings };
+    coverage.excludes = coverage.excludes.filter(e => e !== 'activities');
+  } else {
+    const { hasFieldActivities } = require('./activities');
+    if (hasFieldActivities(db, fieldId, year)) {
+      coverage.excluded_layers = [...(coverage.excluded_layers || []), 'activities'];
+    }
+  }
+
   const report = { field_id: fieldId, year, field, lines, totals, rotation, coverage };
   if (typeof report_overhead !== 'undefined') report.overhead = report_overhead;
   if (typeof report_shared !== 'undefined') report.shared_inputs = report_shared;
+  if (typeof report_activities !== 'undefined') report.activities = report_activities;
 
   // Opt-in internal-transfer credit line (Spec 2f.2). Default off → existing
   // callers and numbers unchanged. transfersForField prices against this field's
