@@ -13,6 +13,7 @@ import {
   Users,
   Package,
   ChartBar,
+  TreeStructure,
   Plant,
 } from '@phosphor-icons/react';
 import type { ComponentType } from 'react';
@@ -52,6 +53,7 @@ const navGroups: NavGroup[] = [
       { to: '/employees', icon: Users, label: 'Employees' },
       { to: '/inventory', icon: Package, label: 'Inventory' },
       { to: '/financials', icon: ChartBar, label: 'Financials' },
+      { to: '/cost-map', icon: TreeStructure, label: 'Cost Map' },
       { to: '/projects', icon: FolderOpen, label: 'CapEx' },
       { to: '/compare', icon: GitDiff, label: 'Compare' },
     ],

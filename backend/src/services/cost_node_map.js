@@ -136,7 +136,8 @@ function buildCostNodeMap(db, fieldId, year, opts = {}) {
   let priceInfo = null;
   if (line.margin && line.margin.price_per_kg != null) {
     const m = line.margin;
-    priceInfo = { price_per_kg: m.price_per_kg, price_basis: m.price_basis };
+    priceInfo = { price_per_kg: m.price_per_kg, price_basis: m.price_basis,
+                  yield_at_price_basis_kg: m.yield_at_price_basis_kg };
     nodes.push({ id: 'price', kind: 'price', label: `Price (${m.price_basis})`,
                  value_zar_per_kg: m.price_per_kg, price_basis: m.price_basis });
     let marginLoaded = null;
@@ -164,6 +165,7 @@ function buildCostNodeMap(db, fieldId, year, opts = {}) {
       cost_per_kg_loaded: unitCost,
       price_per_kg: priceInfo ? priceInfo.price_per_kg : null,
       price_basis: priceInfo ? priceInfo.price_basis : null,
+      yield_at_price_basis_kg: priceInfo ? priceInfo.yield_at_price_basis_kg : null,
       enabled_layers: nodes.filter(n => n.kind === 'layer' && n.status === 'ok').map(n => n.layer),
     },
     warnings,

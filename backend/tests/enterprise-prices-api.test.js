@@ -14,7 +14,9 @@ describe('enterprise-prices API', () => {
     const years = data.map(r => r.year);
     expect(years).toEqual([...years].sort((a, b) => a - b));
     const by = Object.fromEntries(data.map(r => [r.year, r.price_per_kg]));
-    expect(by[2026]).toBe(40);
+    // 2026 is the contracted ACTUAL (Rooibos Ltd Aankoopsooreenkoms 2026, Tee
+    // fraction R39.60); see docs/research/rooibos-ltd-2026-purchase-agreement.md
+    expect(by[2026]).toBe(39.6);
     expect(by[2028]).toBe(55);
     expect(by[2030]).toBe(39);
   });

@@ -157,6 +157,7 @@ describe('buildCostNodeMap — price + margin', () => {
     const map = buildCostNodeMap(db, 'f1', 2026, { include: ['activities'] });
     expect(node(map, 'price').value_zar_per_kg).toBe(60);
     expect(node(map, 'margin').value_zar_per_kg).toBe(48.66); // 60 − 11336/1000
+    expect(map.summary.yield_at_price_basis_kg).toBe(1000);   // what-if needs the basis yield
     expect(edge(map, 'price', 'margin')).toBe(true);
     expect(edge(map, 'unit_cost', 'margin')).toBe(true);
     db.close();
