@@ -54,6 +54,7 @@ const navGroups: NavGroup[] = [
       { to: '/inventory', icon: Package, label: 'Inventory' },
       { to: '/financials', icon: ChartBar, label: 'Financials' },
       { to: '/cost-map', icon: TreeStructure, label: 'Cost Map' },
+      { to: '/enterprises', icon: Plant, label: 'Enterprises' },
       { to: '/projects', icon: FolderOpen, label: 'CapEx' },
       { to: '/compare', icon: GitDiff, label: 'Compare' },
     ],

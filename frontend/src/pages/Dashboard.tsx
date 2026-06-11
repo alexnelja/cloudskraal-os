@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import DataQualityCard from '../components/DataQualityCard';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FolderOpen,
@@ -207,6 +208,11 @@ export default function Dashboard() {
           />
         </div>
       )}
+
+      {/* COP data quality (2h.3) */}
+      <div className="mb-8">
+        <DataQualityCard year={2026} />
+      </div>
 
       {/* Charts */}
       {!loading && projects.length > 0 && (

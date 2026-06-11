@@ -21,6 +21,7 @@ const ProductionPage = lazy(() => import('./pages/ProductionPage'));
 const EmployeesPage = lazy(() => import('./pages/EmployeesPage'));
 const InventoryPage = lazy(() => import('./pages/InventoryPage'));
 const CostMapPage = lazy(() => import('./pages/CostMapPage'));
+const EnterprisesPage = lazy(() => import('./pages/EnterprisesPage'));
 const FinancialsPage = lazy(() => import('./pages/FinancialsPage'));
 const AnnotationsPage = lazy(() => import('./pages/AnnotationsPage'));
 const TaskManagerPage = lazy(() => import('./pages/TaskManagerPage'));
@@ -59,6 +60,7 @@ export default function App() {
                 <Route path="/inventory" element={<InventoryPage />} />
                 <Route path="/financials" element={<FinancialsPage />} />
                 <Route path="/cost-map" element={<CostMapPage />} />
+                <Route path="/enterprises" element={<EnterprisesPage />} />
                 <Route path="/annotations" element={<PageWrapper><AnnotationsPage /></PageWrapper>} />
               </Routes>
             </Suspense>
