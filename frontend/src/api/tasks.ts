@@ -27,6 +27,9 @@ export interface CreateTaskInput {
   field_id?: string | null;
   annotation_id?: string | null;
   enterprise?: string | null;
+  assigned_to?: string | null;
+  /** Spec 3.2 — template provenance; server freezes estimated_cost_zar on create */
+  template_id?: string | null;
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {

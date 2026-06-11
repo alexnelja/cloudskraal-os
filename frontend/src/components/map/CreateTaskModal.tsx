@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ClipboardText } from '@phosphor-icons/react';
 import type { CreateTaskInput } from '../../api/tasks';
+import type { TaskSuggestion } from '../../api/taskSuggestions';
 import FluidDialog from './FluidDialog';
 
 export type TaskContext =
@@ -13,6 +14,8 @@ interface CreateTaskModalProps {
   open: boolean;
   defaultTitle?: string;
   context: TaskContext;
+  /** Spec 3.2 — pre-fill from a usage-matched template (inputs + cost frozen on create) */
+  template?: TaskSuggestion | null;
   onSave: (input: CreateTaskInput) => void;
   onCancel: () => void;
 }
@@ -21,6 +24,7 @@ export default function CreateTaskModal({
   open,
   defaultTitle = '',
   context,
+  template = null,
   onSave,
   onCancel,
 }: CreateTaskModalProps) {
@@ -31,12 +35,12 @@ export default function CreateTaskModal({
 
   useEffect(() => {
     if (open) {
-      setTitle(defaultTitle);
+      setTitle(template ? template.name : defaultTitle);
       setNotes('');
       setPriority('medium');
       setDueDate('');
     }
-  }, [open, defaultTitle]);
+  }, [open, defaultTitle, template]);
 
   const canSave = title.trim().length > 0;
 
@@ -50,6 +54,10 @@ export default function CreateTaskModal({
     };
     if (context.kind === 'field') payload.field_id = context.fieldId;
     if (context.kind === 'annotation') payload.annotation_id = context.annotationId;
+    if (template) {
+      payload.template_id = template.template_id;
+      if (template.suggested_assignee) payload.assigned_to = template.suggested_assignee;
+    }
     onSave(payload);
   };
 
@@ -85,6 +93,39 @@ export default function CreateTaskModal({
             <p className="text-[11px] text-stone-500 mt-0.5">{contextLine}</p>
           </div>
         </div>
+
+        {template && (
+          <div
+            data-testid="template-cost-preview"
+            className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3.5 py-2.5"
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-[11px] uppercase tracking-[0.08em] font-semibold text-emerald-800">
+                {template.op_type} · estimate
+              </span>
+              <span className="text-sm font-semibold text-emerald-900">
+                R {template.estimated_cost_zar.toLocaleString('en-ZA')}
+              </span>
+            </div>
+            {template.inputs.length > 0 && (
+              <ul className="mt-1 text-[11px] text-emerald-900/80">
+                {template.inputs.map((i) => (
+                  <li key={i.product}>
+                    {i.product}: {i.quantity.toLocaleString('en-ZA')} {i.unit}
+                    {i.cost != null ? ` · R ${i.cost.toLocaleString('en-ZA')}` : ' · no price'}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-emerald-900/70">
+              {template.default_duration_hrs != null && <span>~{template.default_duration_hrs} h</span>}
+              {template.suggested_assignee && <span>last done by {template.suggested_assignee}</span>}
+              {template.cost_warnings.length > 0 && (
+                <span className="text-amber-700">{template.cost_warnings.join(' · ')}</span>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-4">
           <div>

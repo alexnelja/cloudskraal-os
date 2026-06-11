@@ -5,6 +5,7 @@ import { ClipboardText, NotePencil, CheckSquare, MapPin } from '@phosphor-icons/
 import { useLongPress } from './useLongPress';
 import { createAnnotation } from '../api/annotations';
 import { createTask } from '../api/tasks';
+import { getTaskSuggestions, type TaskSuggestion } from '../api/taskSuggestions';
 import { loadBasemapPreference, saveBasemapPreference } from '../config/basemaps';
 import type { DrawMode } from '../components/map/tools/AnnotateTool';
 import type { MapContextMenuEvent } from '../components/map/FarmMap';
@@ -37,7 +38,7 @@ export function useMapInteractions({
     x: number; y: number; title: string; items: MenuItem[];
   } | null>(null);
   const [createTaskContext, setCreateTaskContext] = useState<{
-    context: TaskContext; defaultTitle: string;
+    context: TaskContext; defaultTitle: string; template?: TaskSuggestion | null;
   } | null>(null);
   const [armedDropMode, setArmedDropMode] = useState(false);
   const [pressRing, setPressRing] = useState<{ x: number; y: number } | null>(null);
@@ -109,8 +110,8 @@ export function useMapInteractions({
     [armedDropMode, dropMapNote],
   );
 
-  const openCreateTaskModal = useCallback((ctx: TaskContext, defaultTitle: string) => {
-    setCreateTaskContext({ context: ctx, defaultTitle });
+  const openCreateTaskModal = useCallback((ctx: TaskContext, defaultTitle: string, template?: TaskSuggestion | null) => {
+    setCreateTaskContext({ context: ctx, defaultTitle, template: template ?? null });
   }, []);
 
   const handleSaveTask = useCallback(async (input: Parameters<typeof createTask>[0]) => {
@@ -126,17 +127,39 @@ export function useMapInteractions({
   const handleMapContextMenu = useCallback((e: MapContextMenuEvent) => {
     const items: MenuItem[] = [];
     if (e.target === 'field' && e.fieldId) {
+      const fieldCtx: TaskContext = { kind: 'field', label: e.fieldName ?? 'field', fieldId: e.fieldId };
       items.push({
         id: 'task-for-field',
         label: `Create task for ${e.fieldName ?? 'this field'}`,
         Icon: ClipboardText,
         tint: 'emerald',
-        onClick: () =>
-          openCreateTaskModal(
-            { kind: 'field', label: e.fieldName ?? 'field', fieldId: e.fieldId! },
-            '',
-          ),
+        onClick: () => openCreateTaskModal(fieldCtx, ''),
       });
+      // Spec 3.2 — usage-matched op suggestions, appended once they load.
+      const fieldId = e.fieldId;
+      getTaskSuggestions(fieldId)
+        .then((r) => {
+          if (!r.suggestions.length) return;
+          const tiles: MenuItem[] = r.suggestions.slice(0, 4).map((sugg) => ({
+            id: `tpl-${sugg.template_id}`,
+            label: sugg.estimated_cost_zar > 0
+              ? `${sugg.name} · ~R ${sugg.estimated_cost_zar.toLocaleString('en-ZA')}`
+              : sugg.name,
+            Icon: ClipboardText,
+            tint: 'amber',
+            onClick: () => openCreateTaskModal(fieldCtx, '', sugg),
+          }));
+          setContextMenu((prev) => {
+            // Only extend if this field's menu is still the one on screen.
+            if (!prev || !prev.items.some((i) => i.id === 'task-for-field')) return prev;
+            const withoutTiles = prev.items.filter((i) => !i.id.startsWith('tpl-'));
+            const anchor = withoutTiles.findIndex((i) => i.id === 'task-for-field');
+            const next = [...withoutTiles];
+            next.splice(anchor + 1, 0, ...tiles);
+            return { ...prev, items: next };
+          });
+        })
+        .catch(() => { /* suggestions are progressive enhancement */ });
     } else {
       items.push({
         id: 'task-here',

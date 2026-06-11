@@ -591,6 +591,7 @@ export default function FarmMapPage() {
         open={ix.createTaskContext !== null}
         defaultTitle={ix.createTaskContext?.defaultTitle ?? ''}
         context={ix.createTaskContext?.context ?? { kind: 'blank', label: 'location' }}
+        template={ix.createTaskContext?.template ?? null}
         onSave={ix.handleSaveTask}
         onCancel={() => ix.setCreateTaskContext(null)}
       />

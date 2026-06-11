@@ -358,7 +358,7 @@ router.post('/tasks', async (req, res) => {
     const {
       title, description, enterprise, field_id, annotation_id, wiki_page_id, type, status, priority,
       due_date, assigned_to, depends_on_task_id, recurrence_rule,
-      calendar_event_id, notes
+      calendar_event_id, notes, template_id
     } = req.body;
 
     if (!title) return res.status(400).json({ error: 'title is required' });
@@ -366,15 +366,26 @@ router.post('/tasks', async (req, res) => {
     const id = uuidv4();
     const now = new Date().toISOString();
 
+    // Spec 3.2 — freeze the cost estimate at create time so it doesn't drift
+    // when catalogue prices change later.
+    let estimatedCost = typeof req.body.estimated_cost_zar === 'number' ? req.body.estimated_cost_zar : null;
+    if (template_id && estimatedCost == null && field_id) {
+      const { estimateCost } = require('../services/task_suggestions');
+      const f = db.prepare('SELECT COALESCE(area_ha,0) AS area_ha FROM fields WHERE id = ?').get(field_id);
+      const est = estimateCost(db, template_id, f ? f.area_ha : 0);
+      if (!est.error) estimatedCost = est.total;
+    }
+
     db.prepare(`
-      INSERT INTO tasks (id, title, description, enterprise, field_id, annotation_id, wiki_page_id, type, status, priority, due_date, completed_date, completed_by, assigned_to, depends_on_task_id, recurrence_rule, calendar_event_id, google_event_id, notes, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, NULL, ?, ?, ?)
+      INSERT INTO tasks (id, title, description, enterprise, field_id, annotation_id, wiki_page_id, type, status, priority, due_date, completed_date, completed_by, assigned_to, depends_on_task_id, recurrence_rule, calendar_event_id, google_event_id, notes, template_id, estimated_cost_zar, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)
     `).run(
       id, title, description || null, enterprise || null, field_id || null,
       annotation_id || null, wiki_page_id || null,
       type || 'manual', status || 'pending', priority || 'medium',
       due_date || null, assigned_to || null, depends_on_task_id || null,
       recurrence_rule || null, calendar_event_id || null, notes || null,
+      template_id || null, estimatedCost,
       now, now
     );
 
