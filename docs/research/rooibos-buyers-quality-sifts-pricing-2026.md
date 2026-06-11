@@ -119,6 +119,41 @@ Gap: **R5.60–9.00/kg (~20–32%)** in Cape Natural's favour on clean tea, befo
 
 ---
 
+## Quality risk: grading happens at delivery → R/kg is variable
+
+Both buyers grade each load **only when it lands at their lab** (Rooibos Bpk per-load
+grading report; Cape Natural per-load 400 g sample). Until then the realised revenue per
+kg is unknown — every delivery carries quality risk, and season planning should use a
+**range, not a point price**.
+
+**Rooibos Bpk — per-kg adjustment envelope on the basis grade:**
+
+| Metric | Worst | Basis | Best | Our 2026 range |
+|---|---|---|---|---|
+| Sensories (cup) | −R3 (score 3; 1–2 rejected) | 6 = R0 | +R6 (score 12) | 6–7 → R0…+R1 |
+| Residu (MRL) | −R5 (R4, EU-banned) | R1 = R0 | R0 | R1 → R0 |
+| PA-vlakke | −R3 (P5) | P2 = R0 | +R1 (P1) | P1–P2 → R0…+R1 |
+| **Total quality swing** | **−R11** | R0 | **+R7** | **R0…+R2** |
+
+On top of the quality adders, the **measured fractions** move per load: 2026 tea% ranged
+67.3–78.7% and stof 1.3–12.7%, so realised gross ran ~R30.1–32.3/kg before quality
+(Elandsvoetpad's +R2 quality bonus roughly offset its worse cut). Verwerkingskoste can
+also step R4.00 → R5.80 if stok% drifts ≥12%.
+
+**Cape Natural — two stochastic legs per load:**
+1. **Waarde-opbrengs %** is measured per sample (83.69% on MAT-0379) — the effective
+   multiplier on R40.45 moves with every load's snit; over-fine cutting bleeds value into
+   the 0.25-factor dust band.
+2. **Grade classification** (sensory: cup aroma/colour/taste, leaf shade) decides the
+   premie: uitvoergraad +R8 on the 20–40 fraction → versnit +R4 → plaaslik R0. On our
+   load mix that's a **~R0–3.4/kg swing** decided at their bench.
+
+**Implications:** (1) budget revenue as a band — our 2026 realistic bands are
+~R28–30 net (Rooibos Bpk) and ~R34–37 net (Cape Natural); (2) the farm *influences* the
+draw (cut/sieving discipline, MRL spray programme per the registered list, drying for cup
+score) but never knows it ex ante; (3) any COP-margin or cash-flow model using a single
+price_per_kg is using an expectation over this distribution — stress both tails.
+
 ## Allocation logic for coming years
 
 1. **The binding constraint is the Rooibos Bpk quota, not price.** At ~200 t production vs ~120 t intake, ±80 t/yr has no cash home at Rooibos Bpk — it accumulates in pools (now ~196 t). Marginal tonnes to Cape Natural earn ~R1.7–1.9m per 50 t *in the year of harvest* vs deferred, unpriced pool entries.
