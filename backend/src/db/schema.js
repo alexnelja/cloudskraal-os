@@ -40,6 +40,7 @@ const { migrateEquipmentRates } = require('./migrate-equipment-rates');
 const { initActivitiesSchema } = require('./schema-activities');
 const { initTaskTemplatesSchema } = require('./schema-task-templates');
 const { seedTaskTemplates } = require('./seed-task-templates');
+const { initTaskEventsSchema } = require('./schema-task-events');
 
 const DB_PATH = process.env.CAPEX_DB_PATH ?? path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -99,6 +100,7 @@ function getDb() {
     runMigration(db, 'init-activities-schema', initActivitiesSchema);
     runMigration(db, 'init-task-templates-schema', initTaskTemplatesSchema);
     runMigration(db, 'seed-task-templates', seedTaskTemplates);
+    runMigration(db, 'init-task-events-schema', initTaskEventsSchema);
   }
   return db;
 }
