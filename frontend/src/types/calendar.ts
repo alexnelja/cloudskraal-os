@@ -14,6 +14,8 @@ export type TaskType = 'scheduled' | 'triggered' | 'dependent' | 'manual';
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'skipped' | 'overdue';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
+export type TaskLifecycleState = 'scheduled' | 'in_progress' | 'completed' | 'verified' | 'cancelled';
+
 export interface Task {
   id: string;
   title: string;
@@ -44,6 +46,16 @@ export interface Task {
   sort_order: number;
   verified_by: string | null;
   verified_at: string | null;
+  /** Spec 4.1 lifecycle state machine: scheduled|in_progress|completed|verified|cancelled */
+  state?: TaskLifecycleState | null;
+  actual_start?: string | null;
+  actual_end?: string | null;
+  actual_inputs_json?: string | null;
+  actual_duration_hrs?: number | null;
+  actual_area_ha?: number | null;
+  cancelled_reason?: string | null;
+  template_id?: string | null;
+  estimated_cost_zar?: number | null;
   tags?: Array<{ id: string; name: string; color: string; group: string }>;
   inputs?: TaskInput[];
   checklists?: TaskChecklist[];

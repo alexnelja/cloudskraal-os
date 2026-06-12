@@ -4,12 +4,15 @@ import { X, Trash } from '@phosphor-icons/react';
 import type { Task, TaskPriority } from '../../types/calendar';
 import type { Tag, TaskStatusConfig } from '../../types/taskManager';
 import { addTagToTask, removeTagFromTask } from '../../api/taskManager';
+import TaskLifecycleCard from './TaskLifecycleCard';
 
 interface TaskDetailSheetProps {
   task: Task | null;
   open: boolean;
   onDismiss: () => void;
   onSave: (taskId: string, data: Record<string, any>) => void;
+  /** Spec 4.1b — called after a lifecycle transition so the parent refetches */
+  onLifecycleChange?: () => void;
   onDelete: (taskId: string) => void;
   tags: Tag[];
   statuses: TaskStatusConfig[];
@@ -59,6 +62,7 @@ export default function TaskDetailSheet({
   tags,
   statuses,
   fields,
+  onLifecycleChange,
 }: TaskDetailSheetProps) {
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
@@ -184,6 +188,14 @@ export default function TaskDetailSheet({
 
             {/* Form */}
             <div className="flex-1 overflow-y-auto px-5 pb-6 space-y-4">
+              {/* Lifecycle (Spec 4.1b) */}
+              {task && (
+                <TaskLifecycleCard
+                  task={task}
+                  onTransitioned={() => onLifecycleChange?.()}
+                />
+              )}
+
               {/* Title */}
               <div className="bg-white rounded-2xl p-4">
                 <label className={LABEL}>Title</label>

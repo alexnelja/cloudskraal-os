@@ -414,6 +414,7 @@ export default function TaskManagerPage() {
         open={selectedTaskId !== null}
         onDismiss={() => setSelectedTaskId(null)}
         onSave={handleTaskUpdate}
+        onLifecycleChange={fetchData}
         onDelete={handleDeleteWithDeselect}
         tags={tags}
         statuses={statuses}

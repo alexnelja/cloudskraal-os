@@ -178,3 +178,39 @@ export async function getUpcomingTasks(days?: number): Promise<Task[]> {
 export async function getCalendarSummary(month: string): Promise<CalendarSummary> {
   return request<CalendarSummary>(`/calendar/summary?month=${month}`);
 }
+
+// ── Spec 4.1 task lifecycle ─────────────────────────────────────────────────
+
+export interface TaskTransitionPayload {
+  to_state: 'in_progress' | 'completed' | 'verified' | 'cancelled';
+  by?: string;
+  at?: string;
+  reason?: string;
+  assigned_to?: string;
+  actual_inputs_json?: Array<{ product: string; quantity: number; unit: string }> | string;
+  actual_duration_hrs?: number;
+  actual_area_ha?: number;
+  workers?: Array<{ employee_id: string; hours: number }>;
+}
+
+export interface TaskEvent {
+  id: string;
+  task_id: string;
+  event_type: string;
+  at: string;
+  by: string | null;
+  payload_json: string | null;
+}
+
+export async function transitionTask(id: string, payload: TaskTransitionPayload) {
+  const result = await request<{ task: Task; warnings: string[] }>(`/tasks/${id}/transition`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  invalidate('tasks');
+  return result;
+}
+
+export async function getTaskEvents(id: string): Promise<TaskEvent[]> {
+  return request<TaskEvent[]>(`/tasks/${id}/events`);
+}
