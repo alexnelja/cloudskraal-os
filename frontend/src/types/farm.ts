@@ -156,6 +156,20 @@ export interface FieldRotation {
   replant_message: string | null;
 }
 
+export interface CopMargin {
+  enterprise: string;
+  year: number;
+  price_per_kg: number;
+  price_basis: string;
+  yield_at_price_basis_kg: number | null;
+  cost_per_kg_at_price_basis: number | null;
+  margin_per_kg: number | null;
+  gross_revenue: number | null;
+  margin_total: number | null;
+  margin_per_ha: number | null;
+  margin_pct: number | null;
+}
+
 export interface CopLine {
   usage: string;
   period_ids: string[];
@@ -174,6 +188,7 @@ export interface CopLine {
   actual_yield_kg: number;
   yield_per_ha: number;
   cost_per_kg: number | null;
+  margin?: CopMargin | null;
   warnings: string[];
 }
 

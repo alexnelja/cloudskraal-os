@@ -16,6 +16,7 @@ import type {
   FieldInputTransaction, FieldTaskInput, FieldLabourEntry,
   FieldRotation, CopLine,
 } from '../../types/farm';
+import CopMarginBlock from './CopMarginBlock';
 import {
   formatDate, formatZAR, CATEGORY_COLORS,
   InfoCell, SummaryCard, MetricCard, LoadingState, EmptyState,
@@ -379,6 +380,8 @@ function CopLineSection({ line }: { line: CopLine }) {
           })}
         </div>
       )}
+
+      <CopMarginBlock margin={line.margin} />
 
       {line.warnings.length > 0 && (
         <div className="space-y-1">

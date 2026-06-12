@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Beef, ChevronDown, ChevronUp } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
+import FlockCopSection from '../components/livestock/FlockCopSection';
+import { getTransferPricingMode, setTransferPricingMode } from '../api/livestock';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { getLivestockGroups, getLivestockDashboard, getBreedingSeasons, getShearingRecords, updateLivestockGroup, updateBreedingSeason, updateShearingRecord } from '../api/livestock';
 import type { LivestockGroup, LivestockDashboard, BreedingSeason, ShearingRecord } from '../types/phase2';
@@ -30,6 +32,8 @@ export default function LivestockPage() {
   const [shearingRecords, setShearingRecords] = useState<ShearingRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const [pricingMode, setPricingMode] = useState<'at_cost' | 'at_market'>('at_cost');
+  useEffect(() => { getTransferPricingMode().then(r => setPricingMode(r.mode)).catch(() => {}); }, []);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -77,7 +81,24 @@ export default function LivestockPage() {
 
   return (
     <div className="h-[calc(100vh-5rem)] md:h-screen flex flex-col overflow-hidden">
-      <PageHeader icon={<Beef size={20} />} title="Livestock Tracker" />
+      <PageHeader
+        icon={<Beef size={20} />}
+        title="Livestock Tracker"
+        actions={
+          <div className="flex items-center gap-1.5 text-xs" title="How internal grazing/feed transfers are priced in flock COP">
+            <span className="text-stone-500">Transfers:</span>
+            {(['at_cost', 'at_market'] as const).map(m => (
+              <button key={m} type="button"
+                onClick={() => { setPricingMode(m); setTransferPricingMode(m).catch(() => {}); }}
+                className={`px-2 py-0.5 rounded-full font-medium transition-colors ${
+                  pricingMode === m ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
+                }`}>
+                {m === 'at_cost' ? 'At cost' : 'At market'}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto bg-white">
         <div className="max-w-6xl mx-auto p-4 space-y-6">
@@ -223,6 +244,7 @@ export default function LivestockPage() {
                       {group.notes && (
                         <p className="text-xs text-stone-600 mt-1">{group.notes}</p>
                       )}
+                      <FlockCopSection groupId={group.id} />
                     </div>
                   )}
                 </div>
