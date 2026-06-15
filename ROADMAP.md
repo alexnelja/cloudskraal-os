@@ -57,10 +57,13 @@
 
 ## v1.0.0 — Release Targets
 
-- [x] **Authentication middleware** — Supabase JWT gate on all `/api` routes
+- [x] **Authentication** — backend Supabase JWT gate on all `/api` routes
   (`middleware/requireAuth.js`, `supabase.auth.getUser`); public `/api/health`;
   401 missing/invalid, 503 fail-closed, `AUTH_DISABLED=true` bypass for
-  dev/test. Backend only — **frontend login wiring is a follow-up**.
+  dev/test. **Frontend login wired**: Supabase email+password login gate
+  (`src/auth/*`), JWT attached to all API calls via a scoped fetch interceptor
+  (`src/lib/apiAuth.ts`), sign-out in AppShell. Create the operator user in the
+  Supabase dashboard (no public sign-up).
 - [x] **Migrate xlsx → exceljs** — already complete (seeds use `wb.xlsx.readFile`,
   no `xlsx` package); checkbox was stale.
 - [x] **Split calendar.js routes** — `calendar-events.js` (events/sync/summary)
@@ -74,8 +77,10 @@
   until frontend auth ships) and rotate keys in the provider dashboards.
 
 ### v1.0.0 follow-ups (surfaced during the gate)
-- [ ] Frontend Supabase auth: login screen, session handling, attach JWT to all
-  API calls (required before enabling auth in production).
+- [x] Frontend Supabase auth: login screen, session handling, attach JWT to all
+  API calls. **Done** — see Authentication above.
+- [ ] Create the Supabase operator user (dashboard → Authentication → Users) and,
+  once verified end-to-end, unset `AUTH_DISABLED` in production to enforce auth.
 
 ## v2.0.0 — Material Design 3 Migration
 
