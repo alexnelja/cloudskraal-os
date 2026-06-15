@@ -42,6 +42,7 @@ const { initTaskTemplatesSchema } = require('./schema-task-templates');
 const { seedTaskTemplates } = require('./seed-task-templates');
 const { initFinancingSchema } = require('./schema-financing');
 const { initTaskEventsSchema } = require('./schema-task-events');
+const { migrateNormalizeProductionSourceFields } = require('./migrate-normalize-production-source-fields');
 
 const DB_PATH = process.env.CAPEX_DB_PATH ?? path.join(__dirname, '..', '..', 'data', 'capex.db');
 
@@ -103,6 +104,7 @@ function getDb() {
     runMigration(db, 'seed-task-templates', seedTaskTemplates);
     runMigration(db, 'init-financing-schema', initFinancingSchema);
     runMigration(db, 'init-task-events-schema', initTaskEventsSchema);
+    runMigration(db, 'migrate-normalize-production-source-fields', migrateNormalizeProductionSourceFields);
   }
   return db;
 }

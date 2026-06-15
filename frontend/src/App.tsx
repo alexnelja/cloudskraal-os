@@ -4,6 +4,8 @@ import { MotionConfig } from 'motion/react';
 import AppShell from './components/layout/AppShell';
 import { ToasterProvider } from './components/ui/Toaster';
 import LoadingOverlay from './components/ui/LoadingOverlay';
+import { AuthProvider } from './auth/AuthProvider';
+import AuthGate from './auth/AuthGate';
 import Dashboard from './pages/Dashboard';
 import ProjectsList from './pages/ProjectsList';
 import ProjectDetail from './pages/ProjectDetail';
@@ -39,8 +41,10 @@ export default function App() {
     // also neutralises CSS transitions / view-transitions.
     <MotionConfig reducedMotion="user">
       <ToasterProvider>
-        <BrowserRouter>
-          <AppShell>
+        <AuthProvider>
+          <AuthGate>
+            <BrowserRouter>
+              <AppShell>
             <Suspense fallback={<LoadingOverlay variant="spinner" />}>
               <Routes>
                 <Route path="/" element={<PageWrapper><Dashboard /></PageWrapper>} />
@@ -66,8 +70,10 @@ export default function App() {
                 <Route path="/annotations" element={<PageWrapper><AnnotationsPage /></PageWrapper>} />
               </Routes>
             </Suspense>
-          </AppShell>
-        </BrowserRouter>
+              </AppShell>
+            </BrowserRouter>
+          </AuthGate>
+        </AuthProvider>
       </ToasterProvider>
     </MotionConfig>
   );

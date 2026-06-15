@@ -186,10 +186,10 @@ function seedPhase2(db) {
     // ── PRODUCTION BATCHES ──────────────────────────────────────────────────────
 
     const insertBatch = db.prepare(`
-      INSERT INTO production_batches (id, batch_code, enterprise, product_type, source_field_ids,
+      INSERT INTO production_batches (id, batch_code, enterprise, product_type,
         harvest_date_start, harvest_date_end, initial_quantity_kg, current_quantity_kg, status,
         quality_grade, storage_location, notes, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertStep = db.prepare(`
@@ -214,7 +214,7 @@ function seedPhase2(db) {
 
     // Batch BF-2026-001
     const batch1Id = uuidv4();
-    insertBatch.run(batch1Id, 'BF-2026-001', 'rooibos', 'rooibos_oxidized', null,
+    insertBatch.run(batch1Id, 'BF-2026-001', 'rooibos', 'rooibos_oxidized',
       '2026-01-10', '2026-01-25', 8000, 7600, 'stored',
       'Choice', 'Garsland Warehouse', null, now, now);
 
@@ -244,7 +244,7 @@ function seedPhase2(db) {
 
     // Batch BF-2026-002
     const batch2Id = uuidv4();
-    insertBatch.run(batch2Id, 'BF-2026-002', 'rooibos', 'rooibos_oxidized', null,
+    insertBatch.run(batch2Id, 'BF-2026-002', 'rooibos', 'rooibos_oxidized',
       '2026-01-28', null, 12000, 11800, 'processing',
       null, null, null, now, now);
 
@@ -259,7 +259,7 @@ function seedPhase2(db) {
 
     // Batch WC-2026-001 (wool clip)
     const batch3Id = uuidv4();
-    insertBatch.run(batch3Id, 'WC-2026-001', 'sheep', 'wool_clip', null,
+    insertBatch.run(batch3Id, 'WC-2026-001', 'sheep', 'wool_clip',
       '2025-09-15', '2025-09-15', 2610, 0, 'sold',
       null, null, null, now, now);
 

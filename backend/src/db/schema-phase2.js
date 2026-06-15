@@ -130,7 +130,6 @@ function initPhase2Schema(db) {
       batch_code TEXT UNIQUE NOT NULL,
       enterprise TEXT NOT NULL,
       product_type TEXT,
-      source_field_ids TEXT,
       harvest_date_start TEXT,
       harvest_date_end TEXT,
       initial_quantity_kg REAL,
@@ -142,6 +141,15 @@ function initPhase2Schema(db) {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    -- Normalized source fields for a production batch (replaces the legacy
+    -- production_batches.source_field_ids JSON-in-TEXT column).
+    CREATE TABLE IF NOT EXISTS production_batch_source_fields (
+      batch_id TEXT NOT NULL REFERENCES production_batches(id) ON DELETE CASCADE,
+      field_id TEXT NOT NULL REFERENCES fields(id) ON DELETE CASCADE,
+      PRIMARY KEY (batch_id, field_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_pbsf_field ON production_batch_source_fields(field_id);
 
     CREATE TABLE IF NOT EXISTS processing_steps (
       id TEXT PRIMARY KEY,

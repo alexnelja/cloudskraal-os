@@ -1,4 +1,9 @@
 node_modules/
 data/capex.db
+data/capex.db-shm
+data/capex.db-wal
 .env
+.env.*
+!.env.example
+data/.env
 data/google-credentials.json

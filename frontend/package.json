@@ -30,6 +30,7 @@
     "@material/web": "^2.4.1",
     "@phosphor-icons/core": "^2.1.1",
     "@phosphor-icons/react": "^2.1.10",
+    "@supabase/supabase-js": "^2.108.2",
     "@tanstack/react-table": "^8.21.3",
     "@turf/turf": "^7.3.4",
     "@types/dompurify": "^3.0.5",
