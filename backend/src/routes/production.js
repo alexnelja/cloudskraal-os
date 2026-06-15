@@ -4,6 +4,39 @@ const { getDb } = require('../db/schema');
 
 const router = Router();
 
+// ── SOURCE FIELDS (normalized junction) ─────────────────────────────────────────
+
+// Returns the field ids linked to a batch, as a string[].
+function getSourceFieldIds(db, batchId) {
+  return db.prepare(
+    'SELECT field_id FROM production_batch_source_fields WHERE batch_id = ? ORDER BY field_id'
+  ).all(batchId).map((r) => r.field_id);
+}
+
+// Attaches source_field_ids (string[]) to a batch row, or a list of rows.
+function withSourceFields(db, batchOrBatches) {
+  if (Array.isArray(batchOrBatches)) {
+    return batchOrBatches.map((b) => ({ ...b, source_field_ids: getSourceFieldIds(db, b.id) }));
+  }
+  return { ...batchOrBatches, source_field_ids: getSourceFieldIds(db, batchOrBatches.id) };
+}
+
+// Replaces a batch's source-field links. Returns { error } if any id is unknown.
+function setSourceFields(db, batchId, fieldIds) {
+  if (!Array.isArray(fieldIds)) return { error: 'source_field_ids must be an array' };
+  const unique = [...new Set(fieldIds)];
+  for (const fieldId of unique) {
+    const exists = db.prepare('SELECT 1 FROM fields WHERE id = ?').get(fieldId);
+    if (!exists) return { error: `Unknown field id: ${fieldId}` };
+  }
+  db.prepare('DELETE FROM production_batch_source_fields WHERE batch_id = ?').run(batchId);
+  const insert = db.prepare(
+    'INSERT INTO production_batch_source_fields (batch_id, field_id) VALUES (?, ?)'
+  );
+  for (const fieldId of unique) insert.run(batchId, fieldId);
+  return {};
+}
+
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 
 router.get('/production/dashboard', (req, res) => {
@@ -35,7 +68,7 @@ router.get('/production/dashboard', (req, res) => {
     LIMIT 5
   `).all();
 
-  res.json({ batchesByStatus, totalKgInPipeline, totalRevenue, recentBatches });
+  res.json({ batchesByStatus, totalKgInPipeline, totalRevenue, recentBatches: withSourceFields(db, recentBatches) });
 });
 
 // ── BATCHES ───────────────────────────────────────────────────────────────────
@@ -50,7 +83,7 @@ router.get('/production/batches', (req, res) => {
     ORDER BY pb.created_at DESC
   `).all();
 
-  res.json(batches);
+  res.json(withSourceFields(db, batches));
 });
 
 router.get('/production/batches/:id', (req, res) => {
@@ -70,7 +103,7 @@ router.get('/production/batches/:id', (req, res) => {
     'SELECT * FROM sales WHERE batch_id = ? ORDER BY created_at DESC'
   ).all(req.params.id);
 
-  res.json({ ...batch, steps, quality_tests, sales });
+  res.json({ ...batch, source_field_ids: getSourceFieldIds(db, batch.id), steps, quality_tests, sales });
 });
 
 router.post('/production/batches', (req, res) => {
@@ -79,20 +112,32 @@ router.post('/production/batches', (req, res) => {
   const now = new Date().toISOString();
   const b = req.body;
 
-  db.prepare(`
-    INSERT INTO production_batches (id, batch_code, enterprise, product_type, source_field_ids,
-      harvest_date_start, harvest_date_end, initial_quantity_kg, current_quantity_kg, status,
-      quality_grade, storage_location, notes, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, b.batch_code, b.enterprise, b.product_type || null,
-    b.source_field_ids ? JSON.stringify(b.source_field_ids) : null,
-    b.harvest_date_start || null, b.harvest_date_end || null,
-    b.initial_quantity_kg || null, b.current_quantity_kg || b.initial_quantity_kg || null,
-    b.status || 'received', b.quality_grade || null, b.storage_location || null,
-    b.notes || null, now, now);
+  const createBatch = db.transaction(() => {
+    db.prepare(`
+      INSERT INTO production_batches (id, batch_code, enterprise, product_type,
+        harvest_date_start, harvest_date_end, initial_quantity_kg, current_quantity_kg, status,
+        quality_grade, storage_location, notes, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, b.batch_code, b.enterprise, b.product_type || null,
+      b.harvest_date_start || null, b.harvest_date_end || null,
+      b.initial_quantity_kg || null, b.current_quantity_kg || b.initial_quantity_kg || null,
+      b.status || 'received', b.quality_grade || null, b.storage_location || null,
+      b.notes || null, now, now);
+
+    if (b.source_field_ids !== undefined) {
+      const result = setSourceFields(db, id, b.source_field_ids);
+      if (result.error) throw new Error(result.error);
+    }
+  });
+
+  try {
+    createBatch();
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
 
   const batch = db.prepare('SELECT * FROM production_batches WHERE id = ?').get(id);
-  res.status(201).json(batch);
+  res.status(201).json(withSourceFields(db, batch));
 });
 
 router.patch('/production/batches/:id', (req, res) => {
@@ -100,17 +145,19 @@ router.patch('/production/batches/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM production_batches WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Batch not found' });
 
-  const allowed = ['batch_code', 'enterprise', 'product_type', 'source_field_ids',
+  // source_field_ids lives in a junction table, not a column — handle separately.
+  if (req.body.source_field_ids !== undefined) {
+    const result = setSourceFields(db, req.params.id, req.body.source_field_ids);
+    if (result.error) return res.status(400).json({ error: result.error });
+  }
+
+  const allowed = ['batch_code', 'enterprise', 'product_type',
     'harvest_date_start', 'harvest_date_end', 'initial_quantity_kg', 'current_quantity_kg',
     'status', 'quality_grade', 'storage_location', 'notes'];
 
   const updates = {};
   for (const key of allowed) {
-    if (req.body[key] !== undefined) {
-      updates[key] = key === 'source_field_ids' && Array.isArray(req.body[key])
-        ? JSON.stringify(req.body[key])
-        : req.body[key];
-    }
+    if (req.body[key] !== undefined) updates[key] = req.body[key];
   }
 
   if (Object.keys(updates).length > 0) {
@@ -120,7 +167,7 @@ router.patch('/production/batches/:id', (req, res) => {
   }
 
   const batch = db.prepare('SELECT * FROM production_batches WHERE id = ?').get(req.params.id);
-  res.json(batch);
+  res.json(withSourceFields(db, batch));
 });
 
 // ── PROCESSING STEPS ──────────────────────────────────────────────────────────

@@ -120,7 +120,7 @@ export interface ProductionBatch {
   batch_code: string;
   enterprise: string;
   product_type: string | null;
-  source_field_ids: string | null;
+  source_field_ids: string[];
   harvest_date_start: string | null;
   harvest_date_end: string | null;
   initial_quantity_kg: number | null;
