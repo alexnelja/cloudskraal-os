@@ -90,6 +90,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Public health check (no auth) — registered before the auth gate.
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Auth gate — every /api route below requires a valid Supabase JWT.
+// Bypassed when AUTH_DISABLED=true (local dev / api test server).
+const { createRequireAuth } = require('./middleware/requireAuth');
+app.use('/api', createRequireAuth());
+
 // Routes
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/projects', projectRoutes);
@@ -120,10 +130,6 @@ app.use('/api', annotationsRoutes);
 app.use('/api/measurements', measurementsRoutes);
 app.use('/api', taskManagerRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 
 // Centralized error handler
 const { errorHandler } = require('./middleware/errorHandler');
