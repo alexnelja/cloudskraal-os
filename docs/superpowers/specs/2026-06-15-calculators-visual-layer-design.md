@@ -14,14 +14,17 @@ but entirely numeric. Alex wants each calculator to also communicate its result
 
 The six calculators (backend engines in `backend/src/services/calculators/`):
 
-| Calc | Primary result | Existing sanity threshold |
-|------|----------------|---------------------------|
-| sprayer | `application_rate_l_ha` | typical 50–600 L/ha |
+Result keys below are taken verbatim from the engine `result{}` and the frontend
+`config/calculators.ts` `results[]` (verified against source):
+
+| Calc | Primary result key | Existing sanity threshold |
+|------|--------------------|---------------------------|
+| sprayer | `application_l_ha` | typical 50–600 L/ha |
 | fertilizer | `product_kg_ha` | >1000 kg/ha unusual |
-| lime | `t_ha` | >8 t/ha split-application limit |
+| lime | `lime_t_ha` | >8 t/ha split-application limit |
 | electrical (pump) | `kw_required` → `recommended_motor_kw` | motor ladder; >132 kW industrial |
-| fluid (pipe) | `velocity` (m/s), `head_loss` | >2 m/s water-hammer; >5 m/100 m undersized |
-| pest | total chemical (g/ml) + cost | none (label-dependent) |
+| fluid (pipe) | `velocity_m_s` (+ `head_loss_m`, `head_loss_m_per_100m`) | >2 m/s water-hammer; >5 m/100 m undersized |
+| pest | `total_chemical` + `unit` ('g'/'ml'), `total_water_l` (nullable), `total_cost_zar` | none (label-dependent) |
 
 ## Decisions (from brainstorm)
 
@@ -69,16 +72,22 @@ type VisualSpec =
 
 Per-calculator mapping:
 
-- **sprayer** — `gauge+schematic` (`sprayer`); gauge on `application_rate_l_ha`,
+- **sprayer** — `gauge+schematic` (`sprayer`); gauge on `application_l_ha`,
   min 0, max 600, good 100–400, threshold 600.
 - **fertilizer** — `gauge`; on `product_kg_ha`, min 0, max 1000, good 0–800,
   threshold 1000.
-- **lime** — `gauge`; on `t_ha`, min 0, max 10, good 0–8, threshold 8.
+- **lime** — `gauge`; on `lime_t_ha`, min 0, max 10, good 0–8, threshold 8.
 - **electrical** — `gauge+schematic` (`pump`); gauge on `kw_required` with
-  `ticks` for the standard motor ladder (5.5, 7.5, 11, 15, 22, 30, 37, 45, 55,
-  75, 90, 110, 132), highlighting `recommended_motor_kw`.
-- **fluid** — `gauge+schematic` (`pipe`); gauge on `velocity`, min 0, max 3,
-  good 0–2, threshold 2.
+  `ticks` mirroring the engine's standard motor ladder
+  (`electrical.js`: 0.37, 0.55, 0.75, 1.1, 1.5, 2.2, 3, 4, 5.5, 7.5, 11, 15,
+  18.5, 22, 30, 37, 45, 55, 75, 90, 110, 132), highlighting the tick equal to
+  `recommended_motor_kw`. The displayed ladder must equal the engine ladder so
+  every possible recommendation lands on a real tick (the config-integrity test
+  asserts this; see Testing). A reduced visible label set is fine as long as the
+  recommended tick is always shown.
+- **fluid** — `gauge+schematic` (`pipe`); gauge on `velocity_m_s`, min 0, max 3,
+  good 0–2, threshold 2. The pipe schematic may also label `head_loss_m` /
+  `head_loss_m_per_100m`.
 - **pest** — `tankmix`.
 
 ### Components (`frontend/src/components/calculators/`)
@@ -88,9 +97,13 @@ Per-calculator mapping:
   threshold marker, and a value pin. Two modes: continuous (band) and `ticks`
   (discrete ladder for the pump). Pure/presentational; uses Material design
   tokens (`--md-sys-color-*`) consistent with the rest of the app.
-- **`TankMix.tsx`** — pest: a tank-fill graphic showing chemical vs water
-  proportion, total dose, and cost. Inputs derived from the pest result + the
-  entered spray volume.
+- **`TankMix.tsx`** — pest. Two cases driven by the result:
+  - **per-100L bases** (`total_water_l` present): full tank-fill graphic showing
+    chemical vs water proportion + total dose (`total_chemical` with `unit`) + cost.
+  - **per-ha bases** (`total_water_l` is null): no water fill — show a dose-only
+    bar (`total_chemical` + `unit`) + cost. Never divide by a null/zero water
+    volume.
+  The dose unit comes from `result.unit` ('g' or 'ml'), not a hardcoded label.
 - **`SprayerSchematic.tsx`**, **`PipeSchematic.tsx`**, **`PumpSchematic.tsx`** —
   small SVG illustrations, lightly data-driven (label the computed value; e.g.
   pipe shows diameter/velocity, pump shows head/flow/kW). Static layout, dynamic
@@ -125,10 +138,14 @@ Unchanged compute path: form → `computeCalculator(type, inputs)` → `CalcResp
 - **`EnvelopeGauge`**: marker position math across the range; clamping below min /
   above max; zone classification (in-good vs edge vs over-threshold); `ticks`
   mode highlights the recommended tick.
-- **`TankMix`**: chemical/water proportions and labels render from a result.
+- **`TankMix`**: per-100L result renders the water fill + dose + cost with the
+  correct `unit`; per-ha result (null `total_water_l`) renders dose-only with no
+  water fill and no NaN.
 - **Config integrity test**: every calculator has a `visual` spec; every gauge
   `resultKey` exists in that calculator's `results[]`; gauge `min < max` and any
-  `threshold`/`goodMin`/`goodMax` fall within `[min, max]`.
+  `threshold`/`goodMin`/`goodMax` fall within `[min, max]`; for the pump, every
+  `ticks` value is a member of the engine's motor ladder and the ladder's range
+  fits `[min, max]`.
 - **`CalcVisual`**: dispatches to the right component per `kind`; renders nothing
   on null value / missing spec.
 
