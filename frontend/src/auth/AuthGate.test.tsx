@@ -72,6 +72,14 @@ describe('AuthGate + login', () => {
     expect(screen.queryByText('SECRET CONTENT')).not.toBeInTheDocument();
   });
 
+  it('bypasses the login gate entirely when VITE_AUTH_DISABLED=true', async () => {
+    vi.stubEnv('VITE_AUTH_DISABLED', 'true');
+    renderGate();
+    expect(await screen.findByText('SECRET CONTENT')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /sign in/i })).not.toBeInTheDocument();
+    vi.unstubAllEnvs();
+  });
+
   it('renders the app once a session arrives', async () => {
     renderGate();
     await screen.findByRole('button', { name: /sign in/i });

@@ -52,37 +52,43 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <Plant size={20} weight="fill" />
           <span>Cloudskraal</span>
         </div>
+        {user ? (
+          <button
+            type="button"
+            onClick={() => { void signOut(); }}
+            title="Sign out"
+            aria-label="Sign out"
+            className="h-8 w-8 rounded-full flex items-center justify-center"
+            style={{
+              background: 'var(--md-sys-color-primary-container)',
+              color: 'var(--md-sys-color-on-primary-container)',
+              font: 'var(--md-sys-typescale-label-medium)',
+            }}
+          >
+            {initialsFromEmail(user.email)}
+          </button>
+        ) : (
+          <span className="h-8 w-8" />
+        )}
+      </header>
+
+      {/* Desktop sign-out (only when signed in) */}
+      {user && (
         <button
           type="button"
           onClick={() => { void signOut(); }}
-          title="Sign out"
+          title={user.email ? `Sign out (${user.email})` : 'Sign out'}
           aria-label="Sign out"
-          className="h-8 w-8 rounded-full flex items-center justify-center"
+          className="hidden md:flex fixed top-4 right-4 z-40 h-10 w-10 rounded-full items-center justify-center backdrop-blur-xl"
           style={{
-            background: 'var(--md-sys-color-primary-container)',
-            color: 'var(--md-sys-color-on-primary-container)',
-            font: 'var(--md-sys-typescale-label-medium)',
+            background: 'color-mix(in srgb, var(--md-sys-color-surface-container) 80%, transparent)',
+            border: '1px solid var(--md-sys-color-outline-variant)',
+            color: 'var(--md-sys-color-on-surface-variant)',
           }}
         >
-          {initialsFromEmail(user?.email)}
+          <SignOut size={18} />
         </button>
-      </header>
-
-      {/* Desktop sign-out */}
-      <button
-        type="button"
-        onClick={() => { void signOut(); }}
-        title={user?.email ? `Sign out (${user.email})` : 'Sign out'}
-        aria-label="Sign out"
-        className="hidden md:flex fixed top-4 right-4 z-40 h-10 w-10 rounded-full items-center justify-center backdrop-blur-xl"
-        style={{
-          background: 'color-mix(in srgb, var(--md-sys-color-surface-container) 80%, transparent)',
-          border: '1px solid var(--md-sys-color-outline-variant)',
-          color: 'var(--md-sys-color-on-surface-variant)',
-        }}
-      >
-        <SignOut size={18} />
-      </button>
+      )}
 
       <Sidebar />
       <BottomNav />
