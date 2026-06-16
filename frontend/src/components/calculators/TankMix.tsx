@@ -6,7 +6,7 @@ type PestResult = {
 };
 
 function n(v: number | null | undefined) {
-  return v == null ? '—' : v.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  return v == null ? '—' : v.toLocaleString('en-ZA', { maximumFractionDigits: 2 });
 }
 
 export default function TankMix({ result }: { result: PestResult }) {
