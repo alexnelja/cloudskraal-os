@@ -7,6 +7,7 @@ import { Calculator, Warning, ArrowLeft } from '@phosphor-icons/react';
 import PageHeader from '../components/layout/PageHeader';
 import { CALCULATORS, type CalcDef } from '../config/calculators';
 import { computeCalculator, getInputProductNames, type CalcResponse } from '../api/calculators';
+import CalcVisual from '../components/calculators/CalcVisual';
 
 function fmt(v: number | string | null | undefined, currency = false): string {
   if (v == null) return '—';
@@ -150,6 +151,7 @@ export default function CalculatorsPage() {
                   <p className="text-sm text-red-600">{response.error}</p>
                 ) : (
                   <>
+                    <CalcVisual calc={calc} result={response.result} />
                     <dl className="space-y-1.5">
                       {calc.results.map(r => (
                         <div key={r.key} className="flex items-baseline justify-between gap-4">

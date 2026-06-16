@@ -18,12 +18,35 @@ export interface CalcResultRow {
   currency?: boolean;
 }
 
+export interface GaugeSpec {
+  resultKey: string;
+  min: number;
+  max: number;
+  goodMin?: number;
+  goodMax?: number;
+  threshold?: number;
+  unit?: string;
+  ticks?: { value: number; label: string }[];
+}
+
+export type VisualSpec =
+  | { kind: 'gauge'; gauge: GaugeSpec }
+  | { kind: 'gauge+schematic'; gauge: GaugeSpec; schematic: 'sprayer' | 'pipe' | 'pump' }
+  | { kind: 'tankmix' };
+
+// Standard IEC motor ladder — mirrors backend electrical.js. The pump gauge
+// ticks must be a subset of this so every recommendation lands on a real tick.
+export const MOTOR_LADDER = [
+  0.37, 0.55, 0.75, 1.1, 1.5, 2.2, 3, 4, 5.5, 7.5, 11, 15, 18.5, 22, 30, 37, 45, 55, 75, 90, 110, 132,
+] as const;
+
 export interface CalcDef {
   type: string;
   label: string;
   description: string;
   fields: CalcField[];
   results: CalcResultRow[];
+  visual?: VisualSpec;
 }
 
 export const CALCULATORS: CalcDef[] = [
@@ -43,6 +66,7 @@ export const CALCULATORS: CalcDef[] = [
       { key: 'total_spray_l', label: 'Total spray volume', unit: 'L' },
       { key: 'tank_fills', label: 'Tank fills' },
     ],
+    visual: { kind: 'gauge+schematic', schematic: 'sprayer', gauge: { resultKey: 'application_l_ha', min: 0, max: 600, goodMin: 100, goodMax: 400, threshold: 600, unit: 'L/ha' } },
   },
   {
     type: 'pest',
@@ -68,6 +92,7 @@ export const CALCULATORS: CalcDef[] = [
       { key: 'total_water_l', label: 'Total water', unit: 'L' },
       { key: 'total_cost_zar', label: 'Cost', currency: true },
     ],
+    visual: { kind: 'tankmix' },
   },
   {
     type: 'fertilizer',
@@ -84,6 +109,7 @@ export const CALCULATORS: CalcDef[] = [
       { key: 'total_product_kg', label: 'Total product', unit: 'kg' },
       { key: 'total_cost_zar', label: 'Cost', currency: true },
     ],
+    visual: { kind: 'gauge', gauge: { resultKey: 'product_kg_ha', min: 0, max: 1000, goodMin: 0, goodMax: 800, threshold: 1000, unit: 'kg/ha' } },
   },
   {
     type: 'lime',
@@ -109,6 +135,7 @@ export const CALCULATORS: CalcDef[] = [
       { key: 'total_t', label: 'Total lime', unit: 't' },
       { key: 'total_cost_zar', label: 'Cost', currency: true },
     ],
+    visual: { kind: 'gauge', gauge: { resultKey: 'lime_t_ha', min: 0, max: 10, goodMin: 0, goodMax: 8, threshold: 8, unit: 't/ha' } },
   },
   {
     type: 'electrical',
@@ -123,6 +150,7 @@ export const CALCULATORS: CalcDef[] = [
       { key: 'kw_required', label: 'Power required', unit: 'kW' },
       { key: 'recommended_motor_kw', label: 'Recommended motor', unit: 'kW' },
     ],
+    visual: { kind: 'gauge+schematic', schematic: 'pump', gauge: { resultKey: 'kw_required', min: 0, max: 132, unit: 'kW', ticks: [ { value: 1.1, label: '1.1' }, { value: 2.2, label: '2.2' }, { value: 4, label: '4' }, { value: 7.5, label: '7.5' }, { value: 11, label: '11' }, { value: 22, label: '22' }, { value: 45, label: '45' }, { value: 90, label: '90' }, { value: 132, label: '132' } ] } },
   },
   {
     type: 'fluid',
@@ -139,5 +167,6 @@ export const CALCULATORS: CalcDef[] = [
       { key: 'head_loss_m_per_100m', label: 'Head loss per 100 m', unit: 'm' },
       { key: 'velocity_m_s', label: 'Velocity', unit: 'm/s' },
     ],
+    visual: { kind: 'gauge+schematic', schematic: 'pipe', gauge: { resultKey: 'velocity_m_s', min: 0, max: 3, goodMin: 0, goodMax: 2, threshold: 2, unit: 'm/s' } },
   },
 ];
